@@ -1,4 +1,5 @@
 # `tinywasm/widget`
+<img src="docs/img/badges.svg">
 
 Visual component contracts, states, layout, and styling for the `tinywasm` suite.
 
