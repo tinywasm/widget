@@ -34,25 +34,25 @@ func cuePseudo(c widget.Cue) string {
 	}
 }
 
-// Map enums to CSS variables
+// Map enums to CSS variables with fallbacks using css package tokens
 func spaceVar(s Space) string {
 	switch s {
 	case Space0:
 		return "0"
 	case Space1:
-		return "var(--space-1)"
+		return css.Space1.Var()
 	case Space2:
-		return "var(--space-2)"
+		return css.Space2.Var()
 	case Space3:
-		return "var(--space-3)"
+		return css.Space3.Var()
 	case Space4:
-		return "var(--space-4)"
+		return css.Space4.Var()
 	case Space5, Space6:
-		return "var(--space-6)"
+		return css.Space6.Var()
 	case Space7, Space8:
-		return "var(--space-8)"
+		return css.Space8.Var()
 	case Space9, Space10, Space11, Space12:
-		return "var(--space-12)"
+		return css.Space12.Var()
 	default:
 		return "0"
 	}
@@ -63,13 +63,13 @@ func radiusVar(r Radius) string {
 	case RadiusNone:
 		return "0"
 	case RadiusSm:
-		return "var(--radius-sm)"
+		return css.RadiusSm.Var()
 	case RadiusMd:
-		return "var(--radius-md)"
+		return css.RadiusMd.Var()
 	case RadiusLg:
-		return "var(--radius-lg)"
+		return css.RadiusLg.Var()
 	case RadiusFull:
-		return "var(--radius-full)"
+		return css.RadiusFull.Var()
 	default:
 		return "0"
 	}
@@ -80,11 +80,11 @@ func elevationVar(e Elevation) string {
 	case Flat:
 		return "none"
 	case Raised:
-		return "var(--shadow-sm)"
+		return css.ShadowSm.Var()
 	case Floating:
-		return "var(--shadow-md)"
+		return css.ShadowMd.Var()
 	case Overlay:
-		return "var(--shadow-lg)"
+		return css.ShadowLg.Var()
 	default:
 		return "none"
 	}
@@ -134,7 +134,7 @@ func sizeValue(s Size) string {
 	case Content:
 		return "max-content"
 	case Prose:
-		return "var(--max-w-prose)"
+		return css.MaxWProse.Var()
 	case Third:
 		return "33.33%"
 	case Half:
@@ -151,17 +151,17 @@ func sizeValue(s Size) string {
 func textSizeVar(ts TextSize) string {
 	switch ts {
 	case TextXs:
-		return "var(--text-xs)"
+		return css.TextXs.Var()
 	case TextSm:
-		return "var(--text-sm)"
+		return css.TextSm.Var()
 	case TextBase:
-		return "var(--text-base)"
+		return css.TextBase.Var()
 	case TextLg:
-		return "var(--text-lg)"
+		return css.TextLg.Var()
 	case TextXl:
-		return "var(--text-xl)"
+		return css.TextXl.Var()
 	case Text2xl:
-		return "var(--text-2xl)"
+		return css.Text2xl.Var()
 	default:
 		return "inherit"
 	}
@@ -170,11 +170,11 @@ func textSizeVar(ts TextSize) string {
 func weightVar(w Weight) string {
 	switch w {
 	case WeightRegular:
-		return "var(--font-weight-regular)"
+		return css.FontWeightRegular.Var()
 	case WeightMedium:
-		return "var(--font-weight-medium)"
+		return css.FontWeightMedium.Var()
 	case WeightBold:
-		return "var(--font-weight-bold)"
+		return css.FontWeightBold.Var()
 	default:
 		return "inherit"
 	}
@@ -201,7 +201,7 @@ func (r Rule) Decls() []string {
 			if r.HasSize {
 				decls = append(decls, "--max-width: "+sizeValue(r.Size)+";")
 			} else {
-				decls = append(decls, "--max-width: var(--max-w-prose);")
+				decls = append(decls, "--max-width: "+css.MaxWProse.Var()+";")
 			}
 		case "reel":
 			decls = append(decls, "--gap: "+spaceVar(r.FlowGap)+";")

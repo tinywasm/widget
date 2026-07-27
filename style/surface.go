@@ -57,17 +57,8 @@ const (
 	Disabled
 )
 
-// Tokens locales que hoy no existen y que se añaden para soporte de la tabla de surface.
+// Tokens de estados interactivos locales (Hover, Focus, Press)
 var (
-	ColorSurfaceSunken = css.Token{Name: "--color-surface-sunken", Fallback: "#e5e5ea"}
-	ColorOutline       = css.Token{Name: "--color-outline", Fallback: "#c7c7cc"}
-	ColorSelection     = css.Token{Name: "--color-selection", Fallback: "#007aff"}
-	ColorOnSelection   = css.Token{Name: "--color-on-selection", Fallback: "#ffffff"}
-	ColorOnSuccess     = css.Token{Name: "--color-on-success", Fallback: "#ffffff"}
-	ColorOnError       = css.Token{Name: "--color-on-error", Fallback: "#ffffff"}
-	ColorDisabled      = css.Token{Name: "--color-disabled", Fallback: "#e5e5ea"}
-	ColorOnDisabled    = css.Token{Name: "--color-on-disabled", Fallback: "#8e8e93"}
-
 	ColorBackgroundHover = css.Token{Name: "--color-background-hover", Fallback: "#f2f2f7"}
 	ColorSurfaceHover    = css.Token{Name: "--color-surface-hover", Fallback: "#e5e5ea"}
 	ColorPrimaryHover    = css.Token{Name: "--color-primary-hover", Fallback: "#0096bc"}
@@ -110,16 +101,16 @@ func (s Surface) Resolve() Triplet {
 		return Triplet{Bg: ColorBackgroundPress.Var(), Text: css.ColorOnSurface.Var()}
 
 	case Panel:
-		return Triplet{Bg: css.ColorSurface.Var(), Text: css.ColorOnSurface.Var(), Border: "1px solid " + ColorOutline.Var()}
+		return Triplet{Bg: css.ColorSurface.Var(), Text: css.ColorOnSurface.Var(), Border: "1px solid " + css.ColorOutline.Var()}
 	case PanelHover:
-		return Triplet{Bg: ColorSurfaceHover.Var(), Text: css.ColorOnSurface.Var(), Border: "1px solid " + ColorOutline.Var()}
+		return Triplet{Bg: ColorSurfaceHover.Var(), Text: css.ColorOnSurface.Var(), Border: "1px solid " + css.ColorOutline.Var()}
 	case PanelFocus:
 		return Triplet{Bg: ColorSurfaceFocus.Var(), Text: css.ColorOnSurface.Var(), Border: "1px solid " + css.ColorPrimary.Var()}
 	case PanelPress:
-		return Triplet{Bg: ColorSurfacePress.Var(), Text: css.ColorOnSurface.Var(), Border: "1px solid " + ColorOutline.Var()}
+		return Triplet{Bg: ColorSurfacePress.Var(), Text: css.ColorOnSurface.Var(), Border: "1px solid " + css.ColorOutline.Var()}
 
 	case Sunken:
-		return Triplet{Bg: ColorSurfaceSunken.Var(), Text: css.ColorOnSurface.Var()}
+		return Triplet{Bg: css.ColorSurfaceSunken.Var(), Text: css.ColorOnSurface.Var()}
 	case SunkenHover:
 		return Triplet{Bg: ColorSurfaceHover.Var(), Text: css.ColorOnSurface.Var()}
 	case SunkenFocus:
@@ -146,31 +137,31 @@ func (s Surface) Resolve() Triplet {
 		return Triplet{Bg: ColorSecondaryPress.Var(), Text: css.ColorOnSecondary.Var()}
 
 	case Selected:
-		return Triplet{Bg: ColorSelection.Var(), Text: ColorOnSelection.Var()}
+		return Triplet{Bg: css.ColorSelection.Var(), Text: css.ColorOnSelection.Var()}
 	case SelectedHover:
-		return Triplet{Bg: ColorSelectionHover.Var(), Text: ColorOnSelection.Var()}
+		return Triplet{Bg: ColorSelectionHover.Var(), Text: css.ColorOnSelection.Var()}
 	case SelectedFocus:
-		return Triplet{Bg: ColorSelectionFocus.Var(), Text: ColorOnSelection.Var(), Border: "1px solid " + css.ColorPrimary.Var()}
+		return Triplet{Bg: ColorSelectionFocus.Var(), Text: css.ColorOnSelection.Var(), Border: "1px solid " + css.ColorPrimary.Var()}
 	case SelectedPress:
-		return Triplet{Bg: ColorSelectionPress.Var(), Text: ColorOnSelection.Var()}
+		return Triplet{Bg: ColorSelectionPress.Var(), Text: css.ColorOnSelection.Var()}
 
 	case Success:
-		return Triplet{Bg: css.ColorSuccess.Var(), Text: ColorOnSuccess.Var()}
+		return Triplet{Bg: css.ColorSuccess.Var(), Text: css.ColorOnSuccess.Var()}
 	case SuccessHover:
-		return Triplet{Bg: ColorSuccessHover.Var(), Text: ColorOnSuccess.Var()}
+		return Triplet{Bg: ColorSuccessHover.Var(), Text: css.ColorOnSuccess.Var()}
 	case SuccessFocus:
-		return Triplet{Bg: css.ColorSuccess.Var(), Text: ColorOnSuccess.Var(), Border: "1px solid " + css.ColorPrimary.Var()}
+		return Triplet{Bg: css.ColorSuccess.Var(), Text: css.ColorOnSuccess.Var(), Border: "1px solid " + css.ColorPrimary.Var()}
 	case SuccessPress:
-		return Triplet{Bg: css.ColorSuccess.Var(), Text: ColorOnSuccess.Var()}
+		return Triplet{Bg: css.ColorSuccess.Var(), Text: css.ColorOnSuccess.Var()}
 
 	case Danger:
-		return Triplet{Bg: css.ColorError.Var(), Text: ColorOnError.Var()}
+		return Triplet{Bg: css.ColorError.Var(), Text: css.ColorOnError.Var()}
 	case DangerHover:
-		return Triplet{Bg: ColorErrorHover.Var(), Text: ColorOnError.Var()}
+		return Triplet{Bg: ColorErrorHover.Var(), Text: css.ColorOnError.Var()}
 	case DangerFocus:
-		return Triplet{Bg: css.ColorError.Var(), Text: ColorOnError.Var(), Border: "1px solid " + css.ColorPrimary.Var()}
+		return Triplet{Bg: css.ColorError.Var(), Text: css.ColorOnError.Var(), Border: "1px solid " + css.ColorPrimary.Var()}
 	case DangerPress:
-		return Triplet{Bg: css.ColorError.Var(), Text: ColorOnError.Var()}
+		return Triplet{Bg: css.ColorError.Var(), Text: css.ColorOnError.Var()}
 
 	case Muted:
 		return Triplet{Bg: "transparent", Text: css.ColorMuted.Var()}
@@ -182,7 +173,7 @@ func (s Surface) Resolve() Triplet {
 		return Triplet{Bg: "rgba(0,0,0,0.1)", Text: css.ColorOnSurface.Var()}
 
 	case Disabled:
-		return Triplet{Bg: ColorDisabled.Var(), Text: ColorOnDisabled.Var()}
+		return Triplet{Bg: css.ColorDisabled.Var(), Text: css.ColorOnDisabled.Var()}
 
 	default:
 		return Triplet{}

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/tinywasm/css"
 	"github.com/tinywasm/widget"
 	"github.com/tinywasm/widget/style"
 )
@@ -109,137 +110,81 @@ func TestConsumerMasterDetail(t *testing.T) {
 			idxTokens, idxPrimitives, idxWidgets, idxStates)
 	}
 
-	// 4. Cada Surface usada resuelve a un token que existe en el catálogo de css.
-	allowedVariables := map[string]bool{
-		// CSS package tokens
-		"--color-primary":      true,
-		"--color-on-primary":   true,
-		"--color-secondary":    true,
-		"--color-on-secondary": true,
-		"--color-success":      true,
-		"--color-error":        true,
-		"--color-background":   true,
-		"--color-surface":      true,
-		"--color-on-surface":   true,
-		"--color-muted":        true,
-		"--color-hover":        true,
+	// 4. Cada Surface usada resuelve a un token que existe en el catálogo de css (y coincide exactamente en su valor/fallback).
+	cssTokens := []css.Token{
+		css.ColorPrimary, css.ColorOnPrimary, css.ColorSecondary, css.ColorOnSecondary,
+		css.ColorSuccess, css.ColorOnSuccess, css.ColorError, css.ColorOnError,
+		css.ColorBackground, css.ColorSurface, css.ColorSurfaceSunken, css.ColorOnSurface,
+		css.ColorOutline, css.ColorMuted, css.ColorHover, css.ColorSelection, css.ColorOnSelection,
+		css.ColorDisabled, css.ColorOnDisabled,
+		css.ColorBackgroundLight, css.ColorBackgroundDark, css.ColorSurfaceLight, css.ColorSurfaceDark,
+		css.ColorSurfaceSunkenLight, css.ColorSurfaceSunkenDark, css.ColorOnSurfaceLight, css.ColorOnSurfaceDark,
+		css.ColorOutlineLight, css.ColorOutlineDark, css.ColorMutedLight, css.ColorMutedDark,
+		css.ColorHoverLight, css.ColorHoverDark, css.ColorSelectionLight, css.ColorSelectionDark,
+		css.ColorOnSelectionLight, css.ColorOnSelectionDark, css.ColorDisabledLight, css.ColorDisabledDark,
+		css.ColorOnDisabledLight, css.ColorOnDisabledDark,
+		css.TextXs, css.TextSm, css.TextBase, css.TextLg, css.TextXl, css.Text2xl,
+		css.LeadingTight, css.LeadingNormal, css.LeadingRelaxed,
+		css.FontWeightRegular, css.FontWeightMedium, css.FontWeightBold,
+		css.TrackingTight, css.TrackingNormal, css.TrackingWide,
+		css.Space1, css.Space2, css.Space3, css.Space4, css.Space6, css.Space8, css.Space12,
+		css.RadiusSm, css.RadiusMd, css.RadiusLg, css.RadiusFull,
+		css.ShadowSm, css.ShadowMd, css.ShadowLg, css.ShadowXl,
+		css.DurationFast, css.DurationBase, css.DurationSlow,
+		css.EaseIn, css.EaseOut, css.EaseInOut,
+		css.ZBase, css.ZDropdown, css.ZSticky, css.ZModal, css.ZToast, css.ZTooltip,
+		css.BpSm, css.BpMd, css.BpLg, css.BpXl,
+		css.MaxWProse, css.MaxWContent, css.MaxWScreen,
+	}
 
-		"--color-background-light": true,
-		"--color-background-dark":  true,
-		"--color-surface-light":    true,
-		"--color-surface-dark":     true,
-		"--color-on-surface-light": true,
-		"--color-on-surface-dark":  true,
-		"--color-muted-light":      true,
-		"--color-muted-dark":       true,
-		"--color-hover-light":      true,
-		"--color-hover-dark":       true,
+	localTokens := []css.Token{
+		style.ColorBackgroundHover, style.ColorSurfaceHover, style.ColorPrimaryHover, style.ColorSecondaryHover,
+		style.ColorSelectionHover, style.ColorSuccessHover, style.ColorErrorHover, style.ColorMutedHover,
+		style.ColorBackgroundFocus, style.ColorSurfaceFocus, style.ColorPrimaryFocus, style.ColorSecondaryFocus,
+		style.ColorSelectionFocus,
+		style.ColorBackgroundPress, style.ColorSurfacePress, style.ColorPrimaryPress, style.ColorSecondaryPress,
+		style.ColorSelectionPress,
+	}
 
-		"--text-xs":   true,
-		"--text-sm":   true,
-		"--text-base": true,
-		"--text-lg":   true,
-		"--text-xl":   true,
-		"--text-2xl":  true,
+	tokenMap := make(map[string]css.Token)
+	for _, tok := range cssTokens {
+		tokenMap[tok.Name] = tok
+	}
+	for _, tok := range localTokens {
+		tokenMap[tok.Name] = tok
+	}
 
-		"--leading-tight":   true,
-		"--leading-normal":  true,
-		"--leading-relaxed": true,
-
-		"--font-weight-regular": true,
-		"--font-weight-medium":  true,
-		"--font-weight-bold":    true,
-
-		"--tracking-tight":  true,
-		"--tracking-normal": true,
-		"--tracking-wide":   true,
-
-		"--space-1":  true,
-		"--space-2":  true,
-		"--space-3":  true,
-		"--space-4":  true,
-		"--space-6":  true,
-		"--space-8":  true,
-		"--space-12": true,
-
-		"--radius-sm":   true,
-		"--radius-md":   true,
-		"--radius-lg":   true,
-		"--radius-full": true,
-
-		"--shadow-sm": true,
-		"--shadow-md": true,
-		"--shadow-lg": true,
-		"--shadow-xl": true,
-
-		"--duration-fast": true,
-		"--duration-base": true,
-		"--duration-slow": true,
-
-		"--ease-in":     true,
-		"--ease-out":    true,
-		"--ease-in-out": true,
-
-		"--z-base":     true,
-		"--z-dropdown": true,
-		"--z-sticky":   true,
-		"--z-modal":    true,
-		"--z-toast":    true,
-		"--z-tooltip":  true,
-
-		"--bp-sm": true,
-		"--bp-md": true,
-		"--bp-lg": true,
-		"--bp-xl": true,
-
-		"--max-w-prose":   true,
-		"--max-w-content": true,
-		"--max-w-screen":  true,
-
-		// Local style package tokens (surface.go)
-		"--color-surface-sunken": true,
-		"--color-outline":        true,
-		"--color-selection":      true,
-		"--color-on-selection":   true,
-		"--color-on-success":     true,
-		"--color-on-error":       true,
-		"--color-disabled":       true,
-		"--color-on-disabled":    true,
-
-		"--color-background-hover": true,
-		"--color-surface-hover":    true,
-		"--color-primary-hover":    true,
-		"--color-secondary-hover":  true,
-		"--color-selection-hover":  true,
-		"--color-success-hover":    true,
-		"--color-error-hover":      true,
-		"--color-muted-hover":      true,
-
-		"--color-background-focus": true,
-		"--color-surface-focus":    true,
-		"--color-primary-focus":    true,
-		"--color-secondary-focus":  true,
-		"--color-selection-focus":  true,
-
-		"--color-background-press": true,
-		"--color-surface-press":    true,
-		"--color-primary-press":    true,
-		"--color-secondary-press":  true,
-		"--color-selection-press":  true,
-
-		// Primitives layout custom properties
+	layoutVariables := map[string]bool{
 		"--gap":       true,
 		"--ratio":     true,
 		"--track":     true,
 		"--max-width": true,
 	}
 
-	varVarSubRegex := regexp.MustCompile(`var\((--[a-zA-Z0-9_\-]+)`)
-	varMatches := varVarSubRegex.FindAllStringSubmatch(cssStr, -1)
+	// Regex para encontrar cada llamada a var(...) incluyendo su posible valor de fallback
+	varCallRegex := regexp.MustCompile(`var\((--[a-zA-Z0-9_\-]+)(?:,\s*([^)]+))?\)`)
+	varMatches := varCallRegex.FindAllStringSubmatch(cssStr, -1)
 	for _, m := range varMatches {
+		fullMatch := m[0]
 		varName := m[1]
-		if !allowedVariables[varName] {
-			t.Errorf("Variable CSS inválida/no registrada encontrada: %q", varName)
+
+		if layoutVariables[varName] {
+			continue // las variables de disposición dinámica no requieren comprobación de catálogo
+		}
+
+		tok, exists := tokenMap[varName]
+		if !exists {
+			t.Errorf("Variable CSS %q no existe en el catálogo de css ni en los tokens locales", varName)
+			continue
+		}
+
+		// Aseveración estricta de coherencia total (incluyendo fallback):
+		// El string literal de var(...) en la hoja de estilos generada debe coincidir al 100%
+		// con lo que el token de referencia produce bajo tok.Var(). ¡Esto elimina cualquier deriva!
+		expectedVarCall := tok.Var()
+		if fullMatch != expectedVarCall {
+			t.Errorf("Deriva visual detectada en el valor/fallback para %q.\nEn la hoja: %q\nEn el catálogo: %q",
+				varName, fullMatch, expectedVarCall)
 		}
 	}
 
