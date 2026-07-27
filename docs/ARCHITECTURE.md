@@ -1,66 +1,66 @@
-# Arquitectura de `tinywasm/widget`
+# Architecture of `tinywasm/widget`
 
-Este documento define el **Qué** y el **Por Qué** del contrato visual, la anatomía, los estados, la disposición y el sistema de estilos de los componentes en la arquitectura de `tinywasm/widget`.
-
----
-
-## Qué es `tinywasm/widget`
-
-`tinywasm/widget` es el módulo que gobierna la estructura de los componentes visuales de la aplicación. Nombra y unifica de qué piezas está hecho un componente visual, en qué estados puede estar y cómo se disponen esas piezas sin acoplarse a datos, transporte, DOM, o texto CSS libre.
-
-El sistema está dividido estrictamente en dos paquetes con objetivos y restricciones opuestas:
-
-1.  **`github.com/tinywasm/widget` (Raíz, compatible con WASM):**
-    *   **Propósito:** Define la identidad, anatomía del componente (Open UI), estados, cues del navegador y tipos ARIA.
-    *   **Restricción:** Debe ser extremadamente ligero (sin lógica de aspecto ni generación de estilos) porque **viaja al binario WASM**.
-
-2.  **`github.com/tinywasm/widget/style` (Hoja de estilos, exento de WASM):**
-    *   **Propósito:** Define escalas cerradas de tamaño, tipografía, elevación y color (Surface), primitivas de flujo (Flow) y excepciones de diseño. Genera hojas de estilo CSS deterministas en capas fijas.
-    *   **Restricción:** Excluido de compilar en WebAssembly usando la etiqueta de compilación `//go:build !wasm` para evitar que viaje al binario cliente.
+This document defines the **What** and **Why** of visual contracts, anatomy, states, layout, and the style system for components in the `tinywasm/widget` architecture.
 
 ---
 
-## Estructura y Componentes Core
+## What is `tinywasm/widget`
 
-### 1. El Contrato de Anatomía y Estados (Paquete Raíz)
+`tinywasm/widget` is the module governing the structure of visual components. It names and unifies the pieces a visual component consists of, the states it can occupy, and how those pieces are laid out—completely independent of data, transport, DOM, or free CSS text.
 
-*   **`Name`:** Identificador único de un widget, usado como prefijo para todas sus clases y selectores. Previene colisiones de estilos.
-*   **`Part`:** Ranura nombrada local al widget (por ejemplo, `"row"`, `"menu"`, `"header"`).
-*   **`Class`:** Nombre de clase CSS derivado de forma determinista desde un `Name` y un `Part` (por ejemplo, `.targetlist__row`). Es un tipo opaco sin constructor público fuera del paquete para garantizar la coherencia de nombres por construcción.
+The system is strictly divided into two packages with opposing goals and constraints:
+
+1.  **`github.com/tinywasm/widget` (Root, WASM-compatible):**
+    *   **Purpose:** Defines identity, component anatomy (Open UI), states, browser cues, and ARIA kinds.
+    *   **Constraint:** Must be extremely lightweight (zero style logic or emission) because it **travels inside the WASM binary**.
+
+2.  **`github.com/tinywasm/widget/style` (Stylesheet engine, WASM-exempt):**
+    *   **Purpose:** Defines closed scales for sizing, typography, elevation, color surfaces, flow primitives, and layout exceptions. It produces deterministic CSS stylesheets inside fixed cascade layers.
+    *   **Constraint:** Excluded from compiling on WebAssembly using the `//go:build !wasm` build constraint to prevent it from ever traveling to the client binary.
+
+---
+
+## Core Structure and Components
+
+### 1. Anatomy and States Contract (Root Package)
+
+*   **`Name`:** Identifies a widget. It is used as a prefix for all its emitted classes and selectors, preventing name collisions.
+*   **`Part`:** A named local slot of a widget anatomy (e.g., `"row"`, `"menu"`, `"header"`).
+*   **`Class`:** A CSS class name derived deterministically from a `Name` and a `Part` (e.g., `.targetlist__row`). It is an opaque type without a public constructor outside the package, ensuring naming consistency by construction.
 *   **`State` vs `Cue`:**
-    *   `State` representa los estados lógicos que posee el widget en Go (como `Selected`, `Disabled`, `Open`, `Invalid`). Genera atributos de datos del DOM de forma coincidente por construcción (`data-selected="true"`).
-    *   `Cue` representa los estados interactivos propios del navegador (como `Hover`, `Focus`, `Press`, `Target`) que solo existen en la hoja de estilos como pseudo-clases CSS (`:hover`, `:focus`).
+    *   `State` represents logical states owned by the widget in Go (such as `Selected`, `Disabled`, `Open`, `Invalid`). It maps directly to DOM data attributes (`data-selected="true"`) by construction.
+    *   `Cue` represents interactive browser-only states (such as `Hover`, `Focus`, `Press`, `Target`) that are styled in the stylesheet via CSS pseudo-classes (`:hover`, `:focus`).
 
 ---
 
-## El Sistema de Estilos y Disposición (`widget/style`)
+## Stylesheet and Layout System (`widget/style`)
 
-La hoja de estilos está diseñada bajo el principio de **cero escape**: no acepta strings libres, unidades de viewport (`vw`/`vh`) ni herramental de estilización arbitrario.
+The stylesheet engine is designed under the **zero escape** principle: it does not accept free strings, viewport units (`vw`/`vh`), or arbitrary custom styling utilities.
 
-### 1. Escalas Cerradas y Enums
-Todas las propiedades visuales se especifican mediante escalas estrictas y tipadas:
-*   `Space`: Escala de espaciado del sistema (de 0 a 12).
-*   `Radius`: Curvatura de bordes (`RadiusSm`, `RadiusMd`, `RadiusLg`, `RadiusFull`).
-*   `TextSize` & `Weight`: Sistema tipográfico cerrado.
-*   `Elevation`: Sombras de elevación (`Flat`, `Raised`, `Floating`, `Overlay`).
-*   `Size`: Ancho relativo exclusivo del contenedor (`Content`, `Prose`, `Third`, `Half`, `TwoThirds`, `Full`). No se permite la declaración directa de alto (`height`), promoviendo el flujo automático de CSS.
+### 1. Closed Scales and Enums
+All visual properties are specified through strict, typed scales:
+*   `Space`: System spacing scale (0 to 12).
+*   `Radius`: Border radius options (`RadiusSm`, `RadiusMd`, `RadiusLg`, `RadiusFull`).
+*   `TextSize` & `Weight`: A closed typography system.
+*   `Elevation`: Shadows representing height (`Flat`, `Raised`, `Floating`, `Overlay`).
+*   `Size`: Relative container-based width options (`Content`, `Prose`, `Third`, `Half`, `TwoThirds`, `Full`). Height cannot be directly declared, promoting automatic content flow.
 
-### 2. El Color como una Decisión Completa: `Surface`
-No existe la selección libre de colores de fondo o texto. `Surface` unifica fondo, texto y bordes en una decisión visual coherente (por ejemplo, `Page`, `Panel`, `Sunken`, `Accent`), garantizando que siempre se mantenga el contraste adecuado.
+### 2. Colors as Complete Decisions: `Surface`
+Arbitrary color selections for backgrounds or text are not allowed. A `Surface` unifies background, text color, and borders into a single cohesive visual decision (e.g., `Page`, `Panel`, `Sunken`, `Accent`), ensuring proper contrast ratio by design.
 
-### 3. Primitivas de Flujo Responsivo (`Flow`)
-Inspirado en *Every Layout*, define primitivas como `Stack`, `Row`, `Split` y `Grid`. Son intrínsecamente responsivas y utilizan container queries (`@container`) en lugar de media queries (`@media`), reaccionando al ancho de su propio contenedor.
+### 3. Responsive Flow Primitives (`Flow`)
+Inspired by *Every Layout*, it defines primitives like `Stack`, `Row`, `Split`, and `Grid`. These are inherently responsive and use container queries (`@container`) instead of media queries (`@media`), reacting directly to their own container's width.
 
 ---
 
-## Garantías de Emisión de CSS
+## CSS Emission Guarantees
 
-El motor de emisión de hojas de estilo (`emit.go`) produce CSS que cumple con las siguientes garantías:
+The stylesheet generator (`emit.go`) outputs CSS conforming to the following guarantees:
 
-1.  **Orden de Capas Fijo (Cascade Layers):**
+1.  **Fixed Layer Order (Cascade Layers):**
     ```css
     @layer tokens, primitives, widgets, states;
     ```
-    Previene problemas de especificidad y elimina la necesidad de usar `!important`.
-2.  **Salida Determinista:** La emisión para una misma definición produce byte a byte el mismo texto exacto, facilitando las revisiones de cambios (diffs).
-3.  **Especificidad Plana:** Todos los selectores generados son de un único nivel de profundidad (por ejemplo, `.clase` o `.clase[data-state]`), evitando el acoplamiento al árbol del DOM.
+    This completely eliminates specificity conflicts and avoids any use of `!important`.
+2.  **Stable Output:** Generating the stylesheet twice yields byte-for-byte identical output, keeping version control diffs clean.
+3.  **Flat Specificity:** All generated widget rules have a flat specificity (e.g., `.class` or `.class[data-state]`), avoiding coupling to the DOM structure.

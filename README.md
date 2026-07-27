@@ -1,7 +1,7 @@
 # `tinywasm/widget`
 
-Contrato de elementos visuales, estados, disposición y estilización de la suite `tinywasm`.
+Visual component contracts, states, layout, and styling for the `tinywasm` suite.
 
-## Documentación
+## Documentation
 
-- [Arquitectura de `tinywasm/widget`](docs/ARCHITECTURE.md): Define el propósito, la división de responsabilidades WASM/no-WASM, los contratos visuales, la anatomía y las garantías de emisión CSS.
+- [Architecture of `tinywasm/widget`](docs/ARCHITECTURE.md): Defines the purpose, package boundaries (WASM/non-WASM), visual contracts, anatomy, and CSS emission guarantees.
