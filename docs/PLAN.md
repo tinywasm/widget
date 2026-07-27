@@ -2,8 +2,9 @@
 PLAN: "widget: añadir la anatomía compartida del campo de formulario (NameField + partes)"
 TAG: v0.2.0
 EXECUTOR: jules
-STATUS: running
+STATUS: review
 SESSION: 2580046364401006697
+PR: https://github.com/tinywasm/widget/pull/2
 ---
 
 > Este plan se despacha con el flujo CodeJob. Ver skill: **agents-workflow**.
