@@ -3,11 +3,10 @@
 package style
 
 import (
-	"fmt"
 	"sort"
-	"strings"
 
 	"github.com/tinywasm/css"
+	"github.com/tinywasm/fmt"
 	"github.com/tinywasm/widget"
 )
 
@@ -246,6 +245,33 @@ func (r Rule) Decls() []string {
 		decls = append(decls, "font-weight: "+weightVar(r.Weight)+";")
 	}
 
+	// Backdrop / stacking / visibility declarations
+	if r.HasBackdrop {
+		if r.BackdropScope == Viewport {
+			decls = append(decls, "position: fixed;")
+		} else {
+			decls = append(decls, "position: absolute;")
+		}
+		decls = append(decls, "inset: 0;")
+		decls = append(decls, "z-index: 100;")
+	}
+
+	if r.Above {
+		decls = append(decls, "z-index: 101;")
+	}
+
+	if r.Scrim {
+		decls = append(decls, "background-color: color-mix(in srgb, var(--color-surface) 60%, transparent);")
+	}
+
+	if r.Hidden {
+		decls = append(decls, "display: none;")
+	}
+
+	if r.Shown {
+		decls = append(decls, "display: block;")
+	}
+
 	return decls
 }
 
@@ -256,8 +282,8 @@ func formatRule(selectors []string, decls []string) string {
 	}
 	sort.Strings(selectors)
 	sort.Strings(decls)
-	var sb strings.Builder
-	sb.WriteString(strings.Join(selectors, ", ") + " {\n")
+	sb := fmt.Convert()
+	sb.WriteString(fmt.Convert(selectors).Join(", ").String() + " {\n")
 	for _, d := range decls {
 		sb.WriteString("  " + d + "\n")
 	}
@@ -267,7 +293,7 @@ func formatRule(selectors []string, decls []string) string {
 
 // Stylesheet genera un css.Stylesheet para el Sheet.
 func (s *Sheet) Stylesheet() *css.Stylesheet {
-	var sb strings.Builder
+	sb := fmt.Convert()
 
 	// Fixed layer definition
 	sb.WriteString("@layer tokens, primitives, widgets, states;\n\n")
@@ -375,7 +401,7 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 		ruleStr := formatRule(splitInner, []string{
 			"grid-template-columns: 1fr;",
 		})
-		indented := "  " + strings.ReplaceAll(strings.TrimSuffix(ruleStr, "\n"), "\n", "\n  ")
+		indented := "  " + fmt.Convert([]string{ruleStr}).Join("\n  ").String()
 		sb.WriteString(indented + "\n}\n")
 	}
 
