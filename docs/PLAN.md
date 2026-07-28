@@ -43,7 +43,7 @@ reading this library's source.
 | Metric | Before | Target |
 |---|---|---|
 | Public identifiers in `widget/style` | ~150 | ~90 |
-| Options to style the reference widget | 13 | 10 |
+| Options to style the reference widget | 13 | 12 |
 | Options to style one interactive part | 4 | 1 |
 
 ---
@@ -83,12 +83,13 @@ emitted in every sheet, and `ssr` concatenates sheets.
 **D-8 — no entry point.** No package docs, no runnable examples, an example
 program that prints a class name, and mixed comment languages.
 
-**D-9 — `Split` silently contains fixed-position descendants.** `Split` emits
-`container-type: inline-size`, which implies layout containment, which makes the
-element a containing block for `position: fixed` descendants. A `Backdrop(Viewport)`
-inside a `Split` therefore covers the split pane, not the viewport. Nothing in the
-Go source hints at it. Found while writing SPECS §4.1, not by execution — verify
-it in a browser before building the fix.
+**D-9 — `Split` has no responsive behaviour at all.** It sets
+`container-type: inline-size` on the same selector its `@container` rule targets,
+and an element is never its own query container, so the rule never applies.
+Measured in Chromium at a 320px viewport, below the 40rem breakpoint: the
+published form stays at `213.328px 106.656px` — two columns — while the
+ancestor-query form collapses to `320px`. SPECS §4.1 specifies a replacement that
+needs no query and no wrapper element.
 
 ---
 
@@ -105,6 +106,32 @@ Nothing below compiles until this lands. Details in
 - `--max-w-readable`, replacing `--max-w-prose`, so `Size.Readable` mirrors it.
 - `--color-focus-ring`, so the focus ring is visible on every surface including
   `Primary` — it currently reuses `--color-primary`.
+
+---
+
+## 3b. Trade-off verdicts
+
+[TRADEOFFS.md](TRADEOFFS.md) proposes eight improvements. Six are in this
+release, two are deliberately not. The test applied to each: **does deferring it
+cost more than doing it now?**
+
+| | Proposal | Verdict | Why |
+|---|---|---|---|
+| C-2 | Padding out of surfaces | **In** — step 2 | Changes what `As(Panel)` *emits* without changing its signature. Ship it wrong and removing it later silently changes every consumer's spacing with no compile error. Behaviour breaks with no compile break are the worst thing to defer. |
+| C-3 | `Split` mechanism | **In** — step 4 | Its premise turned out to be a live defect, D-9: the responsive collapse never fires. Replacing the mechanism fixes that and removes the hazard, rather than validating around it. |
+| C-4a | Diagnosable messages | **In** — step 8 | Already specified in SPECS §6.1. Free. |
+| C-6 | Data-dependent appearance | **In** — step 11, docs only | The zero-value contract is being written down for the first time in this release. Leaving the sanctioned alternative undocumented guarantees the first person who hits it invents something worse. |
+| C-7 | `Sheet.Parts()` | **In** — step 9 | Ten lines, and it is the last silent-CSS path. Shipping "we closed silent CSS" while leaving the most common instance open undercuts the release's own claim. |
+| C-8 | Shell vs component responsiveness | **In** — step 11, docs only | No API. One paragraph in `GUIDE.md`. |
+| C-1 | Sanctioned escape `Custom()` | **Out** | Adding a function is not breaking, so the one-window argument does not apply — it can land in any later minor release. And shipping an escape *before* knowing which values are genuinely missing is how the escape becomes the default path. It is also the only proposal that weakens the core guarantee, which deserves evidence rather than speculation. **Trigger: build it when the third real request arrives; until then, extend the catalog.** |
+| C-5 | Generate the surface table | **Out** | Pure internal tooling, no API, lands any time. The drift it prevents is already caught by the guard in step 10. Adding a generator to a twelve-step release buys nothing. **Trigger: when a second surface family is added.** |
+
+C-3's other half — a relative `Above(parentKind)` for nested overlays — is **out**
+for the same reason as C-1: real, but unevidenced in this suite. Recorded as an
+accepted limitation, not designed speculatively.
+
+C-4's second half, recovering per producer so a panic names its package, is a
+requirement on `tinywasm/ssr` and belongs in that repository's plan.
 
 ---
 
@@ -128,8 +155,10 @@ pair was two words for "faded" with nothing to tell them apart. Reasoning in
 [DESIGN.md §12](DESIGN.md#12-naming).
 
 **Step 2 — surfaces.** `surface.go`. SPECS §3. Ten constants; interaction variants
-unexported; a surface resolves radius and padding alongside colour; delete the
-eighteen local tokens in favour of the `css` ones from step 3 of the prerequisite.
+unexported; a surface resolves background, text, border and **radius** — not
+padding (TRADEOFFS C-2, accepted); reject `Interactive` on `Page` and `Inactive`;
+delete the eighteen local tokens in favour of the `css` ones from the
+prerequisite.
 
 ```go
 // Interactive applies s and derives its hover, focus and press treatments.
@@ -158,7 +187,19 @@ func displayFor(f flowType) string {
 }
 ```
 
-**Step 4 — `Center(Size)`.** `flow.go`. `Width` recovers one meaning. SPECS §4.
+**Step 4 — `Center(Size)` and the `Split` rewrite.** `flow.go` + `emit.go`.
+`Width` recovers one meaning. SPECS §4, §4.1. Closes **D-9**.
+
+`Split` drops `container-type` and `@container` entirely for intrinsic sizing.
+After this step the emitted sheet contains neither, anywhere — assert it.
+
+```go
+// Split: flex-wrap plus a flex-basis that is either huge or negative,
+// so the row wraps below ~40rem of its own width. No query, no wrapper.
+"display:flex;", "flex-wrap:wrap;", "gap:var(--gap);"
+// > *            flex-grow:1; flex-basis:calc((40rem - 100%) * 999)
+// > :first-child flex-grow:var(--ratio)
+```
 
 **Step 5 — focus and dead CSS.** `emit.go`. `cuePseudo` emits `:focus-visible`;
 `emitPrimitive` stops prepending `.fl-*` / `.exc-*`; empty layer blocks are
@@ -194,21 +235,20 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 }
 ```
 
-**Step 9 — tests.** Everything in §5.
+**Step 9 — `Sheet.Parts()`.** `sheet.go`. TRADEOFFS C-7, accepted. Returns the
+declared parts, sorted, so a component test can compare them against the parts its
+render actually emits. Ten lines, and it closes the last silent-CSS path the
+emitter structurally cannot see.
 
-**Step 10 — documentation.** `GUIDE.md` (task-oriented, with the decision table
+**Step 10 — tests.** Everything in §5.
+
+**Step 11 — documentation.** `GUIDE.md` (task-oriented, with the decision table
 below), `doc.go` in both packages, `Example` functions for `For`, `Stack`, `Split`,
 `Interactive`, `RevealedBy` and `Backdrop`, a rewritten `example/main.go` that
 builds a real sheet, and a README code block. Closes **D-8**.
 
 Comment language: English throughout, decided in this release. `widget.go`,
 `kind.go`, `state.go` and all of `style/` are Spanish today.
-
-**Step 11 — decide the open trade-offs.** [TRADEOFFS.md](TRADEOFFS.md) C-1
-(sanctioned escape), C-2 (padding in surfaces) and C-3 (nested overlays) are
-proposals, not decisions. C-2 in particular contradicts SPECS §3 as written and
-must be settled before step 2 ships — accepting it changes the surface table and
-raises the reference-widget count from 10 options to 12.
 
 **Step 12 — remove the STATUS markers** from `ARCHITECTURE.md`, `SPECS.md` and
 `MIGRATION.md`. They exist because those documents were written ahead of the
@@ -260,7 +300,9 @@ Every test names the defect it closes, so a regression is a named failure.
 | `TestSurfaceCarriesShape` | `As(Panel)` alone emits radius and padding; `Round(RadiusNone)` overrides it | D-6 |
 | `TestNoUnreachableSelectors` | no selector begins with `.fl-` or `.exc-`; no empty `@layer` block | D-7 |
 | `TestInteractiveRejectsNonInteractive` | `Interactive(Page)` and `Interactive(Inactive)` are reported | D-3 |
-| `TestBackdropInsideSplitRejected` | `Backdrop(Viewport)` under a `Split` is reported, with the containment reason in the message | D-9 |
+| `TestSplitCollapses` | the emitted sheet contains no `@container` and no `container-type`; a browser check at 320px stacks and at 800px gives 2:1 | D-9 |
+| `TestSurfaceCarriesNoPadding` | `As(Panel)` emits `border-radius` but no `padding` | C-2 |
+| `TestSheetParts` | `Parts()` returns the declared parts, sorted | C-7 |
 | `TestFocusRingNotPrimary` | the focus ring emits `--color-focus-ring`, never `--color-primary` | D-4 |
 | `TestZeroValueProvider` | `(&T{}).RenderCSS()` succeeds without reading a field | — |
 | existing WASM guard | `GOOS=js go list -deps` still excludes `widget/style`; `widget` does not import `css` | — |

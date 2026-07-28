@@ -148,23 +148,26 @@ const (
 )
 ```
 
-A surface resolves background, text, border, radius and padding together.
+A surface resolves background, text, border and **radius** together. It does
+**not** resolve padding: padding varies with what a part contains, so folding it
+in converts a saved call into a remembered exception. See
+[TRADEOFFS.md C-2](TRADEOFFS.md#c-2-padding-does-not-belong-to-a-surface).
 
-| Surface | Background | Text | Border | Radius | Padding |
-|---|---|---|---|---|---|
-| `Page` | `--color-background` | `--color-on-surface` | — | none | none |
-| `Panel` | `--color-surface` | `--color-on-surface` | `1px solid --color-outline` | `RadiusMd` | `Space3` |
-| `Inset` | `--color-surface-sunken` | `--color-on-surface` | `1px solid --color-outline` | `RadiusSm` | `Space2` |
-| `Primary` | `--color-primary` | `--color-on-primary` | — | `RadiusSm` | `Space2` |
-| `Secondary` | `--color-secondary` | `--color-on-secondary` | — | `RadiusSm` | `Space2` |
-| `Highlight` | `--color-selection` | `--color-on-selection` | — | `RadiusSm` | `Space2` |
-| `Success` | `--color-success` | `--color-on-success` | — | `RadiusSm` | `Space2` |
-| `Danger` | `--color-error` | `--color-on-error` | — | `RadiusSm` | `Space2` |
-| `Subtle` | `transparent` | `--color-muted` | — | none | none |
-| `Inactive` | `--color-disabled` | `--color-on-disabled` | — | `RadiusSm` | `Space2` |
+| Surface | Background | Text | Border | Radius |
+|---|---|---|---|---|
+| `Page` | `--color-background` | `--color-on-surface` | — | none |
+| `Panel` | `--color-surface` | `--color-on-surface` | `1px solid --color-outline` | `RadiusMd` |
+| `Inset` | `--color-surface-sunken` | `--color-on-surface` | `1px solid --color-outline` | `RadiusSm` |
+| `Primary` | `--color-primary` | `--color-on-primary` | — | `RadiusSm` |
+| `Secondary` | `--color-secondary` | `--color-on-secondary` | — | `RadiusSm` |
+| `Highlight` | `--color-selection` | `--color-on-selection` | — | `RadiusSm` |
+| `Success` | `--color-success` | `--color-on-success` | — | `RadiusSm` |
+| `Danger` | `--color-error` | `--color-on-error` | — | `RadiusSm` |
+| `Subtle` | `transparent` | `--color-muted` | — | none |
+| `Inactive` | `--color-disabled` | `--color-on-disabled` | — | `RadiusSm` |
 
-Explicit `Round()`, `Pad()` or `Raise()` on the same rule overrides the surface
-default.
+Explicit `Round()` or `Raise()` on the same rule overrides the surface default.
+`Pad()` is always explicit — there is no default to override.
 
 ### 3.1 Interaction families
 
@@ -208,7 +211,7 @@ family's interaction state.
 |---|---|
 | `Stack(gap)` | `display:flex; flex-direction:column; min-height:0`, and `> * + * { margin-block-start: var(--gap) }` |
 | `Row(gap)` | `display:flex; flex-wrap:wrap; gap:var(--gap); align-items:center` |
-| `Split(r, gap)` | `container-type:inline-size; display:grid; gap:var(--gap); grid-template-columns:var(--ratio) 1fr`, collapsing to `1fr` under `@container (max-width: 40rem)` |
+| `Split(r, gap)` | `display:flex; flex-wrap:wrap; gap:var(--gap)`, and `> * { flex-grow:1; flex-basis:calc((40rem - 100%) * 999) }` plus `> :first-child { flex-grow:var(--ratio) }` — stacks below ~40rem of **its own** width, no query and no wrapper element |
 | `Grid(min, gap)` | `display:grid; gap:var(--gap); grid-template-columns:repeat(auto-fit, minmax(min(var(--column),100%),1fr))` |
 | `Center(max)` | `margin-inline:auto; width:100%; max-width:var(--max-width)` |
 | `FillCentered()` | `display:grid; place-items:center; min-height:100%; width:100%` |
@@ -217,26 +220,43 @@ family's interaction state.
 
 No emitted selector may begin with `.fl-` or `.exc-`.
 
-### 4.1 `Split` establishes containment
+### 4.1 `Split` uses no container query, deliberately
 
-`container-type: inline-size` implies `contain: layout style inline-size`, and
-**layout containment makes the element a containing block for fixed-position
-descendants.**
+The published `Split` sets `container-type: inline-size` on the same selector the
+`@container` rule targets. **An element is never its own query container**, so the
+rule never applies. Measured in Chromium at a 320px viewport, well below the
+40rem breakpoint:
 
-Consequence: a `Backdrop(Viewport)` anywhere inside a `Split` is positioned
-against the `Split`, not the viewport, so a modal opened from inside a split pane
-covers only that pane. The Go source gives no hint of this.
+```
+self-query   (published)  grid-template-columns: 213.328px 106.656px   two columns
+ancestor-query (correct)  grid-template-columns: 320px                 collapsed
+```
 
-Required handling:
+`Split` therefore has no responsive behaviour at all today. The correct
+query-based form needs a wrapper element to act as the container, which would
+couple the engine to DOM structure — something §7.1 forbids.
 
-1. `Validate()` reports `Backdrop(Viewport)` on a part whose ancestor rule in the
-   same sheet declares `Split` (§6.1).
-2. A test asserts the emitted sheet for that combination fails validation.
-3. Cross-sheet nesting cannot be detected — a `Dialog` widget rendered inside
-   another widget's `Split` is invisible to this sheet. That case is documented in
-   [TRADEOFFS.md](TRADEOFFS.md), not solved here.
+The specified form uses intrinsic sizing instead, and needs neither. Measured
+across viewports:
 
-The same applies to `@container` queries generally: only `Split` uses one today.
+| viewport | result | ratio |
+|---|---|---|
+| 320px | stacked | — |
+| 500px | stacked | — |
+| 800px | side by side | 2.00 : 1 |
+| 1200px | side by side | 2.00 : 1 |
+
+**Invariant:** the emitted sheet contains no `@container` rule and no
+`container-type` declaration. Nothing else in the API produces one; `Grid` is
+intrinsically responsive through `auto-fit`/`minmax`.
+
+**Correction on record.** An earlier revision claimed `container-type` makes an
+element a containing block for `position: fixed` descendants, and specified a
+validation rule against `Backdrop(Viewport)` inside `Split`. That is false, and
+was measured false: a fixed child inside a `container-type` element covers the
+full viewport (320×600 of a 320×600 viewport), identical to no containment. Only
+full `contain: layout` contains it (320×0). The rule was removed rather than
+shipped.
 
 ---
 
@@ -284,8 +304,8 @@ Base rule emits `display:none`. The state rule emits:
 
 | Flow declared on the same part | `display` |
 |---|---|
-| `Stack`, `Row`, `ScrollRow`, `MediaBox` | `flex` |
-| `Split`, `Grid`, `FillCentered` | `grid` |
+| `Stack`, `Row`, `Split`, `ScrollRow`, `MediaBox` | `flex` |
+| `Grid`, `FillCentered` | `grid` |
 | `Center`, or no flow | `block` |
 
 **Invariant:** `display: revert-layer` is never emitted — it resolves to the base
@@ -301,6 +321,7 @@ func (s *Sheet) Root(opts ...Option) *Sheet
 func (s *Sheet) Part(p widget.Part, opts ...Option) *Sheet
 func (s *Sheet) When(st widget.State, p widget.Part, opts ...Option) *Sheet
 func (s *Sheet) Cue(c widget.Cue, p widget.Part, opts ...Option) *Sheet
+func (s *Sheet) Parts() []widget.Part   // declared parts, sorted — for component tests
 func (s *Sheet) Validate() []error
 func (s *Sheet) Stylesheet() *css.Stylesheet   // panics if Validate() is non-empty
 ```
@@ -319,7 +340,6 @@ not a string. An empty `Part` argument to `When`/`Cue` targets the root.
 | `Veil()` without `Backdrop()` on the same rule | `sheet <name>: Veil() requires Backdrop()` |
 | `When` uses a state `Kind.Allows` rejects | `sheet <name>: state <state> is not meaningful for kind <kind>` |
 | `Interactive()` on `Page` or `Inactive` (§3.2) | `sheet <name>: surface <surface> has no interaction states` |
-| `Backdrop(Viewport)` under a `Split` in the same sheet (§4.1) | `sheet <name>: Backdrop(Viewport) inside Split is contained to the split, not the viewport` |
 
 Every message names the sheet and the part. The panic in `Stylesheet()` is the
 only signal the author gets, and it surfaces from inside `ssr`'s generated

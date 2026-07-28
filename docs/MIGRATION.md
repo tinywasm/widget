@@ -129,13 +129,15 @@ wanted.
 | Before | After |
 |---|---|
 | `On(X)` + `Cue(Hover, p, On(XHover))` + `Cue(Focus, …)` + `Cue(Press, …)` | `Interactive(X)` |
-| `On(Panel)` + `Round(RadiusMd)` + `Pad(s)` | `As(Panel)` |
+| `On(Panel)` + `Round(RadiusMd)` | `As(Panel)` |
 | `Hidden()` + `When(st, p, Shown())` | `RevealedBy(st)` |
 | `Center()` + `Width(s)` | `Center(s)` |
 | `Center()` alone | `Center(Readable)` |
 
-`Round`, `Pad` and `Raise` still exist. They are now overrides for the case that
-genuinely differs from the surface default, not part of the common path.
+`Round` and `Raise` still exist as overrides for the case that genuinely differs
+from the surface default. `Pad` is **not** folded into surfaces and stays an
+explicit choice on every part that needs it — padding follows from what a part
+contains, not from what surface it wears.
 
 ---
 
@@ -180,7 +182,8 @@ These compile unchanged and behave differently. Check them.
 | Revealing an element restores its flow's `display` | A `Row` or `Grid` that previously became a block when opened now stays a row or grid. **Any CSS written to compensate must be removed.** |
 | Focus cue emits `:focus-visible` | The focus ring no longer appears on mouse click. Custom rules that hid it are now unnecessary and may suppress keyboard focus. |
 | An invalid sheet panics | A rule pointing at a misspelled part used to emit dead CSS silently; it now fails loudly at emission. Expect to find pre-existing typos. |
-| Surfaces carry radius and padding | Parts that relied on a surface having neither will now have both. Use `Round(RadiusNone)` / `Pad(SpaceNone)` where flat is intended. |
+| Surfaces carry a radius | Parts that relied on a surface having none now have one. Use `Round(RadiusNone)` where square is intended. Padding is unaffected — it was never folded in. |
+| `Split` becomes responsive | It never collapsed before: `container-type` was set on the same selector the `@container` rule targeted, so the rule never applied. It now stacks below ~40rem of its own width. **Layouts tuned around a split that never collapsed will change.** |
 | `.fl-*` / `.exc-*` selectors are no longer emitted | Unreachable before — `Class` has no public constructor — so no markup can be affected. Any hand-written CSS targeting them stops matching. |
 
 ---
@@ -199,13 +202,13 @@ style.Of(m.WidgetName()).
     Cue(widget.Hover,     "item", style.On(style.MutedHover))
 ```
 
-After — 13 options down to 10, and every remaining name says what it does:
+After — 13 options down to 12, and every remaining name says what it does:
 
 ```go
 style.For(m).
     Root(style.Grid(style.ColumnNarrow, style.Space2), style.As(style.Page), style.Scroll()).
-    Part("master", style.Stack(style.Space1), style.As(style.Panel)).
-    Part("detail", style.Stack(style.Space2), style.As(style.Panel)).
+    Part("master", style.Stack(style.Space1), style.As(style.Panel), style.Pad(style.Space3)).
+    Part("detail", style.Stack(style.Space2), style.As(style.Panel), style.Pad(style.Space3)).
     Part("item",   style.Row(style.Space1),   style.Interactive(style.Subtle)).
     When(widget.Selected, "item", style.As(style.Highlight))
 ```

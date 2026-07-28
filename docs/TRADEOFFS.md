@@ -10,6 +10,21 @@ honest note where the proposal is a judgement call rather than a fix.
 Read this before extending the library, and before concluding that a limitation
 you hit is a bug.
 
+**Status of each proposal.** Six are accepted and scheduled; two are deliberately
+deferred with a named trigger. The reasoning for each verdict — and the test it
+was judged by — is recorded once, in the execution plan, not duplicated here.
+
+| | Cost | Verdict |
+|---|---|---|
+| C-1 | No sanctioned escape | Deferred — trigger: third real request |
+| C-2 | Padding in surfaces | **Accepted**, specified |
+| C-3 | Stacking cannot see composition | **Half accepted** — see below |
+| C-4 | Panic couples cosmetics to the build | **Accepted**, specified |
+| C-5 | One change, three repositories | Deferred — trigger: second surface family |
+| C-6 | Appearance cannot depend on data | **Accepted** as documentation |
+| C-7 | Parts unverified against markup | **Accepted**, specified |
+| C-8 | No viewport-scoped mechanism | **Accepted** as documentation |
+
 ---
 
 ## Part 1 — What the architecture buys
@@ -126,31 +141,29 @@ property of the *composition*, not the pattern: a dialog opened from within a
 dialog needs to sit above it, and both resolve to `--z-modal`. Nesting the same
 pattern is unrepresentable.
 
-Worse, the containment interaction in [SPECS.md §4.1](SPECS.md#41-split-establishes-containment)
-means a `Backdrop(Viewport)` inside another widget's `Split` is contained to that
-split. A sheet can detect this within itself, but **cannot see across widgets** —
-and cross-widget nesting is the normal case.
+**Proposed improvement — deferred.** Let a widget that genuinely nests declare a
+relative bump, `Backdrop(Viewport, Above(parentKind))`, resolving to the parent's
+level plus one step — bounded and typed, unlike a free integer.
 
-**Proposed improvement.** Two parts.
+**Justification for deferring.** Role and valid states genuinely follow from the
+pattern and should stay derived. Stacking does not. But nested overlays have not
+been shown to occur in this suite, and designing an escape for a case that may
+not exist is how escapes become the default path. The limitation is recorded
+below; the API is not.
 
-1. Keep `Kind` as the default, and let a widget that genuinely nests declare a
-   relative bump: `Backdrop(Viewport, Above(parentKind))`, resolving to the
-   parent's level plus one step. Bounded and typed, unlike a free integer.
-2. For the containment problem, stop using `container-type` on `Split` when the
-   sheet also declares a viewport backdrop, and document that a `Dialog` must be
-   rendered from a portal-style root rather than inline. This is a *markup*
-   contract, so it belongs in `ARCHITECTURE.md` and cannot be enforced by the
-   emitter.
+**A related claim, withdrawn.** An earlier revision of this document argued that
+`Split`'s `container-type: inline-size` contains `position: fixed` descendants,
+so a modal opened inside a split pane would cover only that pane. **Measured in
+Chromium, that is false**: a fixed child of a `container-type` element covers the
+full viewport, identically to no containment. Only full `contain: layout`
+contains it.
 
-**Justification.** Role and valid states genuinely follow from the pattern and
-should stay derived. Stacking does not — it depends on what contains what, which
-`Kind` cannot know by construction. Deriving it removes the common error while
-leaving the rare one unrepresentable, so the escape has to exist; making it
-relative rather than absolute keeps the author from choosing a number.
-
-**Judgement call.** If nested overlays are out of scope for this suite, decline
-both and record the limitation instead. The cost of being wrong is a component
-that cannot be built without leaving the library.
+The measurement did surface a real defect in its place, and a worse one:
+`Split`'s responsive collapse **never fires at all**, because it sets
+`container-type` on the same selector its `@container` rule targets and an
+element is never its own query container. That is now defect D-9, and the fix —
+intrinsic sizing instead of a query — is in this release. Details and
+measurements in [SPECS.md §4.1](SPECS.md#41-split-uses-no-container-query-deliberately).
 
 ### C-4. Panicking couples a cosmetic mistake to a failed build
 
@@ -244,26 +257,26 @@ It cannot be closed by the emitter, only by a test the component owns, so the
 library's job is to make that test one line rather than to attempt detection it
 structurally cannot perform.
 
-### C-8. Container queries are the only responsive mechanism
+### C-8. There is no viewport-scoped mechanism at all
 
-**The cost.** Reacting to the container rather than the viewport is right for
-components, and it is genuinely better than media queries here. But some
-decisions are legitimately viewport-scoped — a mobile navigation pattern, a print
-layout — and the API has no way to express them, having removed `vw`/`vh` and
-media queries entirely.
+**The cost.** Components size themselves from their own width, never from the
+viewport — `Grid` through `auto-fit`/`minmax`, `Split` through flex basis. That is
+right for components and is what lets one behave identically in a sidebar and on
+a page.
 
-**Proposed improvement.** Leave the component API as it is, and place
-viewport-level decisions in the application shell, where `css` already publishes
-`--bp-sm` through `--bp-xl`. Document the split: **components respond to their
-container; the shell responds to the viewport.**
+But some decisions are legitimately viewport-scoped — a mobile navigation
+pattern, a print layout — and the API can express none of them, having removed
+`vw`/`vh` and media queries entirely.
+
+**Proposed improvement — accepted, documentation only.** Leave the component API
+as it is and place viewport-level decisions in the application shell, where `css`
+already publishes `--bp-sm` through `--bp-xl`. Document the split explicitly:
+**a component responds to its own width; the shell responds to the viewport.**
 
 **Justification.** A component that reacts to the viewport is unusable inside a
-sidebar, which is exactly the bug container queries exist to prevent. Allowing
-the escape at component level would reintroduce it. The breakpoint tokens already
-exist and go unused, so the shell-level path needs documentation rather than new
-API.
-
----
+sidebar — exactly the bug intrinsic sizing avoids. Allowing the escape at
+component level would reintroduce it. The breakpoint tokens already exist and go
+unused, so the shell-level path needs documentation, not new API.
 
 ## Part 3 — Accepted limitations
 
@@ -273,6 +286,7 @@ Recorded so they are not rediscovered as bugs.
 |---|---|
 | One token catalog for all widgets | Per-widget theming would defeat the single visual system the library exists to enforce. Scope-level overrides of `--color-*` on a subtree remain available. |
 | `Kind` is a closed enum | A component fitting no ARIA pattern is almost always two components. Extending the enum is a deliberate act, which is the intent. |
+| Nested overlays of the same pattern | Two dialogs both resolve to `--z-modal`. Recorded rather than designed for — see C-3. |
 | No animation beyond a transition scale | Keyframes are an open-ended language; admitting them would reopen the whole surface the closed scales exist to shut. Components needing them fall back to application CSS. |
 | Height cannot be declared | Content-driven height is what makes the primitives composable. `Fill()` and `Scroll()` cover the cases that need it. |
 

@@ -116,22 +116,27 @@ that the library does not work.
 ### 6.3 Surfaces are complete decisions
 
 A `Surface` is not a colour. It is a whole visual decision — background, text,
-border, radius, padding — resolved together, plus its own hover, focus and press
-treatments. An author picks *what a thing is* (`Panel`, `Primary`, `Danger`), never
+border and radius — resolved together, plus its own hover, focus and press
+treatments. Padding is deliberately excluded: it varies with what a part
+contains, so it stays an explicit choice. An author picks *what a thing is* (`Panel`, `Primary`, `Danger`), never
 *what it looks like*, and cannot pair one surface's base with another surface's
 hover.
 
 ### 6.4 Flow primitives
 
 Layout is expressed with a closed set of primitives: `Stack`, `Row`, `Split`,
-`Grid`, `Center`, `FillCentered`, `ScrollRow` and `MediaBox`. They are inherently
-responsive and react to their **own container's** width via container queries,
-not to the viewport, so a component behaves the same in a sidebar as on a page.
-Height is never declared directly; content flow determines it.
+`Grid`, `Center`, `FillCentered`, `ScrollRow` and `MediaBox`. Height is never
+declared directly; content flow determines it.
 
-Container queries are the only responsive mechanism at component level. Decisions
-that are genuinely viewport-scoped belong to the application shell — see
-[TRADEOFFS.md C-8](TRADEOFFS.md#c-8-container-queries-are-the-only-responsive-mechanism).
+They are responsive through **intrinsic sizing**, not through queries: a
+primitive reacts to its own available width, so a component behaves identically
+in a sidebar and on a page. No emitted rule uses `@container` or `@media`, and
+none needs a wrapper element to work — which keeps the engine from coupling to
+DOM structure.
+
+Decisions that are genuinely viewport-scoped belong to the application shell, not
+to a component — see
+[TRADEOFFS.md C-8](TRADEOFFS.md#c-8-there-is-no-viewport-scoped-mechanism-at-all).
 
 ### 6.5 Visibility
 

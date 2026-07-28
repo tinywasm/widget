@@ -129,25 +129,27 @@ original problem shipped.
 
 ## 5. Why a surface carries shape
 
-**Decision.** A surface resolves background, text, border, radius and padding
-together, not colour alone.
+**Decision.** A surface resolves background, text, border and **radius**
+together, not colour alone. Padding is **not** folded in.
 
-Splitting them means an author who has already said "this is a Panel" is then
-asked to choose a radius and a padding — two decisions they have no basis for, on
-a thing whose identity already implies both. In practice every panel in a codebase
-gets the same radius, chosen by copy-paste, until one does not.
+Splitting radius out means an author who has already said "this is a Panel" is
+then asked to choose a radius — a decision they have no basis for, on a thing
+whose identity already implies it. In practice every panel in a codebase gets the
+same radius, chosen by copy-paste, until one does not.
 
-Folding shape into the surface removes the two most frequently repeated options
-from the common path. They survive as explicit overrides for the cases that
-genuinely differ.
+The test for folding a property in is whether its value follows from the
+surface's *identity*. Radius passes: two panels always want the same one, and
+that sameness is what makes them read as one system. Padding fails: it follows
+from what the part contains, which the surface cannot see, so folding it in would
+convert a saved call into a remembered exception.
 
 **Rejected: presets like `Card()` or `Toolbar()`.** More names, less
 composability, and the set is never complete — every project needs the ninth one.
 
-**Counter-argument on record.** Folding *padding* in specifically is contested:
-padding varies with what a part contains, so the saved call becomes a remembered
-exception. See [TRADEOFFS.md C-2](TRADEOFFS.md#c-2-padding-does-not-belong-to-a-surface),
-which proposes surfaces resolve background, text, border and radius only.
+**History.** An earlier revision folded padding in as well. That was an
+over-reach, argued down in
+[TRADEOFFS.md C-2](TRADEOFFS.md#c-2-padding-does-not-belong-to-a-surface) and
+corrected here.
 
 ---
 
@@ -394,3 +396,35 @@ already breaking; not worth a release of its own.
 - [SPECS.md](SPECS.md) — the exact behaviour they specify.
 - [TRADEOFFS.md](TRADEOFFS.md) — what these decisions cost, and what they leave unsolved.
 - [MIGRATION.md](MIGRATION.md) — what changes for a consumer.
+
+---
+
+## 13. Why `Split` abandons container queries
+
+**Decision.** `Split` is responsive through intrinsic sizing — `flex-wrap` plus a
+flex basis that is either very large or negative — and emits no `@container` rule
+and no `container-type` declaration.
+
+The published implementation set `container-type: inline-size` on the same
+selector its `@container` rule targeted. An element is never its own query
+container, so the rule never applied and `Split` had no responsive behaviour at
+all. This was measured, not inferred; the numbers are in
+[SPECS.md §4.1](SPECS.md#41-split-uses-no-container-query-deliberately).
+
+**Rejected: the correct query form.** Making the query work requires a separate
+ancestor element carrying `container-type`, with the split itself as its child.
+That element does not exist in the anatomy, so the engine would have to require
+markup it does not control — breaking the flat-specificity and no-DOM-coupling
+guarantees in one move.
+
+**Rejected: a media query.** It would make the component react to the viewport
+rather than to its own width, so a split placed in a sidebar would lay out as if
+it had the whole page. That is precisely the bug container queries exist to
+prevent, and it is why the fix is intrinsic sizing rather than a fallback to
+`@media`.
+
+**Consequence.** After this change no primitive uses a query of any kind:
+`Grid` was already intrinsic through `auto-fit`/`minmax`, and `Split` now is too.
+The architecture's responsiveness claim is simpler and stronger for it — the
+layout does not depend on any ancestor being a container, so a component cannot be
+broken by where it is placed.
