@@ -127,14 +127,15 @@ of these.
 | `Elevation` | `Flat, Raised, Floating, Popover` | `none`, `--shadow-sm/md/lg` |
 | `Motion` | `MotionNone, MotionFast, MotionBase, MotionSlow` | `none`, `--duration-*` + `--ease-in-out` |
 | `ColumnWidth` | `ColumnNarrow, ColumnMedium, ColumnWide` | `--column-narrow/medium/wide` |
-| `Size` | `Content, Readable, Third, Half, TwoThirds, Full` | `max-content`, `--max-w-prose`, `33.33%`, `50%`, `66.66%`, `100%` |
+| `Size` | `Content, Readable, Third, Half, TwoThirds, Full` | `max-content`, `--max-w-readable`, `33.33%`, `50%`, `66.66%`, `100%` |
 | `SplitRatio` | `SplitHalf, SplitTwoThirds, SplitThreeQuarters` | `1fr`, `2fr`, `3fr` (against a trailing `1fr`) |
 | `Aspect` | `AspectSquare, Aspect3x2, Aspect4x3, Aspect16x9` | `1/1`, `3/2`, `4/3`, `16/9` |
 | `Scope` | `Parent, Viewport` | `position: absolute` / `fixed` |
 
 `Size` percentages and `Aspect` fractions are geometry, not theme, and are the
-only literals the drift guard permits. `ColumnWidth` requires `--column-*` to exist in
-`tinywasm/css`; adding them is a prerequisite of the release.
+only literals the drift guard permits. `ColumnWidth` requires `--column-*`, and `Readable` requires `--max-w-readable`
+(today `--max-w-prose`); both are prerequisites of the release, because a scale
+step is named after the token it emits and the two must not drift apart.
 
 ---
 
@@ -174,11 +175,27 @@ declared in `tinywasm/css`.
 | Cue | Selector suffix | Change |
 |---|---|---|
 | hover | `:hover` | background → `--color-<family>-hover` |
-| focus | `:focus-visible` | background → `--color-<family>-focus`, plus `1px solid --color-primary` |
+| focus | `:focus-visible` | background → `--color-<family>-focus`, plus `2px solid --color-focus-ring` |
 | press | `:active` | background → `--color-<family>-press` |
+
+The focus ring uses a dedicated `--color-focus-ring` token, **not**
+`--color-primary`: on the `Primary` surface itself a primary-coloured ring is
+invisible. Adding that token is a prerequisite of the release.
 
 `Subtle` is the one family whose hover/press must not be a black wash: it resolves
 to `--color-hover` so it remains visible in dark mode.
+
+### 3.2 Which surfaces accept `Interactive`
+
+| Surface | `Interactive` | Why |
+|---|---|---|
+| `Panel`, `Inset`, `Primary`, `Secondary`, `Highlight`, `Success`, `Danger`, `Subtle` | yes | can be a control or a selectable row |
+| `Page` | no | the page background is not a control |
+| `Inactive` | no | it *is* the non-interactive state; deriving a hover from it is a contradiction |
+
+`Interactive(Page)` and `Interactive(Inactive)` are reported by `Validate()`
+(§6.1). This is the eight-family set the private `--color-<family>-*` tokens must
+cover — 24 tokens, not 27.
 
 **Invariant:** it is not expressible to combine one family's base with another
 family's interaction state.
@@ -199,6 +216,27 @@ family's interaction state.
 | `MediaBox(a)` | `aspect-ratio:var(--ratio); overflow:hidden; display:flex; justify-content:center; align-items:center`, and `> img, > video { width:100%; height:100%; object-fit:cover }` |
 
 No emitted selector may begin with `.fl-` or `.exc-`.
+
+### 4.1 `Split` establishes containment
+
+`container-type: inline-size` implies `contain: layout style inline-size`, and
+**layout containment makes the element a containing block for fixed-position
+descendants.**
+
+Consequence: a `Backdrop(Viewport)` anywhere inside a `Split` is positioned
+against the `Split`, not the viewport, so a modal opened from inside a split pane
+covers only that pane. The Go source gives no hint of this.
+
+Required handling:
+
+1. `Validate()` reports `Backdrop(Viewport)` on a part whose ancestor rule in the
+   same sheet declares `Split` (§6.1).
+2. A test asserts the emitted sheet for that combination fails validation.
+3. Cross-sheet nesting cannot be detected — a `Dialog` widget rendered inside
+   another widget's `Split` is invisible to this sheet. That case is documented in
+   [TRADEOFFS.md](TRADEOFFS.md), not solved here.
+
+The same applies to `@container` queries generally: only `Split` uses one today.
 
 ---
 
@@ -258,7 +296,7 @@ Base rule emits `display:none`. The state rule emits:
 ## 6. Sheet API
 
 ```go
-func For(n widget.Name) *Sheet
+func For(w widget.Widget) *Sheet   // needs Kind, not just Name — see §1.3, §5, §6.1
 func (s *Sheet) Root(opts ...Option) *Sheet
 func (s *Sheet) Part(p widget.Part, opts ...Option) *Sheet
 func (s *Sheet) When(st widget.State, p widget.Part, opts ...Option) *Sheet
@@ -280,6 +318,12 @@ not a string. An empty `Part` argument to `When`/`Cue` targets the root.
 | A declared part produces no declarations | `sheet <name>: part "<part>" emits nothing` |
 | `Veil()` without `Backdrop()` on the same rule | `sheet <name>: Veil() requires Backdrop()` |
 | `When` uses a state `Kind.Allows` rejects | `sheet <name>: state <state> is not meaningful for kind <kind>` |
+| `Interactive()` on `Page` or `Inactive` (§3.2) | `sheet <name>: surface <surface> has no interaction states` |
+| `Backdrop(Viewport)` under a `Split` in the same sheet (§4.1) | `sheet <name>: Backdrop(Viewport) inside Split is contained to the split, not the viewport` |
+
+Every message names the sheet and the part. The panic in `Stylesheet()` is the
+only signal the author gets, and it surfaces from inside `ssr`'s generated
+program — far from the source that caused it.
 
 ---
 

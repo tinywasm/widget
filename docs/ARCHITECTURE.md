@@ -123,11 +123,15 @@ hover.
 
 ### 6.4 Flow primitives
 
-Layout is expressed with a closed set of primitives in the spirit of *Every
-Layout*: `Stack`, `Row`, `Split`, `Grid`, `Center`, `FillCentered`, `ScrollRow`, `MediaBox`.
-They are inherently responsive and react to their **own container's** width via
-container queries, not to the viewport. Height is never declared directly;
-content flow determines it.
+Layout is expressed with a closed set of primitives: `Stack`, `Row`, `Split`,
+`Grid`, `Center`, `FillCentered`, `ScrollRow` and `MediaBox`. They are inherently
+responsive and react to their **own container's** width via container queries,
+not to the viewport, so a component behaves the same in a sidebar as on a page.
+Height is never declared directly; content flow determines it.
+
+Container queries are the only responsive mechanism at component level. Decisions
+that are genuinely viewport-scoped belong to the application shell — see
+[TRADEOFFS.md C-8](TRADEOFFS.md#c-8-container-queries-are-the-only-responsive-mechanism).
 
 ### 6.5 Visibility
 
@@ -185,5 +189,6 @@ is the only layer that can see all sheets at once.
 
 - [SPECS.md](SPECS.md) — exact API surface, scale mappings, and emission tables.
 - [DESIGN.md](DESIGN.md) — why each decision was made, and what was rejected.
+- [TRADEOFFS.md](TRADEOFFS.md) — what this structure costs, and the limitations it accepts.
 - [MIGRATION.md](MIGRATION.md) — moving from the pre-release API.
 - [diagrams/BOUNDARIES.md](diagrams/BOUNDARIES.md) — module boundaries.

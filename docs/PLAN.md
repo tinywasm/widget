@@ -12,6 +12,7 @@ when a step is ambiguous — do not re-derive their content here:
 | why a decision was made, or what was already rejected | [DESIGN.md](DESIGN.md) |
 | the structure and invariants being preserved | [ARCHITECTURE.md](ARCHITECTURE.md) |
 | what changes for a consumer | [MIGRATION.md](MIGRATION.md) |
+| whether a limitation you hit is a bug or a known cost | [TRADEOFFS.md](TRADEOFFS.md) |
 | how the modules divide the problem | [diagrams/BOUNDARIES.md](diagrams/BOUNDARIES.md) |
 
 ---
@@ -42,7 +43,7 @@ reading this library's source.
 | Metric | Before | Target |
 |---|---|---|
 | Public identifiers in `widget/style` | ~150 | ~90 |
-| Options to style the reference widget | 13 | 9 |
+| Options to style the reference widget | 13 | 10 |
 | Options to style one interactive part | 4 | 1 |
 
 ---
@@ -82,6 +83,13 @@ emitted in every sheet, and `ssr` concatenates sheets.
 **D-8 — no entry point.** No package docs, no runnable examples, an example
 program that prints a class name, and mixed comment languages.
 
+**D-9 — `Split` silently contains fixed-position descendants.** `Split` emits
+`container-type: inline-size`, which implies layout containment, which makes the
+element a containing block for `position: fixed` descendants. A `Backdrop(Viewport)`
+inside a `Split` therefore covers the split pane, not the viewport. Nothing in the
+Go source hints at it. Found while writing SPECS §4.1, not by execution — verify
+it in a browser before building the fix.
+
 ---
 
 ## 3. Prerequisite: `tinywasm/css` release
@@ -94,6 +102,9 @@ Nothing below compiles until this lands. Details in
 - A real token behind the `Subtle` interaction states, replacing the `rgba()`
   washes.
 - `--column-narrow`, `--column-medium`, `--column-wide`.
+- `--max-w-readable`, replacing `--max-w-prose`, so `Size.Readable` mirrors it.
+- `--color-focus-ring`, so the focus ring is visible on every surface including
+  `Primary` — it currently reuses `--color-primary`.
 
 ---
 
@@ -167,7 +178,12 @@ and every `Sheet` field unexported; `FlowType` becomes an enum. After steps 1–
 the emitter is not rewritten twice. SPECS §6.
 
 **Step 8 — validation.** `sheet.go`. SPECS §6.1. Rests on steps 6 and 7. Closes
-**D-3**.
+**D-3** and **D-9**.
+
+Six conditions, not four. Two were found while specifying and are easy to miss:
+`Interactive()` on `Page` or `Inactive` (SPECS §3.2), and `Backdrop(Viewport)`
+under a `Split` in the same sheet (SPECS §4.1). Every message names the sheet and
+the part, because the panic surfaces from inside `ssr`'s generated program.
 
 ```go
 func (s *Sheet) Stylesheet() *css.Stylesheet {
@@ -188,7 +204,13 @@ builds a real sheet, and a README code block. Closes **D-8**.
 Comment language: English throughout, decided in this release. `widget.go`,
 `kind.go`, `state.go` and all of `style/` are Spanish today.
 
-**Step 11 — remove the STATUS markers** from `ARCHITECTURE.md`, `SPECS.md` and
+**Step 11 — decide the open trade-offs.** [TRADEOFFS.md](TRADEOFFS.md) C-1
+(sanctioned escape), C-2 (padding in surfaces) and C-3 (nested overlays) are
+proposals, not decisions. C-2 in particular contradicts SPECS §3 as written and
+must be settled before step 2 ships — accepting it changes the surface table and
+raises the reference-widget count from 10 options to 12.
+
+**Step 12 — remove the STATUS markers** from `ARCHITECTURE.md`, `SPECS.md` and
 `MIGRATION.md`. They exist because those documents were written ahead of the
 implementation; removing them is the last act of this plan.
 
@@ -237,6 +259,9 @@ Every test names the defect it closes, so a regression is a named failure.
 | `TestSpaceStepsDistinct` | no two `Space` steps resolve to the same token | D-6 |
 | `TestSurfaceCarriesShape` | `As(Panel)` alone emits radius and padding; `Round(RadiusNone)` overrides it | D-6 |
 | `TestNoUnreachableSelectors` | no selector begins with `.fl-` or `.exc-`; no empty `@layer` block | D-7 |
+| `TestInteractiveRejectsNonInteractive` | `Interactive(Page)` and `Interactive(Inactive)` are reported | D-3 |
+| `TestBackdropInsideSplitRejected` | `Backdrop(Viewport)` under a `Split` is reported, with the containment reason in the message | D-9 |
+| `TestFocusRingNotPrimary` | the focus ring emits `--color-focus-ring`, never `--color-primary` | D-4 |
 | `TestZeroValueProvider` | `(&T{}).RenderCSS()` succeeds without reading a field | — |
 | existing WASM guard | `GOOS=js go list -deps` still excludes `widget/style`; `widget` does not import `css` | — |
 | existing determinism check | two emissions byte-identical | — |

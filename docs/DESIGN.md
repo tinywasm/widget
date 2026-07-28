@@ -144,6 +144,11 @@ genuinely differ.
 **Rejected: presets like `Card()` or `Toolbar()`.** More names, less
 composability, and the set is never complete — every project needs the ninth one.
 
+**Counter-argument on record.** Folding *padding* in specifically is contested:
+padding varies with what a part contains, so the saved call becomes a remembered
+exception. See [TRADEOFFS.md C-2](TRADEOFFS.md#c-2-padding-does-not-belong-to-a-surface),
+which proposes surfaces resolve background, text, border and radius only.
+
 ---
 
 ## 6. Why interaction states are derived, not chosen
@@ -349,12 +354,20 @@ so the name adds a translation step and buys nothing. It becomes `Primary`.
   covering hover, focus and press, it is now rarely reached; that is a reason to
   document it as an escape hatch, not to rename it.
 
-### 12.6 Verb agreement
+### 12.6 Grammatical agreement
 
-The option set mixed grammatical forms: `Fill()`, `Scrolls()`, `Fixed()`,
-`Flush()`, `Clip()` — verb, third-person verb, adjective, adjective, verb. All
-options are now imperative verbs, so a rule reads as a list of instructions:
-`Fill()`, `Scroll()`, `KeepSize()`, `EdgeToEdge()`, `HideOverflow()`.
+The option set mixed forms: `Fill()`, `Scrolls()`, `Fixed()`, `Flush()`,
+`Clip()` — verb, third-person verb, adjective, adjective, verb.
+
+The rule is **not** "every option is an imperative verb". `Interactive`,
+`RevealedBy` and `As` are not verbs and should not be forced into one. It is
+narrower, and achievable: **no option is a bare adjective** — an adjective
+describes the element, while an option describes what is done to it, so an
+adjective always leaves the reader to infer which property is being set.
+
+So `Scrolls()` becomes `Scroll()`, `Fixed()` becomes `KeepSize()`, and `Flush()`
+becomes `EdgeToEdge()` — a phrase rather than a verb, but one that names the
+resulting shape instead of asking the reader to guess.
 
 ### 12.7 The two closest calls
 
@@ -367,7 +380,7 @@ state no relation. `style.Of(name)` does not say what the sheet is *of*, and
 surface carries radius and padding as well as colour, so "on" describes less than
 half of what it does.
 
-The replacements state the relation: `style.For(name)` is a sheet **for** this
+The replacements state the relation: `style.For(w)` is a sheet **for** this
 widget; `As(Panel)` styles this part **as** a panel. The gain is real but small,
 and the old `On` is by some distance the most-typed function in the API, so this
 is the largest churn in this document. Worth doing inside a release that is
@@ -379,4 +392,5 @@ already breaking; not worth a release of its own.
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) — the structure these decisions produce.
 - [SPECS.md](SPECS.md) — the exact behaviour they specify.
+- [TRADEOFFS.md](TRADEOFFS.md) — what these decisions cost, and what they leave unsolved.
 - [MIGRATION.md](MIGRATION.md) — what changes for a consumer.

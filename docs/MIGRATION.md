@@ -19,6 +19,8 @@ lands.
 | `--color-<family>-hover|focus|press` for every surface family | These tokens currently live in `widget/style` with hardcoded hex, outside the reach of the contrast test |
 | A real token behind the `Subtle` interaction states | They are literal `rgba(0,0,0,0.05)` washes today, invisible on a dark surface |
 | `--column-narrow`, `--column-medium`, `--column-wide` | `Grid` column minimums are hardcoded `rem` values with no token |
+| `--max-w-readable`, replacing `--max-w-prose` | `Size.Readable` must mirror the token it emits; leaving the token named `prose` reintroduces the translation step |
+| `--color-focus-ring` | The focus ring currently reuses `--color-primary`, which is invisible on the `Primary` surface itself |
 
 ---
 
@@ -71,7 +73,7 @@ The gaps are deliberate: there is no `Space5` because there is no `--space-5`.
 | `Surface.Sunken` | `Surface.Inset` | design term |
 | `Flush()` | `EdgeToEdge()` | design term |
 | `Clip()` | `HideOverflow()` | states the mechanism instead of a metaphor |
-| `Of(name)` | `For(name)` | a preposition stating no relation |
+| `Of(name)` | `For(widget)` | a preposition stating no relation |
 | `On(surface)` | `As(surface)` | a preposition stating no relation |
 
 `Of` → `For` and `On` → `As` are the weakest entries; `On` is also the most-typed
@@ -197,10 +199,10 @@ style.Of(m.WidgetName()).
     Cue(widget.Hover,     "item", style.On(style.MutedHover))
 ```
 
-After — 13 options down to 9, and every remaining name says what it does:
+After — 13 options down to 10, and every remaining name says what it does:
 
 ```go
-style.For(m.WidgetName()).
+style.For(m).
     Root(style.Grid(style.ColumnNarrow, style.Space2), style.As(style.Page), style.Scroll()).
     Part("master", style.Stack(style.Space1), style.As(style.Panel)).
     Part("detail", style.Stack(style.Space2), style.As(style.Panel)).
