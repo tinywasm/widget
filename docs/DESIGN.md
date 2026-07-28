@@ -34,7 +34,7 @@ literal, which means no theming and no dark mode. `css.RootCSS()` and
 value.
 
 **The contrast guarantee cannot live here.** `css` carries a contrast test across
-the palette. That test is precisely what makes `On(Accent)` safe to hand to
+the palette. That test is precisely what makes `As(Primary)` safe to hand to
 someone who cannot evaluate contrast themselves — the entire premise of this
 library. A guarantee about values belongs with the values; duplicating the palette
 here to avoid a dependency would move the guarantee somewhere it cannot be
@@ -245,6 +245,133 @@ The module has no published tag, so the cost of breaking is at its lifetime
 minimum. Phasing would mean designing several signatures twice — once
 compatibly, once correctly — and would leave consumers migrating in two hops for
 no benefit. The known consumers are inside the same suite.
+
+---
+
+## 12. Naming
+
+**Decision.** A name must be readable by someone who knows Go and HTML but not
+design, and must not require translation to read the CSS it emits.
+
+This library's premise is that the author does not have a designer's vocabulary.
+An API that then names things in that vocabulary contradicts itself: the closed
+scales prevent the author from choosing wrongly, but a name they cannot read
+prevents them from choosing at all.
+
+Four distinct problems hide under "abbreviations", and each needs a different
+fix. Conflating them produces a rename pass that expands the harmless cases and
+leaves the harmful ones intact.
+
+### 12.1 Truncations — resolved by mirroring the token catalog
+
+`Sm`, `Md`, `Lg`, `Xs`, `Xl`, `Opt`. Shortenings of ordinary words. Expanding
+them costs verbosity and buys unambiguity, so the question is where the line
+sits.
+
+The rule that settles it without argument: **a scale step is named after the
+token it resolves to.** A name that mirrors the emitted variable needs no
+vocabulary at all, and — more importantly — needs no translation when the author
+is looking at the rendered rule in devtools and asking which Go constant produced
+it.
+
+Applied to spacing, this makes the scale numeric (`Space1` → `--space-1`), which
+also fixes the original defect honestly: the catalog has no `--space-5`, so there
+is no `Space5`, and the gap in the sequence *is* the documentation. Applied to
+radius and text size, it keeps `Sm`/`Md`/`Lg`, because that is what those tokens
+are called.
+
+**Consequence.** Where the truncation is genuinely unreadable, the question
+belongs to `tinywasm/css`, not here. Renaming only on the Go side would break the
+mirror and reintroduce the translation step this rule exists to remove.
+
+`Opt` is not a scale and gets expanded to `Option`: it is the most repeated type
+name in the generated documentation, and the Go standard library does not
+abbreviate.
+
+### 12.2 Specialist vocabulary — replaced, not expanded
+
+`Reel`, `Cover`, `Frame`, `Scrim`, `Prose`, `Track`, `Sunken`, `Flush`. These are
+whole words, so expansion does nothing; they are opaque because they belong to
+vocabularies the reader does not have — *Every Layout* for the first three, stage
+lighting for `Scrim`, typography for `Prose`, CSS Grid for `Track`, and design
+convention for the rest.
+
+Each is replaced by what the thing does. `Reel` becomes `ScrollRow`, because it is
+a row that scrolls. `Frame` becomes `MediaBox`, because its generated child rules
+literally target `img` and `video`. `Track` becomes `ColumnWidth`, because the
+argument is a minimum column width.
+
+**Rejected: keeping the vocabulary and documenting it in a glossary.** A glossary
+is a lookup the author must know to perform, which is the same failure as the
+decision it replaced — and it is only ever read once.
+
+**Rejected: keeping the vocabulary because it is standard.** It is standard among
+people who have read the same sources. The premise of this library is that the
+author has not.
+
+### 12.3 Names that collide with a different, well-known meaning
+
+`Fixed()` emits `flex-shrink: 0; flex-grow: 0` — "does not change size". In CSS,
+`position: fixed` means "positioned relative to the viewport". A reader who knows
+CSS reads this name **exactly wrong**, which is worse than not reading it at all:
+opacity prompts a lookup, false familiarity does not.
+
+This is the one category where a rename is not a judgement call. `Fixed` becomes
+`KeepSize`.
+
+### 12.4 Near-synonyms that do not distinguish
+
+`Muted` and `Dimmed` were introduced as separate surfaces meaning, respectively,
+secondary text and a disabled control. Both words mean "faded". Nothing in either
+name says which is which, so the pair can only be used correctly by someone who
+already knows.
+
+They are renamed for their **role**, not their appearance: `Subtle` and
+`Inactive`. `Inactive` additionally matches `--color-disabled`, restoring the
+mirror.
+
+`Accent` has the same defect in a quieter form: it resolves to `--color-primary`,
+so the name adds a translation step and buys nothing. It becomes `Primary`.
+
+### 12.5 What is deliberately not renamed
+
+- `Stack`, `Row`, `Split`, `Grid`, `Center` — plain English that matches what they
+  produce.
+- `Name`, `Part`, `Class`, `State`, `Kind` — Open UI, ARIA and DOM vocabulary the
+  author already meets while writing markup. Renaming them would break the
+  correspondence with the thing being described.
+- `Backdrop` — CSS has a `::backdrop` pseudo-element; the term is already the
+  reader's.
+- `Elevation`'s steps `Flat`, `Raised`, `Floating`, `Popover` — semantic and
+  whole-word.
+- `Cue` — not an abbreviation, and the distinction it draws from `State`
+  (browser-owned versus widget-owned) is load-bearing. With `Interactive()`
+  covering hover, focus and press, it is now rarely reached; that is a reason to
+  document it as an escape hatch, not to rename it.
+
+### 12.6 Verb agreement
+
+The option set mixed grammatical forms: `Fill()`, `Scrolls()`, `Fixed()`,
+`Flush()`, `Clip()` — verb, third-person verb, adjective, adjective, verb. All
+options are now imperative verbs, so a rule reads as a list of instructions:
+`Fill()`, `Scroll()`, `KeepSize()`, `EdgeToEdge()`, `HideOverflow()`.
+
+### 12.7 The two closest calls
+
+The old `Of` → new `For`, and the old `On` → new `As`, are the weakest entries in
+this pass, and are recorded as such.
+
+Neither old name is an abbreviation or a collision; both are prepositions that
+state no relation. `style.Of(name)` does not say what the sheet is *of*, and
+`On(Panel)` does not say what is being put on what — the more so now that a
+surface carries radius and padding as well as colour, so "on" describes less than
+half of what it does.
+
+The replacements state the relation: `style.For(name)` is a sheet **for** this
+widget; `As(Panel)` styles this part **as** a panel. The gain is real but small,
+and the old `On` is by some distance the most-typed function in the API, so this
+is the largest churn in this document. Worth doing inside a release that is
+already breaking; not worth a release of its own.
 
 ---
 

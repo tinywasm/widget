@@ -117,14 +117,14 @@ that the library does not work.
 
 A `Surface` is not a colour. It is a whole visual decision — background, text,
 border, radius, padding — resolved together, plus its own hover, focus and press
-treatments. An author picks *what a thing is* (`Panel`, `Accent`, `Danger`), never
+treatments. An author picks *what a thing is* (`Panel`, `Primary`, `Danger`), never
 *what it looks like*, and cannot pair one surface's base with another surface's
 hover.
 
 ### 6.4 Flow primitives
 
 Layout is expressed with a closed set of primitives in the spirit of *Every
-Layout*: `Stack`, `Row`, `Split`, `Grid`, `Center`, `Cover`, `Reel`, `Frame`.
+Layout*: `Stack`, `Row`, `Split`, `Grid`, `Center`, `FillCentered`, `ScrollRow`, `MediaBox`.
 They are inherently responsive and react to their **own container's** width via
 container queries, not to the viewport. Height is never declared directly;
 content flow determines it.

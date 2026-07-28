@@ -17,50 +17,105 @@ lands.
 | Addition to `css` | Why |
 |---|---|
 | `--color-<family>-hover|focus|press` for every surface family | These tokens currently live in `widget/style` with hardcoded hex, outside the reach of the contrast test |
-| A real token behind the `Muted` interaction states | They are literal `rgba(0,0,0,0.05)` washes today, invisible on a dark surface |
-| `--track-sm`, `--track-md`, `--track-lg` | `Grid` column minimums are hardcoded `rem` values with no token |
+| A real token behind the `Subtle` interaction states | They are literal `rgba(0,0,0,0.05)` washes today, invisible on a dark surface |
+| `--column-narrow`, `--column-medium`, `--column-wide` | `Grid` column minimums are hardcoded `rem` values with no token |
 
 ---
 
 ## 2. Renames
 
-| Before | After |
-|---|---|
-| `Space0 … Space12` | `SpaceNone, SpaceXs, SpaceSm, SpaceMd, SpaceLg, SpaceXl, Space2xl, Space3xl` |
-| `Ratio` in `Split` | `SplitRatio` — `SplitHalf, SplitTwoThirds, SplitThreeQuarters` |
-| `Ratio` in `Frame` | `Aspect` — `AspectSquare, Aspect3x2, Aspect4x3, Aspect16x9` |
-| `Elevation.Overlay` | `Elevation.Popover` |
-| `Surface.Selected` | `Surface.Highlight` |
-| `Surface.Disabled` | `Surface.Dimmed` |
-| `Text(TextSm)` | `FontSize(TextSm)` |
+Reasoning for the naming pass is in [DESIGN.md §12](DESIGN.md#12-naming). It is
+grouped below by *why* the name changed, because the four groups carry very
+different risk: the first two are mechanical, the third is a correctness fix, and
+the fourth changes which constant you should be reaching for.
 
-`Highlight` and `Dimmed` exist to end the collision with `widget.Selected` and
-`widget.Disabled`, which previously produced lines like
-`When(widget.Selected, "item", style.On(style.Selected))`.
+### 2.1 Truncations — names now mirror the token they emit
 
-### 2.1 Spacing is not a 1:1 remap
+| Before | After | Emits |
+|---|---|---|
+| `Opt` | `Option` | — |
+| `Space0 … Space12` | `SpaceNone, Space1, Space2, Space3, Space4, Space6, Space8, Space12` | `--space-N` |
+| `Track` | `ColumnWidth` | — |
+| `TrackSm, TrackMd, TrackLg` | `ColumnNarrow, ColumnMedium, ColumnWide` | `--column-narrow/medium/wide` |
 
-The old scale advertised 13 steps and resolved to 6 values. Adjacent steps were
-identical, so a mechanical rename is not possible — pick by intent:
+`Radius*` and `Text*` are unchanged: they already mirror `--radius-*` and
+`--text-*`. If those token names are themselves unreadable, that is a
+`tinywasm/css` question — renaming only on the Go side would reintroduce the
+translation step this rule removes.
+
+**Spacing is not a 1:1 remap.** The old scale advertised 13 steps and resolved to
+6 values, so adjacent constants were identical. Pick by intent:
 
 | Before | Resolved to | Now |
 |---|---|---|
 | `Space0` | `0` | `SpaceNone` |
-| `Space1` | `--space-1` | `SpaceXs` |
-| `Space2` | `--space-2` | `SpaceSm` |
-| `Space3` | `--space-3` | `SpaceMd` |
-| `Space4` | `--space-4` | `SpaceLg` |
-| `Space5`, `Space6` | `--space-6` | `SpaceXl` |
-| `Space7`, `Space8` | `--space-8` | `Space2xl` |
-| `Space9` … `Space12` | `--space-12` | `Space3xl` |
+| `Space1` | `--space-1` | `Space1` |
+| `Space2` | `--space-2` | `Space2` |
+| `Space3` | `--space-3` | `Space3` |
+| `Space4` | `--space-4` | `Space4` |
+| `Space5`, `Space6` | `--space-6` | `Space6` |
+| `Space7`, `Space8` | `--space-8` | `Space8` |
+| `Space9` … `Space12` | `--space-12` | `Space12` |
 
-### 2.2 `Frame` ratios did not mean what they said
+The gaps are deliberate: there is no `Space5` because there is no `--space-5`.
+
+### 2.2 Specialist vocabulary — replaced with what the thing does
+
+| Before | After | Why the old name was opaque |
+|---|---|---|
+| `Reel(gap)` | `ScrollRow(gap)` | *Every Layout* term |
+| `Cover()` | `FillCentered()` | *Every Layout* term |
+| `Frame(r)` | `MediaBox(a)` | *Every Layout* term; its child rules target `img`/`video` |
+| `Scrim()` | `Veil()` | stage-lighting term |
+| `Size.Prose` | `Size.Readable` | typography term for a readable line length |
+| `Surface.Sunken` | `Surface.Inset` | design term |
+| `Flush()` | `EdgeToEdge()` | design term |
+| `Clip()` | `HideOverflow()` | states the mechanism instead of a metaphor |
+| `Of(name)` | `For(name)` | a preposition stating no relation |
+| `On(surface)` | `As(surface)` | a preposition stating no relation |
+
+`Of` → `For` and `On` → `As` are the weakest entries; `On` is also the most-typed
+function in the API, so this is the largest single source of churn. See
+[DESIGN.md §12.7](DESIGN.md#127-the-two-closest-calls).
+
+### 2.3 Names that read as something else — mandatory
+
+| Before | After | Why |
+|---|---|---|
+| `Fixed()` | `KeepSize()` | It emits `flex-shrink:0; flex-grow:0`, but `position:fixed` means something entirely different. A reader who knows CSS reads the old name **exactly wrong**. |
+
+Also normalised for grammar, so every option reads as an instruction:
+`Scrolls()` → `Scroll()`.
+
+### 2.4 Surfaces — renamed for role, not appearance
+
+| Before | After | Why |
+|---|---|---|
+| `Selected` | `Highlight` | collided with `widget.Selected`, a `State` |
+| `Disabled` | `Inactive` | collided with `widget.Disabled`; also mirrors `--color-disabled` |
+| `Muted` | `Subtle` | `Muted` and `Dimmed` both meant "faded"; nothing said which was which |
+| `Accent` | `Primary` | it resolves to `--color-primary`; the old name added a translation step |
+
+The collision this ends produced lines like
+`When(widget.Selected, "item", style.On(style.Selected))`, where the two
+`Selected`s were different types meaning different things.
+
+### 2.5 Other renames
+
+| Before | After |
+|---|---|
+| `Ratio` in `Split` | `SplitRatio` — `SplitHalf, SplitTwoThirds, SplitThreeQuarters` |
+| `Ratio` in `Frame` | `Aspect` — `AspectSquare, Aspect3x2, Aspect4x3, Aspect16x9` |
+| `Elevation.Overlay` | `Elevation.Popover` |
+| `Text(TextSm)` | `FontSize(TextSm)` |
+
+**`Frame` ratios did not mean what they said:**
 
 | Before | Emitted | Now |
 |---|---|---|
-| `Frame(RatioHalf)` | `aspect-ratio: 1/1` (a square) | `Frame(AspectSquare)` |
-| `Frame(RatioTwoThirds)` | `aspect-ratio: 3/2` | `Frame(Aspect3x2)` |
-| `Frame(RatioThreeQuarters)` | `aspect-ratio: 4/3` | `Frame(Aspect4x3)` |
+| `Frame(RatioHalf)` | `aspect-ratio: 1/1` (a square) | `MediaBox(AspectSquare)` |
+| `Frame(RatioTwoThirds)` | `aspect-ratio: 3/2` | `MediaBox(Aspect3x2)` |
+| `Frame(RatioThreeQuarters)` | `aspect-ratio: 4/3` | `MediaBox(Aspect4x3)` |
 
 If the intent was a wide media box, `Aspect16x9` is new and probably what was
 wanted.
@@ -72,10 +127,10 @@ wanted.
 | Before | After |
 |---|---|
 | `On(X)` + `Cue(Hover, p, On(XHover))` + `Cue(Focus, …)` + `Cue(Press, …)` | `Interactive(X)` |
-| `On(Panel)` + `Round(RadiusMd)` + `Pad(s)` | `On(Panel)` |
+| `On(Panel)` + `Round(RadiusMd)` + `Pad(s)` | `As(Panel)` |
 | `Hidden()` + `When(st, p, Shown())` | `RevealedBy(st)` |
 | `Center()` + `Width(s)` | `Center(s)` |
-| `Center()` alone | `Center(Prose)` |
+| `Center()` alone | `Center(Readable)` |
 
 `Round`, `Pad` and `Raise` still exist. They are now overrides for the case that
 genuinely differs from the surface default, not part of the common path.
@@ -90,7 +145,7 @@ genuinely differs from the surface default, not part of the common path.
 | `Above()` | derived from `Kind` — see below |
 | The 27 `*Hover` / `*Focus` / `*Press` surface constants | private; use `Interactive()` |
 | The 18 exported `Color*Hover/Focus/Press` tokens | moved to `tinywasm/css` |
-| `Rule`, `Triplet`, and all exported `Sheet` fields | `Of()` + options only |
+| `Rule`, `Triplet`, and all exported `Sheet` fields | `For()` + options only |
 
 ### 4.1 Stacking
 
@@ -110,7 +165,7 @@ Code of this shape no longer compiles, by design:
 sh.PartRules["p"] = style.Rule{HasFlow: true, FlowType: "wobble", HasPad: true, Pad: style.Space2}
 ```
 
-Rebuild it with `Of()` and options.
+Rebuild it with `For()` and options.
 
 ---
 
@@ -142,15 +197,15 @@ style.Of(m.WidgetName()).
     Cue(widget.Hover,     "item", style.On(style.MutedHover))
 ```
 
-After — 13 options down to 9:
+After — 13 options down to 9, and every remaining name says what it does:
 
 ```go
-style.Of(m.WidgetName()).
-    Root(style.Grid(style.TrackSm, style.SpaceSm), style.On(style.Page), style.Scrolls()).
-    Part("master", style.Stack(style.SpaceXs), style.On(style.Panel)).
-    Part("detail", style.Stack(style.SpaceSm), style.On(style.Panel)).
-    Part("item",   style.Row(style.SpaceXs),   style.Interactive(style.Muted)).
-    When(widget.Selected, "item", style.On(style.Highlight))
+style.For(m.WidgetName()).
+    Root(style.Grid(style.ColumnNarrow, style.Space2), style.As(style.Page), style.Scroll()).
+    Part("master", style.Stack(style.Space1), style.As(style.Panel)).
+    Part("detail", style.Stack(style.Space2), style.As(style.Panel)).
+    Part("item",   style.Row(style.Space1),   style.Interactive(style.Subtle)).
+    When(widget.Selected, "item", style.As(style.Highlight))
 ```
 
 ---

@@ -107,13 +107,13 @@ of these.
 | Constant | Token | Value |
 |---|---|---|
 | `SpaceNone` | `--space-0` | `0` |
-| `SpaceXs` | `--space-1` | `0.25rem` |
-| `SpaceSm` | `--space-2` | `0.5rem` |
-| `SpaceMd` | `--space-3` | `0.75rem` |
-| `SpaceLg` | `--space-4` | `1rem` |
-| `SpaceXl` | `--space-6` | `1.5rem` |
-| `Space2xl` | `--space-8` | `2rem` |
-| `Space3xl` | `--space-12` | `3rem` |
+| `Space1` | `--space-1` | `0.25rem` |
+| `Space2` | `--space-2` | `0.5rem` |
+| `Space3` | `--space-3` | `0.75rem` |
+| `Space4` | `--space-4` | `1rem` |
+| `Space6` | `--space-6` | `1.5rem` |
+| `Space8` | `--space-8` | `2rem` |
+| `Space12` | `--space-12` | `3rem` |
 
 **Invariant:** no two steps resolve to the same token.
 
@@ -126,14 +126,14 @@ of these.
 | `Weight` | `WeightRegular, WeightMedium, WeightBold` | `--font-weight-*` |
 | `Elevation` | `Flat, Raised, Floating, Popover` | `none`, `--shadow-sm/md/lg` |
 | `Motion` | `MotionNone, MotionFast, MotionBase, MotionSlow` | `none`, `--duration-*` + `--ease-in-out` |
-| `Track` | `TrackSm, TrackMd, TrackLg` | `--track-sm/md/lg` |
-| `Size` | `Content, Prose, Third, Half, TwoThirds, Full` | `max-content`, `--max-w-prose`, `33.33%`, `50%`, `66.66%`, `100%` |
+| `ColumnWidth` | `ColumnNarrow, ColumnMedium, ColumnWide` | `--column-narrow/medium/wide` |
+| `Size` | `Content, Readable, Third, Half, TwoThirds, Full` | `max-content`, `--max-w-prose`, `33.33%`, `50%`, `66.66%`, `100%` |
 | `SplitRatio` | `SplitHalf, SplitTwoThirds, SplitThreeQuarters` | `1fr`, `2fr`, `3fr` (against a trailing `1fr`) |
 | `Aspect` | `AspectSquare, Aspect3x2, Aspect4x3, Aspect16x9` | `1/1`, `3/2`, `4/3`, `16/9` |
 | `Scope` | `Parent, Viewport` | `position: absolute` / `fixed` |
 
 `Size` percentages and `Aspect` fractions are geometry, not theme, and are the
-only literals the drift guard permits. `Track` requires `--track-*` to exist in
+only literals the drift guard permits. `ColumnWidth` requires `--column-*` to exist in
 `tinywasm/css`; adding them is a prerequisite of the release.
 
 ---
@@ -143,7 +143,7 @@ only literals the drift guard permits. `Track` requires `--track-*` to exist in
 ```go
 type Surface uint8
 const (
-    Page, Panel, Sunken, Accent, Secondary, Highlight, Success, Danger, Muted, Dimmed
+    Page, Panel, Inset, Primary, Secondary, Highlight, Success, Danger, Subtle, Inactive
 )
 ```
 
@@ -152,15 +152,15 @@ A surface resolves background, text, border, radius and padding together.
 | Surface | Background | Text | Border | Radius | Padding |
 |---|---|---|---|---|---|
 | `Page` | `--color-background` | `--color-on-surface` | — | none | none |
-| `Panel` | `--color-surface` | `--color-on-surface` | `1px solid --color-outline` | `RadiusMd` | `SpaceMd` |
-| `Sunken` | `--color-surface-sunken` | `--color-on-surface` | `1px solid --color-outline` | `RadiusSm` | `SpaceSm` |
-| `Accent` | `--color-primary` | `--color-on-primary` | — | `RadiusSm` | `SpaceSm` |
-| `Secondary` | `--color-secondary` | `--color-on-secondary` | — | `RadiusSm` | `SpaceSm` |
-| `Highlight` | `--color-selection` | `--color-on-selection` | — | `RadiusSm` | `SpaceSm` |
-| `Success` | `--color-success` | `--color-on-success` | — | `RadiusSm` | `SpaceSm` |
-| `Danger` | `--color-error` | `--color-on-error` | — | `RadiusSm` | `SpaceSm` |
-| `Muted` | `transparent` | `--color-muted` | — | none | none |
-| `Dimmed` | `--color-disabled` | `--color-on-disabled` | — | `RadiusSm` | `SpaceSm` |
+| `Panel` | `--color-surface` | `--color-on-surface` | `1px solid --color-outline` | `RadiusMd` | `Space3` |
+| `Inset` | `--color-surface-sunken` | `--color-on-surface` | `1px solid --color-outline` | `RadiusSm` | `Space2` |
+| `Primary` | `--color-primary` | `--color-on-primary` | — | `RadiusSm` | `Space2` |
+| `Secondary` | `--color-secondary` | `--color-on-secondary` | — | `RadiusSm` | `Space2` |
+| `Highlight` | `--color-selection` | `--color-on-selection` | — | `RadiusSm` | `Space2` |
+| `Success` | `--color-success` | `--color-on-success` | — | `RadiusSm` | `Space2` |
+| `Danger` | `--color-error` | `--color-on-error` | — | `RadiusSm` | `Space2` |
+| `Subtle` | `transparent` | `--color-muted` | — | none | none |
+| `Inactive` | `--color-disabled` | `--color-on-disabled` | — | `RadiusSm` | `Space2` |
 
 Explicit `Round()`, `Pad()` or `Raise()` on the same rule overrides the surface
 default.
@@ -177,7 +177,7 @@ declared in `tinywasm/css`.
 | focus | `:focus-visible` | background → `--color-<family>-focus`, plus `1px solid --color-primary` |
 | press | `:active` | background → `--color-<family>-press` |
 
-`Muted` is the one family whose hover/press must not be a black wash: it resolves
+`Subtle` is the one family whose hover/press must not be a black wash: it resolves
 to `--color-hover` so it remains visible in dark mode.
 
 **Invariant:** it is not expressible to combine one family's base with another
@@ -192,11 +192,11 @@ family's interaction state.
 | `Stack(gap)` | `display:flex; flex-direction:column; min-height:0`, and `> * + * { margin-block-start: var(--gap) }` |
 | `Row(gap)` | `display:flex; flex-wrap:wrap; gap:var(--gap); align-items:center` |
 | `Split(r, gap)` | `container-type:inline-size; display:grid; gap:var(--gap); grid-template-columns:var(--ratio) 1fr`, collapsing to `1fr` under `@container (max-width: 40rem)` |
-| `Grid(min, gap)` | `display:grid; gap:var(--gap); grid-template-columns:repeat(auto-fit, minmax(min(var(--track),100%),1fr))` |
+| `Grid(min, gap)` | `display:grid; gap:var(--gap); grid-template-columns:repeat(auto-fit, minmax(min(var(--column),100%),1fr))` |
 | `Center(max)` | `margin-inline:auto; width:100%; max-width:var(--max-width)` |
-| `Cover()` | `display:grid; place-items:center; min-height:100%; width:100%` |
-| `Reel(gap)` | `display:flex; gap:var(--gap); overflow-x:auto; scroll-snap-type:x mandatory`, and `> * { scroll-snap-align:start; flex:0 0 auto }` |
-| `Frame(a)` | `aspect-ratio:var(--ratio); overflow:hidden; display:flex; justify-content:center; align-items:center`, and `> img, > video { width:100%; height:100%; object-fit:cover }` |
+| `FillCentered()` | `display:grid; place-items:center; min-height:100%; width:100%` |
+| `ScrollRow(gap)` | `display:flex; gap:var(--gap); overflow-x:auto; scroll-snap-type:x mandatory`, and `> * { scroll-snap-align:start; flex:0 0 auto }` |
+| `MediaBox(a)` | `aspect-ratio:var(--ratio); overflow:hidden; display:flex; justify-content:center; align-items:center`, and `> img, > video { width:100%; height:100%; object-fit:cover }` |
 
 No emitted selector may begin with `.fl-` or `.exc-`.
 
@@ -205,38 +205,38 @@ No emitted selector may begin with `.fl-` or `.exc-`.
 ## 5. Remaining options
 
 ```go
-func On(s Surface) Opt
-func Interactive(s Surface) Opt
-func RevealedBy(st widget.State) Opt
-func Pad(Space) Opt
-func Round(Radius) Opt
-func Raise(Elevation) Opt
-func Width(Size) Opt
-func FontSize(TextSize) Opt
-func FontWeight(Weight) Opt
-func Animate(Motion) Opt
-func Fill() Opt
-func Scrolls() Opt
-func Fixed() Opt
-func Flush() Opt
-func Clip() Opt
-func Backdrop(Scope) Opt
-func Scrim() Opt
+func As(s Surface) Option
+func Interactive(s Surface) Option
+func RevealedBy(st widget.State) Option
+func Pad(Space) Option
+func Round(Radius) Option
+func Raise(Elevation) Option
+func Width(Size) Option
+func FontSize(TextSize) Option
+func FontWeight(Weight) Option
+func Animate(Motion) Option
+func Fill() Option
+func Scroll() Option
+func KeepSize() Option
+func EdgeToEdge() Option
+func HideOverflow() Option
+func Backdrop(Scope) Option
+func Veil() Option
 ```
 
 | Option | Emits |
 |---|---|
 | `Fill()` | `height:100%; min-height:0; flex-grow:1` |
-| `Scrolls()` | `overflow-y:auto` plus everything `Fill()` emits |
-| `Fixed()` | `flex-shrink:0; flex-grow:0` |
-| `Flush()` | `margin:0; border-radius:0` |
-| `Clip()` | `overflow:hidden` |
+| `Scroll()` | `overflow-y:auto` plus everything `Fill()` emits |
+| `KeepSize()` | `flex-shrink:0; flex-grow:0` |
+| `EdgeToEdge()` | `margin:0; border-radius:0` |
+| `HideOverflow()` | `overflow:hidden` |
 | `Backdrop(Parent)` | `position:absolute; inset:0; z-index:var(<Kind layer>)` |
 | `Backdrop(Viewport)` | `position:fixed; inset:0; z-index:var(<Kind layer>)` |
-| `Scrim()` | `background-color: color-mix(in srgb, var(--color-surface,<fallback>) 60%, transparent)` |
+| `Veil()` | `background-color: color-mix(in srgb, var(--color-surface,<fallback>) 60%, transparent)` |
 | `Animate(m)` | `transition: all var(--duration-*) var(--ease-in-out)` |
 
-`Scrim()` must emit the token **with its catalog fallback**. Every rule carrying
+`Veil()` must emit the token **with its catalog fallback**. Every rule carrying
 `Animate` is repeated under `@media (prefers-reduced-motion: reduce)` with
 `transition: none`.
 
@@ -246,8 +246,8 @@ Base rule emits `display:none`. The state rule emits:
 
 | Flow declared on the same part | `display` |
 |---|---|
-| `Stack`, `Row`, `Reel`, `Frame` | `flex` |
-| `Split`, `Grid`, `Cover` | `grid` |
+| `Stack`, `Row`, `ScrollRow`, `MediaBox` | `flex` |
+| `Split`, `Grid`, `FillCentered` | `grid` |
 | `Center`, or no flow | `block` |
 
 **Invariant:** `display: revert-layer` is never emitted — it resolves to the base
@@ -258,11 +258,11 @@ Base rule emits `display:none`. The state rule emits:
 ## 6. Sheet API
 
 ```go
-func Of(n widget.Name) *Sheet
-func (s *Sheet) Root(opts ...Opt) *Sheet
-func (s *Sheet) Part(p widget.Part, opts ...Opt) *Sheet
-func (s *Sheet) When(st widget.State, p widget.Part, opts ...Opt) *Sheet
-func (s *Sheet) Cue(c widget.Cue, p widget.Part, opts ...Opt) *Sheet
+func For(n widget.Name) *Sheet
+func (s *Sheet) Root(opts ...Option) *Sheet
+func (s *Sheet) Part(p widget.Part, opts ...Option) *Sheet
+func (s *Sheet) When(st widget.State, p widget.Part, opts ...Option) *Sheet
+func (s *Sheet) Cue(c widget.Cue, p widget.Part, opts ...Option) *Sheet
 func (s *Sheet) Validate() []error
 func (s *Sheet) Stylesheet() *css.Stylesheet   // panics if Validate() is non-empty
 ```
@@ -278,7 +278,7 @@ not a string. An empty `Part` argument to `When`/`Cue` targets the root.
 |---|---|
 | `When`/`Cue` names a part never declared with `Part()` | `sheet <name>: rule for undeclared part "<part>"` |
 | A declared part produces no declarations | `sheet <name>: part "<part>" emits nothing` |
-| `Scrim()` without `Backdrop()` on the same rule | `sheet <name>: Scrim() requires Backdrop()` |
+| `Veil()` without `Backdrop()` on the same rule | `sheet <name>: Veil() requires Backdrop()` |
 | `When` uses a state `Kind.Allows` rejects | `sheet <name>: state <state> is not meaningful for kind <kind>` |
 
 ---

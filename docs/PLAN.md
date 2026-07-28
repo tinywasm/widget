@@ -91,9 +91,9 @@ Nothing below compiles until this lands. Details in
 
 - Interaction tokens for every surface family, contrast-tested alongside the rest
   of the palette.
-- A real token behind the `Muted` interaction states, replacing the `rgba()`
+- A real token behind the `Subtle` interaction states, replacing the `rgba()`
   washes.
-- `--track-sm`, `--track-md`, `--track-lg`.
+- `--column-narrow`, `--column-medium`, `--column-wide`.
 
 ---
 
@@ -102,9 +102,19 @@ Nothing below compiles until this lands. Details in
 Dependency order, not risk order. Each step lists the file it lands in and the
 SPECS section that defines it.
 
-**Step 1 — scales and renames.** `scale.go`, mechanical, unblocks everything.
-SPECS §2. Split `Ratio` into `SplitRatio` and `Aspect`; resize `Space` to eight
-steps; `Overlay`→`Popover`.
+**Step 1 — scales and the naming pass.** `scale.go`, `flow.go`, `except.go`,
+`overlay.go`. Mechanical, and unblocks everything. SPECS §2.
+
+Split `Ratio` into `SplitRatio` and `Aspect`; resize `Space` to eight steps
+mirroring `--space-N`; `Overlay`→`Popover`. Apply the full rename table in
+[MIGRATION.md §2](MIGRATION.md#2-renames) in the same commit — it is one
+mechanical sweep, and splitting it means renaming the same identifiers twice.
+
+Two entries in that table are not cosmetic and must not be dropped if the pass is
+trimmed: `Fixed()`→`KeepSize()`, because the old name reads as `position:fixed`
+and means the opposite; and `Muted`/`Dimmed`→`Subtle`/`Inactive`, because the old
+pair was two words for "faded" with nothing to tell them apart. Reasoning in
+[DESIGN.md §12](DESIGN.md#12-naming).
 
 **Step 2 — surfaces.** `surface.go`. SPECS §3. Ten constants; interaction variants
 unexported; a surface resolves radius and padding alongside colour; delete the
@@ -112,7 +122,7 @@ eighteen local tokens in favour of the `css` ones from step 3 of the prerequisit
 
 ```go
 // Interactive applies s and derives its hover, focus and press treatments.
-func Interactive(s Surface) Opt {
+func Interactive(s Surface) Option {
     return func(r *rule) { r.hasSurface, r.surface, r.interactive = true, s, true }
 }
 ```
@@ -127,9 +137,9 @@ The emitter resolves `display` from the part's own flow — it must **not** emit
 ```go
 func displayFor(f flowType) string {
     switch f {
-    case flowStack, flowRow, flowReel, flowFrame:
+    case flowStack, flowRow, flowScrollRow, flowMediaBox:
         return "flex"
-    case flowSplit, flowGrid, flowCover:
+    case flowSplit, flowGrid, flowFillCentered:
         return "grid"
     default:
         return "block"
@@ -171,7 +181,7 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 **Step 9 — tests.** Everything in §5.
 
 **Step 10 — documentation.** `GUIDE.md` (task-oriented, with the decision table
-below), `doc.go` in both packages, `Example` functions for `Of`, `Stack`, `Split`,
+below), `doc.go` in both packages, `Example` functions for `For`, `Stack`, `Split`,
 `Interactive`, `RevealedBy` and `Backdrop`, a rewritten `example/main.go` that
 builds a real sheet, and a README code block. Closes **D-8**.
 
@@ -190,24 +200,24 @@ The substitute for design judgement: the author does not choose, they look up.
 
 | I want… | Use |
 |---|---|
-| a column of things | `Stack(SpaceSm)` |
-| a row of buttons | `Row(SpaceXs)` |
-| a grid that adapts by itself | `Grid(TrackSm, SpaceSm)` |
-| list plus detail | `Split(SplitTwoThirds, SpaceMd)` |
-| a centred column of text | `Center(Prose)` |
-| a horizontal scrolling strip | `Reel(SpaceSm)` |
-| an image with a fixed proportion | `Frame(Aspect16x9)` |
-| the page background | `On(Page)` |
-| a card or panel | `On(Panel)` |
-| something clickable | `Interactive(Accent)` |
+| a column of things | `Stack(Space2)` |
+| a row of buttons | `Row(Space1)` |
+| a grid that adapts by itself | `Grid(ColumnNarrow, Space2)` |
+| list plus detail | `Split(SplitTwoThirds, Space3)` |
+| a centred column of text | `Center(Readable)` |
+| a horizontal scrolling strip | `ScrollRow(Space2)` |
+| an image with a fixed proportion | `MediaBox(Aspect16x9)` |
+| the page background | `As(Page)` |
+| a card or panel | `As(Panel)` |
+| something clickable | `Interactive(Primary)` |
 | something clickable, secondary | `Interactive(Secondary)` |
-| the selected item of a list | `When(widget.Selected, "item", On(Highlight))` |
-| secondary text | `On(Muted)` |
-| an error | `On(Danger)` |
+| the selected item of a list | `When(widget.Selected, "item", As(Highlight))` |
+| secondary text | `As(Subtle)` |
+| an error | `As(Danger)` |
 | to fill the remaining height | `Fill()` |
-| to scroll internally | `Scrolls()` |
+| to scroll internally | `Scroll()` |
 | something that expands | `RevealedBy(widget.Open)` |
-| a modal dialog | `Backdrop(Viewport)` + `Scrim()` |
+| a modal dialog | `Backdrop(Viewport)` + `Veil()` |
 
 ---
 
@@ -219,13 +229,13 @@ Every test names the defect it closes, so a regression is a named failure.
 |---|---|---|
 | `TestRevealedByKeepsFlow` | a `Row` with `RevealedBy(Open)` emits `display:flex` in the state rule; `revert-layer` appears nowhere | D-1 |
 | `TestStackingFromKind` | a `Dialog` backdrop emits `var(--z-modal…)`, a `Menu` emits `var(--z-dropdown…)`; no integer `z-index` is emitted | D-2 |
-| `TestValidateReportsAll` | a sheet with an undeclared part, an empty part and a `Scrim` without `Backdrop` returns three errors, not one | D-3 |
+| `TestValidateReportsAll` | a sheet with an undeclared part, an empty part and a `Veil` without `Backdrop` returns three errors, not one | D-3 |
 | `TestStylesheetPanicsOnInvalid` | emission panics, and the message names the offending part | D-3 |
-| `TestInteractiveDerivesFamily` | `Interactive(Accent)` emits the three `Accent` states and no other family | D-4 |
+| `TestInteractiveDerivesFamily` | `Interactive(Primary)` emits the three `Primary` states and no other family | D-4 |
 | `TestFocusVisible` | the focus cue emits `:focus-visible`; bare `:focus` appears nowhere | D-4 |
 | `TestNoInventedValues` | **extend the existing drift guard**: every `var()` matches the catalog including its fallback, and the output has no `#`, no `rgba(`, no `vw`/`vh`. The fixture must exercise **every** option — the current one does not, which is how the overlay drift got in | D-5 |
 | `TestSpaceStepsDistinct` | no two `Space` steps resolve to the same token | D-6 |
-| `TestSurfaceCarriesShape` | `On(Panel)` alone emits radius and padding; `Round(RadiusNone)` overrides it | D-6 |
+| `TestSurfaceCarriesShape` | `As(Panel)` alone emits radius and padding; `Round(RadiusNone)` overrides it | D-6 |
 | `TestNoUnreachableSelectors` | no selector begins with `.fl-` or `.exc-`; no empty `@layer` block | D-7 |
 | `TestZeroValueProvider` | `(&T{}).RenderCSS()` succeeds without reading a field | — |
 | existing WASM guard | `GOOS=js go list -deps` still excludes `widget/style`; `widget` does not import `css` | — |
