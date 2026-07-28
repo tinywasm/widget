@@ -12,17 +12,20 @@ const (
 	Viewport
 )
 
-// Overlay saca el elemento del flujo y lo estira sobre todo su Scope. Es la capa
+// Backdrop saca el elemento del flujo y lo estira sobre todo su Scope. Es la capa
 // que respalda a otra: un cazaclics o un velo. Queda por encima del contenido
 // normal y por debajo de cualquier Above().
-func Overlay(s Scope) Opt {
+//
+// Se llama Backdrop y no Overlay porque Overlay ya es el nivel máximo del enum
+// Elevation (scale.go), que consumidores publicados usan como Raise(Overlay).
+func Backdrop(s Scope) Opt {
 	return func(r *Rule) {
-		r.HasOverlay = true
-		r.OverlayScope = s
+		r.HasBackdrop = true
+		r.BackdropScope = s
 	}
 }
 
-// Above coloca el elemento por encima de cualquier Overlay: el desplegable de un
+// Above coloca el elemento por encima de cualquier Backdrop: el desplegable de un
 // menú, el panel de un diálogo. No lo saca del flujo por sí solo.
 func Above() Opt {
 	return func(r *Rule) {
@@ -31,7 +34,7 @@ func Above() Opt {
 }
 
 // Scrim rellena el elemento con un velo translúcido sobre la superficie de la
-// página. Solo tiene sentido junto a Overlay.
+// página. Solo tiene sentido junto a Backdrop.
 func Scrim() Opt {
 	return func(r *Rule) {
 		r.Scrim = true

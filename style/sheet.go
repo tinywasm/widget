@@ -41,8 +41,8 @@ type Rule struct {
 	HasWeight   bool
 	Weight      Weight
 
-	HasOverlay   bool
-	OverlayScope Scope
+	HasBackdrop   bool
+	BackdropScope Scope
 	Above        bool
 	Scrim        bool
 	Hidden       bool

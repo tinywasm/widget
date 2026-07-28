@@ -9,9 +9,9 @@ import (
 	"github.com/tinywasm/widget"
 )
 
-func TestOverlay(t *testing.T) {
-	// 1. Of("w").Root(Overlay(Viewport)) emite position: fixed y inset: 0 y z-index: 100
-	s1 := Of(widget.Name("w")).Root(Overlay(Viewport)).Stylesheet().String()
+func TestBackdrop(t *testing.T) {
+	// 1. Of("w").Root(Backdrop(Viewport)) emite position: fixed y inset: 0 y z-index: 100
+	s1 := Of(widget.Name("w")).Root(Backdrop(Viewport)).Stylesheet().String()
 	if !strings.Contains(s1, "position: fixed;") {
 		t.Errorf("expected s1 to contain 'position: fixed;', got:\n%s", s1)
 	}
@@ -22,8 +22,8 @@ func TestOverlay(t *testing.T) {
 		t.Errorf("expected s1 to contain 'z-index: 100;', got:\n%s", s1)
 	}
 
-	// 2. Of("w").Root(Overlay(Parent)) emite position: absolute (no fixed)
-	s2 := Of(widget.Name("w")).Root(Overlay(Parent)).Stylesheet().String()
+	// 2. Of("w").Root(Backdrop(Parent)) emite position: absolute (no fixed)
+	s2 := Of(widget.Name("w")).Root(Backdrop(Parent)).Stylesheet().String()
 	if !strings.Contains(s2, "position: absolute;") {
 		t.Errorf("expected s2 to contain 'position: absolute;', got:\n%s", s2)
 	}
@@ -53,11 +53,11 @@ func TestOverlay(t *testing.T) {
 	}
 
 	// 5. El caso que motiva el plan: una hoja con
-	// .Part(p, Overlay(Viewport), Hidden()).When(widget.Open, p, Shown())
+	// .Part(p, Backdrop(Viewport), Hidden()).When(widget.Open, p, Shown())
 	// emite display: none dentro de @layer widgets y display: block dentro de @layer states, en ese orden, y
 	// el selector de estado es .w__p[data-open="true"]
 	s5 := Of(widget.Name("w")).
-		Part(widget.Part("p"), Overlay(Viewport), Hidden()).
+		Part(widget.Part("p"), Backdrop(Viewport), Hidden()).
 		When(widget.Open, widget.Part("p"), Shown()).
 		Stylesheet().
 		String()
