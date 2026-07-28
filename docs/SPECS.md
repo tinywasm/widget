@@ -174,12 +174,8 @@ declared in `tinywasm/css`.
 | Cue | Selector suffix | Change |
 |---|---|---|
 | hover | `:hover` | background → `--color-<family>-hover` |
-| focus | `:focus-visible` | background → `--color-<family>-focus`, plus `2px solid --color-focus-ring` |
+| focus | `:focus-visible` | background → `--color-<family>-focus` |
 | press | `:active` | background → `--color-<family>-press` |
-
-The focus ring uses a dedicated `--color-focus-ring` token, **not**
-`--color-primary`: on the `Primary` surface itself a primary-coloured ring is
-invisible. Adding that token is a prerequisite of the release.
 
 `Subtle` is the one family whose hover/press must not be a black wash: it resolves
 to `--color-hover` so it remains visible in dark mode.

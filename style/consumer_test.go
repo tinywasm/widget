@@ -94,7 +94,7 @@ func TestConsumerMasterDetail(t *testing.T) {
 	}
 
 	// 5. GOOS=js build dependency exclusion
-	cmd := exec.Command("go", "list", "-deps", "github.com/tinywasm/widget/example")
+	cmd := exec.Command("go", "list", "-deps", "github.com/tinywasm/widget")
 	cmd.Env = append(cmd.Environ(), "GOOS=js", "GOARCH=wasm")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -102,6 +102,12 @@ func TestConsumerMasterDetail(t *testing.T) {
 	}
 	if strings.Contains(string(out), "github.com/tinywasm/widget/style") {
 		t.Error("WASM consumer depends on 'widget/style' package, violating build tag constraints")
+	}
+
+	buildCmd := exec.Command("go", "build", "github.com/tinywasm/widget")
+	buildCmd.Env = append(buildCmd.Environ(), "GOOS=js", "GOARCH=wasm")
+	if out, err := buildCmd.CombinedOutput(); err != nil {
+		t.Errorf("GOOS=js GOARCH=wasm go build github.com/tinywasm/widget failed: %v, output: %s", err, string(out))
 	}
 }
 
