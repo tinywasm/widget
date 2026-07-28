@@ -40,6 +40,13 @@ type Rule struct {
 	TextSize    TextSize
 	HasWeight   bool
 	Weight      Weight
+
+	HasOverlay   bool
+	OverlayScope Scope
+	Above        bool
+	Scrim        bool
+	Hidden       bool
+	Shown        bool
 }
 
 type stateKey struct {

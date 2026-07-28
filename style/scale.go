@@ -55,7 +55,7 @@ const (
 	Flat Elevation = iota
 	Raised
 	Floating
-	Overlay
+	Overlaid
 )
 
 type Ratio uint8

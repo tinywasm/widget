@@ -83,7 +83,7 @@ func elevationVar(e Elevation) string {
 		return css.ShadowSm.Var()
 	case Floating:
 		return css.ShadowMd.Var()
-	case Overlay:
+	case Overlaid:
 		return css.ShadowLg.Var()
 	default:
 		return "none"
@@ -244,6 +244,33 @@ func (r Rule) Decls() []string {
 	}
 	if r.HasWeight {
 		decls = append(decls, "font-weight: "+weightVar(r.Weight)+";")
+	}
+
+	// Overlay declarations
+	if r.HasOverlay {
+		if r.OverlayScope == Viewport {
+			decls = append(decls, "position: fixed;")
+		} else {
+			decls = append(decls, "position: absolute;")
+		}
+		decls = append(decls, "inset: 0;")
+		decls = append(decls, "z-index: 100;")
+	}
+
+	if r.Above {
+		decls = append(decls, "z-index: 101;")
+	}
+
+	if r.Scrim {
+		decls = append(decls, "background-color: color-mix(in srgb, var(--color-surface) 60%, transparent);")
+	}
+
+	if r.Hidden {
+		decls = append(decls, "display: none;")
+	}
+
+	if r.Shown {
+		decls = append(decls, "display: block;")
 	}
 
 	return decls
