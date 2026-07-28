@@ -179,6 +179,21 @@ func weightVar(w Weight) string {
 	}
 }
 
+func motionValue(m Motion) string {
+	switch m {
+	case MotionNone:
+		return "none"
+	case MotionFast:
+		return "all " + css.DurationFast.Var() + " " + css.EaseInOut.Var()
+	case MotionBase:
+		return "all " + css.DurationBase.Var() + " " + css.EaseInOut.Var()
+	case MotionSlow:
+		return "all " + css.DurationSlow.Var() + " " + css.EaseInOut.Var()
+	default:
+		return "none"
+	}
+}
+
 // Rule.Decls formats the declarations of a rule
 func (r Rule) Decls() []string {
 	var decls []string
@@ -243,6 +258,9 @@ func (r Rule) Decls() []string {
 	}
 	if r.HasWeight {
 		decls = append(decls, "font-weight: "+weightVar(r.Weight)+";")
+	}
+	if r.HasMotion {
+		decls = append(decls, "transition: "+motionValue(r.Motion)+";")
 	}
 
 	// Backdrop / stacking / visibility declarations
@@ -562,6 +580,36 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 	}
 
 	sb.WriteString("}\n")
+
+	// Collect selectors carrying motion across all rules (Root, Parts, States, Cues)
+	var motionSel []string
+	if s.RootRule.HasMotion {
+		motionSel = append(motionSel, selectorOf(s.Name, ""))
+	}
+	for _, p := range parts {
+		if s.PartRules[widget.Part(p)].HasMotion {
+			motionSel = append(motionSel, selectorOf(s.Name, widget.Part(p)))
+		}
+	}
+	for _, ss := range sortedStates {
+		if ss.rule.HasMotion {
+			attr := ss.key.State.Attr()
+			sel := fmt.Sprintf("%s[%s=\"%s\"]", selectorOf(s.Name, ss.key.Part), attr.Key, attr.Value)
+			motionSel = append(motionSel, sel)
+		}
+	}
+	for _, sc := range sortedCues {
+		if sc.rule.HasMotion {
+			sel := selectorOf(s.Name, sc.key.Part) + cuePseudo(sc.key.Cue)
+			motionSel = append(motionSel, sel)
+		}
+	}
+
+	if len(motionSel) > 0 {
+		sb.WriteString("@media (prefers-reduced-motion: reduce) {\n")
+		sb.WriteString(formatRule(motionSel, []string{"transition: none;"}))
+		sb.WriteString("}\n")
+	}
 
 	// Use css.Raw to produce our final, perfectly structured css.Stylesheet
 	return css.NewStylesheet(css.Raw(sb.String()))

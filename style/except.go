@@ -95,3 +95,12 @@ func FontWeight(w Weight) Opt {
 		r.Weight = w
 	}
 }
+
+// Animate aplica una transición según la escala de movimiento. El easing no se
+// elige: siempre es --ease-in-out. Una sola forma de hacerlo.
+func Animate(m Motion) Opt {
+	return func(r *Rule) {
+		r.HasMotion = true
+		r.Motion = m
+	}
+}
