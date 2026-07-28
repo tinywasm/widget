@@ -4,9 +4,6 @@ Mapping from the published API to the one specified in [SPECS.md](SPECS.md). One
 breaking release; there is no compatibility period and no aliases. Reasoning for
 that choice is in [DESIGN.md §11](DESIGN.md#11-why-one-breaking-release).
 
-> **STATUS (remove this note when the closed-API release lands):** the release
-> described here has not shipped. Until it does, the "Before" column is current.
-
 ---
 
 ## 1. Prerequisite: `tinywasm/css`

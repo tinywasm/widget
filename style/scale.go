@@ -2,24 +2,21 @@
 
 package style
 
+// Space is the spacing scale: 8 steps mirroring --space-N.
 type Space uint8
 
 const (
-	Space0 Space = iota
+	SpaceNone Space = iota
 	Space1
 	Space2
 	Space3
 	Space4
-	Space5
 	Space6
-	Space7
 	Space8
-	Space9
-	Space10
-	Space11
 	Space12
 )
 
+// Radius is the border radius scale.
 type Radius uint8
 
 const (
@@ -30,6 +27,7 @@ const (
 	RadiusFull
 )
 
+// TextSize is the typography size scale.
 type TextSize uint8
 
 const (
@@ -41,6 +39,7 @@ const (
 	Text2xl
 )
 
+// Weight is the font weight scale.
 type Weight uint8
 
 const (
@@ -49,51 +48,63 @@ const (
 	WeightBold
 )
 
+// Elevation is the shadow elevation scale.
 type Elevation uint8
 
 const (
 	Flat Elevation = iota
 	Raised
 	Floating
-	Overlay
+	Popover
 )
 
-type Ratio uint8
+// SplitRatio is the flex-grow ratio for Split partitions.
+type SplitRatio uint8
 
 const (
-	RatioHalf Ratio = iota
-	RatioTwoThirds
-	RatioThreeQuarters
+	SplitHalf SplitRatio = iota
+	SplitTwoThirds
+	SplitThreeQuarters
 )
 
-type Track uint8
+// Aspect is the aspect ratio for MediaBox containers.
+type Aspect uint8
 
 const (
-	TrackSm Track = iota
-	TrackMd
-	TrackLg
+	AspectSquare Aspect = iota
+	Aspect3x2
+	Aspect4x3
+	Aspect16x9
 )
 
-// Size es la ÚNICA medida de ancho. Relativa al contenedor, nunca al viewport —
-// las unidades vw/vh no existen en esta API.
+// ColumnWidth represents minimum column width for grids.
+type ColumnWidth uint8
+
+const (
+	ColumnNarrow ColumnWidth = iota
+	ColumnMedium
+	ColumnWide
+)
+
+// Size is the relative size measurement.
 type Size uint8
 
 const (
-	Content Size = iota // se ajusta a su contenido
-	Prose               // ancho legible (~65ch)
+	Content Size = iota // adjusts to its content
+	Readable            // readable line length
 	Third
 	Half
 	TwoThirds
-	Full // 100% del contenedor
+	Full // 100% of the container
 )
 
-// Motion es la ÚNICA escala de transición. La duración la posee css (--duration-*);
-// aquí solo se elige el peldaño. Valores arbitrarios no existen en esta API.
+// Motion is the transition scale. Duration is owned by CSS;
+// here we only select the level.
 type Motion uint8
 
 const (
-	MotionNone Motion = iota // sin transición
-	MotionFast               // realce inmediato: hover, focus
-	MotionBase               // cambio de estado
-	MotionSlow               // entrada/salida de un panel u overlay
+	MotionNone Motion = iota // no transition
+	MotionFast               // immediate highlight: hover, focus
+	MotionBase               // state change
+	MotionSlow               // panel/overlay transition
 )

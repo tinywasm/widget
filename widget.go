@@ -2,17 +2,16 @@ package widget
 
 import "github.com/tinywasm/fmt"
 
-// Name identifica un widget. Es el prefijo de TODA clase que emite, así que dos
-// widgets no pueden colisionar aunque elijan el mismo nombre de parte.
+// Name identifies a widget. It is the prefix of EVERY class it emits,
+// so two widgets cannot collide even if they choose the same part name.
 type Name string
 
-// Part es una ranura nombrada de la anatomía de un widget (vocabulario Open UI).
-// Es local al widget: "row", "menu", "header". Nunca lleva prefijo.
+// Part is a named slot of a widget's anatomy (Open UI vocabulary).
+// It is local to the widget: e.g. "row", "menu", "header". It never carries a prefix.
 type Part string
 
-// Class es un nombre de clase CSS. NO tiene constructor público: la única forma
-// de obtener una es derivarla de un Name. Escribir Class("lo-que-sea") no compila
-// fuera de este paquete.
+// Class is a CSS class name. It has NO public constructor: the only way to obtain
+// one is to derive it from a Name. This ensures markup and stylesheet agree by construction.
 type Class string
 
 func (c Class) String() string {
@@ -23,12 +22,12 @@ func (c Class) AsAttr() fmt.KeyValue {
 	return fmt.KeyValue{Key: "class", Value: string(c)}
 }
 
-// Root es la clase exterior del widget.
+// Root is the outer class of the widget.
 func (n Name) Root() Class {
 	return Class(n)
 }
 
-// Class deriva la clase de una parte: "targetlist__row".
+// Class derives the class of an anatomical part: e.g. "targetlist__row".
 func (n Name) Class(p Part) Class {
 	return Class(string(n) + "__" + string(p))
 }

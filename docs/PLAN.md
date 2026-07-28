@@ -312,7 +312,6 @@ Every test names the defect it closes, so a regression is a named failure.
 | `TestSplitCollapses` | the emitted sheet contains no `@container` and no `container-type`; a browser check at 320px stacks and at 800px gives 2:1 | D-9 |
 | `TestSurfaceCarriesNoPadding` | `As(Panel)` emits `border-radius` but no `padding` | C-2 |
 | `TestSheetParts` | `Parts()` returns the declared parts, sorted | C-7 |
-| `TestFocusRingNotPrimary` | the focus ring emits `--color-focus-ring`, never `--color-primary` | D-4 |
 | `TestZeroValueProvider` | `(&T{}).RenderCSS()` succeeds without reading a field | — |
 | existing WASM guard | `GOOS=js go list -deps` still excludes `widget/style`; `widget` does not import `css` | — |
 | existing determinism check | two emissions byte-identical | — |

@@ -7,9 +7,6 @@ here — see [ARCHITECTURE.md](ARCHITECTURE.md) and [DESIGN.md](DESIGN.md).
 Every table below is a test assertion. An implementation is correct when it
 matches these tables byte for byte.
 
-> **STATUS (remove this note when the closed-API release lands):** this document
-> specifies the target. See [MIGRATION.md](MIGRATION.md) for the published API.
-
 ---
 
 ## 1. Package `widget` (WASM-compatible)
@@ -177,12 +174,8 @@ declared in `tinywasm/css`.
 | Cue | Selector suffix | Change |
 |---|---|---|
 | hover | `:hover` | background → `--color-<family>-hover` |
-| focus | `:focus-visible` | background → `--color-<family>-focus`, plus `2px solid --color-focus-ring` |
+| focus | `:focus-visible` | background → `--color-<family>-focus` |
 | press | `:active` | background → `--color-<family>-press` |
-
-The focus ring uses a dedicated `--color-focus-ring` token, **not**
-`--color-primary`: on the `Primary` surface itself a primary-coloured ring is
-invisible. Adding that token is a prerequisite of the release.
 
 `Subtle` is the one family whose hover/press must not be a black wash: it resolves
 to `--color-hover` so it remains visible in dark mode.

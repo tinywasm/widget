@@ -3,7 +3,9 @@
 package style
 
 import (
+	goFmt "fmt"
 	"sort"
+	"strings"
 
 	"github.com/tinywasm/css"
 	"github.com/tinywasm/fmt"
@@ -23,7 +25,7 @@ func cuePseudo(c widget.Cue) string {
 	case widget.Hover:
 		return ":hover"
 	case widget.Focus:
-		return ":focus"
+		return ":focus-visible"
 	case widget.Press:
 		return ":active"
 	case widget.Target:
@@ -33,10 +35,9 @@ func cuePseudo(c widget.Cue) string {
 	}
 }
 
-// Map enums to CSS variables with fallbacks using css package tokens
 func spaceVar(s Space) string {
 	switch s {
-	case Space0:
+	case SpaceNone:
 		return "0"
 	case Space1:
 		return css.Space1.Var()
@@ -46,11 +47,11 @@ func spaceVar(s Space) string {
 		return css.Space3.Var()
 	case Space4:
 		return css.Space4.Var()
-	case Space5, Space6:
+	case Space6:
 		return css.Space6.Var()
-	case Space7, Space8:
+	case Space8:
 		return css.Space8.Var()
-	case Space9, Space10, Space11, Space12:
+	case Space12:
 		return css.Space12.Var()
 	default:
 		return "0"
@@ -82,49 +83,51 @@ func elevationVar(e Elevation) string {
 		return css.ShadowSm.Var()
 	case Floating:
 		return css.ShadowMd.Var()
-	case Overlay:
+	case Popover:
 		return css.ShadowLg.Var()
 	default:
 		return "none"
 	}
 }
 
-func ratioValue(r Ratio) string {
+func splitRatioValue(r SplitRatio) string {
 	switch r {
-	case RatioHalf:
+	case SplitHalf:
 		return "1fr"
-	case RatioTwoThirds:
+	case SplitTwoThirds:
 		return "2fr"
-	case RatioThreeQuarters:
+	case SplitThreeQuarters:
 		return "3fr"
 	default:
 		return "1fr"
 	}
 }
 
-func ratioFraction(r Ratio) string {
-	switch r {
-	case RatioHalf:
+func aspectValue(a Aspect) string {
+	switch a {
+	case AspectSquare:
 		return "1/1"
-	case RatioTwoThirds:
+	case Aspect3x2:
 		return "3/2"
-	case RatioThreeQuarters:
+	case Aspect4x3:
 		return "4/3"
+	case Aspect16x9:
+		return "16/9"
 	default:
 		return "1/1"
 	}
 }
 
-func trackValue(t Track) string {
-	switch t {
-	case TrackSm:
-		return "15rem"
-	case TrackMd:
-		return "25rem"
-	case TrackLg:
-		return "40rem"
+func columnWidthValue(cw ColumnWidth) string {
+	switch cw {
+	case ColumnNarrow:
+		return css.ColumnNarrow.Var()
+	case ColumnMedium:
+		return css.ColumnMedium.Var()
+	case ColumnWide:
+		return css.ColumnWide.Var()
 	default:
-		return "15rem"
+		return css.ColumnNarrow.Var()
 	}
 }
 
@@ -132,8 +135,8 @@ func sizeValue(s Size) string {
 	switch s {
 	case Content:
 		return "max-content"
-	case Prose:
-		return css.MaxWProse.Var()
+	case Readable:
+		return css.MaxWReadable.Var()
 	case Third:
 		return "33.33%"
 	case Half:
@@ -194,100 +197,121 @@ func motionValue(m Motion) string {
 	}
 }
 
-// Rule.Decls formats the declarations of a rule
-func (r Rule) Decls() []string {
+func displayFor(f flowType) string {
+	switch f {
+	case flowStack, flowRow, flowScrollRow, flowMediaBox:
+		return "flex"
+	case flowSplit, flowGrid, flowFillCentered:
+		return "grid"
+	default:
+		return "block"
+	}
+}
+
+func layerVar(l widget.Layer) string {
+	switch l {
+	case widget.LayerBase:
+		return css.ZBase.Var()
+	case widget.LayerDropdown:
+		return css.ZDropdown.Var()
+	case widget.LayerSticky:
+		return css.ZSticky.Var()
+	case widget.LayerModal:
+		return css.ZModal.Var()
+	case widget.LayerToast:
+		return css.ZToast.Var()
+	case widget.LayerTooltip:
+		return css.ZTooltip.Var()
+	default:
+		return css.ZBase.Var()
+	}
+}
+
+// rule.Decls formats the declarations of a rule
+func (r rule) Decls(layer widget.Layer) []string {
 	var decls []string
 
-	// Flow custom variables
-	if r.HasFlow {
-		switch r.FlowType {
-		case "stack":
-			decls = append(decls, "--gap: "+spaceVar(r.FlowGap)+";")
-		case "row":
-			decls = append(decls, "--gap: "+spaceVar(r.FlowGap)+";")
-		case "split":
-			decls = append(decls, "--gap: "+spaceVar(r.FlowGap)+";")
-			decls = append(decls, "--ratio: "+ratioValue(r.FlowRatio)+";")
-		case "grid":
-			decls = append(decls, "--gap: "+spaceVar(r.FlowGap)+";")
-			decls = append(decls, "--track: "+trackValue(r.FlowTrack)+";")
-		case "center":
-			if r.HasSize {
-				decls = append(decls, "--max-width: "+sizeValue(r.Size)+";")
+	if r.hasFlow {
+		switch r.flowType {
+		case flowStack:
+			decls = append(decls, "--gap: "+spaceVar(r.flowGap)+";")
+		case flowRow:
+			decls = append(decls, "--gap: "+spaceVar(r.flowGap)+";")
+		case flowSplit:
+			decls = append(decls, "--gap: "+spaceVar(r.flowGap)+";")
+			decls = append(decls, "--ratio: "+splitRatioValue(r.flowRatio)+";")
+		case flowGrid:
+			decls = append(decls, "--gap: "+spaceVar(r.flowGap)+";")
+			decls = append(decls, "--track: "+columnWidthValue(r.flowWidth)+";")
+		case flowCenter:
+			if r.hasSize {
+				decls = append(decls, "--max-width: "+sizeValue(r.size)+";")
 			} else {
-				decls = append(decls, "--max-width: "+css.MaxWProse.Var()+";")
+				decls = append(decls, "--max-width: "+css.MaxWReadable.Var()+";")
 			}
-		case "reel":
-			decls = append(decls, "--gap: "+spaceVar(r.FlowGap)+";")
-		case "frame":
-			decls = append(decls, "--ratio: "+ratioFraction(r.FlowRatio)+";")
+		case flowScrollRow:
+			decls = append(decls, "--gap: "+spaceVar(r.flowGap)+";")
+		case flowMediaBox:
+			decls = append(decls, "--ratio: "+aspectValue(r.flowAspect)+";")
 		}
 	}
 
-	// Surface colors
-	if r.HasSurface {
-		t := r.Surface.Resolve()
-		if t.Bg != "" {
-			decls = append(decls, "background-color: "+t.Bg+";")
+	if r.hasSurface {
+		t := r.surface.resolve()
+		if t.bg != "" {
+			decls = append(decls, "background-color: "+t.bg+";")
 		}
-		if t.Text != "" {
-			decls = append(decls, "color: "+t.Text+";")
+		if r.surface.defaultRadius() != RadiusNone && !r.hasRound {
+			decls = append(decls, "border-radius: "+radiusVar(r.surface.defaultRadius())+";")
 		}
-		if t.Border != "" {
-			decls = append(decls, "border: "+t.Border+";")
+		if t.text != "" {
+			decls = append(decls, "color: "+t.text+";")
+		}
+		if t.border != "" {
+			decls = append(decls, "border: "+t.border+";")
 		}
 	}
 
-	// Scales
-	if r.HasPad {
-		decls = append(decls, "padding: "+spaceVar(r.Pad)+";")
+	if r.hasPad {
+		decls = append(decls, "padding: "+spaceVar(r.pad)+";")
 	}
-	if r.HasRound {
-		decls = append(decls, "border-radius: "+radiusVar(r.Round)+";")
+	if r.hasRound {
+		decls = append(decls, "border-radius: "+radiusVar(r.round)+";")
 	}
-	if r.HasRaise {
-		decls = append(decls, "box-shadow: "+elevationVar(r.Raise)+";")
+	if r.hasRaise {
+		decls = append(decls, "box-shadow: "+elevationVar(r.raise)+";")
 	}
-	if r.HasSize {
-		if !r.HasFlow || r.FlowType != "center" {
-			decls = append(decls, "width: "+sizeValue(r.Size)+";")
+	if r.hasSize {
+		if !r.hasFlow || r.flowType != flowCenter {
+			decls = append(decls, "width: "+sizeValue(r.size)+";")
 		}
 	}
-	if r.HasTextSize {
-		decls = append(decls, "font-size: "+textSizeVar(r.TextSize)+";")
+	if r.hasTextSize {
+		decls = append(decls, "font-size: "+textSizeVar(r.textSize)+";")
 	}
-	if r.HasWeight {
-		decls = append(decls, "font-weight: "+weightVar(r.Weight)+";")
+	if r.hasWeight {
+		decls = append(decls, "font-weight: "+weightVar(r.weight)+";")
 	}
-	if r.HasMotion {
-		decls = append(decls, "transition: "+motionValue(r.Motion)+";")
+	if r.hasMotion {
+		decls = append(decls, "transition: "+motionValue(r.motion)+";")
 	}
 
-	// Backdrop / stacking / visibility declarations
-	if r.HasBackdrop {
-		if r.BackdropScope == Viewport {
+	if r.hasBackdrop {
+		if r.backdropScope == Viewport {
 			decls = append(decls, "position: fixed;")
 		} else {
 			decls = append(decls, "position: absolute;")
 		}
 		decls = append(decls, "inset: 0;")
-		decls = append(decls, "z-index: 100;")
+		decls = append(decls, "z-index: "+layerVar(layer)+";")
 	}
 
-	if r.Above {
-		decls = append(decls, "z-index: 101;")
+	if r.hasVeil {
+		decls = append(decls, "background-color: color-mix(in srgb, var(--color-surface,#F2F2F7) 60%, transparent);")
 	}
 
-	if r.Scrim {
-		decls = append(decls, "background-color: color-mix(in srgb, var(--color-surface) 60%, transparent);")
-	}
-
-	if r.Hidden {
+	if r.hasRevealed {
 		decls = append(decls, "display: none;")
-	}
-
-	if r.Shown {
-		decls = append(decls, "display: block;")
 	}
 
 	return decls
@@ -300,8 +324,8 @@ func formatRule(selectors []string, decls []string) string {
 	}
 	sort.Strings(selectors)
 	sort.Strings(decls)
-	sb := fmt.Convert()
-	sb.WriteString(fmt.Convert(selectors).Join(", ").String() + " {\n")
+	var sb strings.Builder
+	sb.WriteString(strings.Join(selectors, ", ") + " {\n")
 	for _, d := range decls {
 		sb.WriteString("  " + d + "\n")
 	}
@@ -309,79 +333,107 @@ func formatRule(selectors []string, decls []string) string {
 	return sb.String()
 }
 
-// Stylesheet genera un css.Stylesheet para el Sheet.
+func familyTokens(s Surface) (hover, focus, press css.Token) {
+	switch s {
+	case Panel, Inset, Highlight:
+		return css.ColorNeutralHover, css.ColorNeutralFocus, css.ColorNeutralPress
+	case Primary:
+		return css.ColorPrimaryHover, css.ColorPrimaryFocus, css.ColorPrimaryPress
+	case Secondary:
+		return css.ColorSecondaryHover, css.ColorSecondaryFocus, css.ColorSecondaryPress
+	case Success:
+		return css.ColorSuccessHover, css.ColorSuccessFocus, css.ColorSuccessPress
+	case Danger:
+		return css.ColorDangerHover, css.ColorDangerFocus, css.ColorDangerPress
+	case Subtle:
+		return css.ColorHover, css.ColorMutedFocus, css.ColorHover
+	default:
+		return css.Token{}, css.Token{}, css.Token{}
+	}
+}
+
+// Stylesheet generates a css.Stylesheet for the Sheet.
 func (s *Sheet) Stylesheet() *css.Stylesheet {
-	sb := fmt.Convert()
+	if errs := s.Validate(); len(errs) > 0 {
+		var msgs []any
+		msgs = append(msgs, "widget/style:")
+		for _, err := range errs {
+			msgs = append(msgs, err.Error())
+		}
+		panic(fmt.Err(msgs...))
+	}
+
+	var sb strings.Builder
 
 	// Fixed layer definition
 	sb.WriteString("@layer tokens, primitives, widgets, states;\n\n")
 
 	// 1. Gather selectors for primitives
-	var stackSel, rowSel, splitSel, gridSel, centerSel, coverSel, reelSel, frameSel []string
-	var fillSel, scrollsSel, fixedSel, flushSel, clipSel []string
+	var stackSel, rowSel, splitSel, gridSel, centerSel, fillCenteredSel, scrollRowSel, mediaBoxSel []string
+	var fillSel, scrollSel, keepSizeSel, edgeToEdgeSel, hideOverflowSel []string
 
-	collect := func(r Rule, sel string) {
-		if r.HasFlow {
-			switch r.FlowType {
-			case "stack":
+	collect := func(r rule, sel string) {
+		if r.hasFlow {
+			switch r.flowType {
+			case flowStack:
 				stackSel = append(stackSel, sel)
-			case "row":
+			case flowRow:
 				rowSel = append(rowSel, sel)
-			case "split":
+			case flowSplit:
 				splitSel = append(splitSel, sel)
-			case "grid":
+			case flowGrid:
 				gridSel = append(gridSel, sel)
-			case "center":
+			case flowCenter:
 				centerSel = append(centerSel, sel)
-			case "cover":
-				coverSel = append(coverSel, sel)
-			case "reel":
-				reelSel = append(reelSel, sel)
-			case "frame":
-				frameSel = append(frameSel, sel)
+			case flowFillCentered:
+				fillCenteredSel = append(fillCenteredSel, sel)
+			case flowScrollRow:
+				scrollRowSel = append(scrollRowSel, sel)
+			case flowMediaBox:
+				mediaBoxSel = append(mediaBoxSel, sel)
 			}
 		}
-		if r.Fill {
+		if r.fill {
 			fillSel = append(fillSel, sel)
 		}
-		if r.Scrolls {
-			scrollsSel = append(scrollsSel, sel)
+		if r.scroll {
+			scrollSel = append(scrollSel, sel)
 		}
-		if r.Fixed {
-			fixedSel = append(fixedSel, sel)
+		if r.keepSize {
+			keepSizeSel = append(keepSizeSel, sel)
 		}
-		if r.Flush {
-			flushSel = append(flushSel, sel)
+		if r.edgeToEdge {
+			edgeToEdgeSel = append(edgeToEdgeSel, sel)
 		}
-		if r.Clip {
-			clipSel = append(clipSel, sel)
+		if r.hideOverflow {
+			hideOverflowSel = append(hideOverflowSel, sel)
 		}
 	}
 
-	collect(s.RootRule, selectorOf(s.Name, ""))
+	collect(s.rootRule, selectorOf(s.widget.WidgetName(), ""))
 
-	// Sort parts to ensure deterministic gathering
-	var parts []string
-	for p := range s.PartRules {
-		parts = append(parts, string(p))
+	var parts []widget.Part
+	for p := range s.partRules {
+		parts = append(parts, p)
 	}
-	sort.Strings(parts)
+	sort.Slice(parts, func(i, j int) bool {
+		return parts[i] < parts[j]
+	})
 
 	for _, p := range parts {
-		collect(s.PartRules[widget.Part(p)], selectorOf(s.Name, widget.Part(p)))
+		collect(s.partRules[p], selectorOf(s.widget.WidgetName(), p))
 	}
 
-	// 2. Emit @layer primitives
-	sb.WriteString("@layer primitives {\n")
+	// 2. Emit @layer primitives (omitted entirely when empty)
+	var primitivesSB strings.Builder
 
-	emitPrimitive := func(base string, extraSel []string, decls []string) {
+	emitPrimitive := func(extraSel []string, decls []string) {
 		if len(extraSel) > 0 {
-			selectors := append([]string{base}, extraSel...)
-			sb.WriteString(formatRule(selectors, decls))
+			primitivesSB.WriteString(formatRule(extraSel, decls))
 		}
 	}
 
-	emitPrimitive(".fl-stack", stackSel, []string{
+	emitPrimitive(stackSel, []string{
 		"display: flex;",
 		"flex-direction: column;",
 		"min-height: 0;",
@@ -391,87 +443,88 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 		for _, sel := range stackSel {
 			stackKids = append(stackKids, sel+" > * + *")
 		}
-		emitPrimitive(".fl-stack > * + *", stackKids, []string{
+		emitPrimitive(stackKids, []string{
 			"margin-block-start: var(--gap);",
 		})
 	}
 
-	emitPrimitive(".fl-row", rowSel, []string{
+	emitPrimitive(rowSel, []string{
 		"display: flex;",
 		"flex-wrap: wrap;",
 		"gap: var(--gap);",
 		"align-items: center;",
 	})
 
-	emitPrimitive(".fl-split", splitSel, []string{
-		"container-type: inline-size;",
-		"display: grid;",
+	emitPrimitive(splitSel, []string{
+		"display: flex;",
+		"flex-wrap: wrap;",
 		"gap: var(--gap);",
-		"grid-template-columns: var(--ratio) 1fr;",
 	})
 	if len(splitSel) > 0 {
-		sort.Strings(splitSel)
-		sb.WriteString("@container (max-width: 40rem) {\n")
-		var splitInner []string
+		var splitKids []string
+		var splitFirst []string
 		for _, sel := range splitSel {
-			splitInner = append(splitInner, sel)
+			splitKids = append(splitKids, sel+" > *")
+			splitFirst = append(splitFirst, sel+" > :first-child")
 		}
-		ruleStr := formatRule(splitInner, []string{
-			"grid-template-columns: 1fr;",
+		emitPrimitive(splitKids, []string{
+			"flex-grow: 1;",
+			"flex-basis: calc((40rem - 100%) * 999);",
 		})
-		indented := "  " + fmt.Convert([]string{ruleStr}).Join("\n  ").String()
-		sb.WriteString(indented + "\n}\n")
+		emitPrimitive(splitFirst, []string{
+			"flex-grow: var(--ratio);",
+		})
 	}
 
-	emitPrimitive(".fl-grid", gridSel, []string{
+	emitPrimitive(gridSel, []string{
 		"display: grid;",
 		"gap: var(--gap);",
 		"grid-template-columns: repeat(auto-fit, minmax(min(var(--track), 100%), 1fr));",
 	})
 
-	emitPrimitive(".fl-center", centerSel, []string{
+	emitPrimitive(centerSel, []string{
 		"margin-inline: auto;",
-		"max-width: var(--max-width, var(--max-w-prose));",
+		"max-width: var(--max-width);",
 		"width: 100%;",
 	})
 
-	emitPrimitive(".fl-cover", coverSel, []string{
+	emitPrimitive(fillCenteredSel, []string{
 		"display: grid;",
 		"place-items: center;",
 		"min-height: 100%;",
 		"width: 100%;",
 	})
 
-	emitPrimitive(".fl-reel", reelSel, []string{
+	emitPrimitive(scrollRowSel, []string{
 		"display: flex;",
 		"gap: var(--gap);",
 		"overflow-x: auto;",
 		"scroll-snap-type: x mandatory;",
 	})
-	if len(reelSel) > 0 {
-		var reelKids []string
-		for _, sel := range reelSel {
-			reelKids = append(reelKids, sel+" > *")
+	if len(scrollRowSel) > 0 {
+		var scrollRowKids []string
+		for _, sel := range scrollRowSel {
+			scrollRowKids = append(scrollRowKids, sel+" > *")
 		}
-		emitPrimitive(".fl-reel > *", reelKids, []string{
+		emitPrimitive(scrollRowKids, []string{
 			"scroll-snap-align: start;",
 			"flex: 0 0 auto;",
 		})
 	}
 
-	emitPrimitive(".fl-frame", frameSel, []string{
+	emitPrimitive(mediaBoxSel, []string{
 		"aspect-ratio: var(--ratio);",
 		"overflow: hidden;",
 		"display: flex;",
 		"justify-content: center;",
 		"align-items: center;",
 	})
-	if len(frameSel) > 0 {
-		var frameKids []string
-		for _, sel := range frameSel {
-			frameKids = append(frameKids, sel+" > img", sel+" > video")
+	if len(mediaBoxSel) > 0 {
+		var mediaBoxKids []string
+		for _, sel := range mediaBoxSel {
+			mediaBoxKids = append(mediaBoxKids, sel+" > img", sel+" > video")
 		}
-		emitPrimitive(".fl-frame > img, .fl-frame > video", frameKids, []string{
+		emitPrimitive(mediaBoxKids, []string{
 			"width: 100%;",
 			"height: 100%;",
 			"object-fit: cover;",
@@ -479,138 +532,262 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 	}
 
 	// Exceptions
-	emitPrimitive(".exc-fill", fillSel, []string{
+	emitPrimitive(fillSel, []string{
 		"height: 100%;",
 		"min-height: 0;",
 		"flex-grow: 1;",
 	})
-
-	emitPrimitive(".exc-scrolls", scrollsSel, []string{
+	emitPrimitive(scrollSel, []string{
 		"overflow-y: auto;",
 		"height: 100%;",
 		"min-height: 0;",
 		"flex-grow: 1;",
 	})
-
-	emitPrimitive(".exc-fixed", fixedSel, []string{
+	emitPrimitive(keepSizeSel, []string{
 		"flex-shrink: 0;",
 		"flex-grow: 0;",
 	})
-
-	emitPrimitive(".exc-flush", flushSel, []string{
+	emitPrimitive(edgeToEdgeSel, []string{
 		"margin: 0;",
 		"border-radius: 0;",
 	})
-
-	emitPrimitive(".exc-clip", clipSel, []string{
+	emitPrimitive(hideOverflowSel, []string{
 		"overflow: hidden;",
 	})
 
-	sb.WriteString("}\n\n")
-
-	// 3. Emit @layer widgets
-	sb.WriteString("@layer widgets {\n")
-
-	// Root rule
-	rootDecls := s.RootRule.Decls()
-	if len(rootDecls) > 0 {
-		sb.WriteString(formatRule([]string{selectorOf(s.Name, "")}, rootDecls))
+	if primitivesSB.Len() > 0 {
+		sb.WriteString("@layer primitives {\n" + primitivesSB.String() + "}\n\n")
 	}
 
-	// Part rules (sorted)
+	// 3. Emit @layer widgets (omitted entirely when empty)
+	var widgetsSB strings.Builder
+
+	rootDecls := s.rootRule.Decls(s.widget.WidgetKind().Layer())
+	if len(rootDecls) > 0 {
+		widgetsSB.WriteString(formatRule([]string{selectorOf(s.widget.WidgetName(), "")}, rootDecls))
+	}
+
 	for _, p := range parts {
-		partDecls := s.PartRules[widget.Part(p)].Decls()
+		partDecls := s.partRules[p].Decls(s.widget.WidgetKind().Layer())
 		if len(partDecls) > 0 {
-			sb.WriteString(formatRule([]string{selectorOf(s.Name, widget.Part(p))}, partDecls))
+			widgetsSB.WriteString(formatRule([]string{selectorOf(s.widget.WidgetName(), p)}, partDecls))
 		}
 	}
 
-	sb.WriteString("}\n\n")
+	if widgetsSB.Len() > 0 {
+		sb.WriteString("@layer widgets {\n" + widgetsSB.String() + "}\n\n")
+	}
 
-	// 4. Emit @layer states
-	sb.WriteString("@layer states {\n")
+	// 4. Emit @layer states (omitted entirely when empty)
+	var statesSB strings.Builder
 
-	// Sort state rules: by state value, then part name
+	stateDecls := make(map[stateKey][]string)
+	for k, sr := range s.stateRules {
+		stateDecls[k] = sr.Decls(s.widget.WidgetKind().Layer())
+	}
+
+	// Inject Resolved display logic for RevealedBy
+	if s.rootRule.hasRevealed {
+		sk := stateKey{state: s.rootRule.revealedBy, part: ""}
+		stateDecls[sk] = append(stateDecls[sk], "display: "+displayFor(s.rootRule.flowType)+";")
+	}
+	for p, pr := range s.partRules {
+		if pr.hasRevealed {
+			sk := stateKey{state: pr.revealedBy, part: p}
+			stateDecls[sk] = append(stateDecls[sk], "display: "+displayFor(pr.flowType)+";")
+		}
+	}
+
 	type sortedState struct {
-		key  stateKey
-		rule Rule
+		key   stateKey
+		decls []string
 	}
 	var sortedStates []sortedState
-	for k, r := range s.StateRules {
-		sortedStates = append(sortedStates, sortedState{key: k, rule: r})
+	for k, decls := range stateDecls {
+		if len(decls) > 0 {
+			sortedStates = append(sortedStates, sortedState{key: k, decls: decls})
+		}
 	}
 	sort.Slice(sortedStates, func(i, j int) bool {
-		if sortedStates[i].key.State != sortedStates[j].key.State {
-			return sortedStates[i].key.State < sortedStates[j].key.State
+		if sortedStates[i].key.state != sortedStates[j].key.state {
+			return sortedStates[i].key.state < sortedStates[j].key.state
 		}
-		return sortedStates[i].key.Part < sortedStates[j].key.Part
+		return sortedStates[i].key.part < sortedStates[j].key.part
 	})
 
 	for _, ss := range sortedStates {
-		decls := ss.rule.Decls()
-		if len(decls) > 0 {
-			attr := ss.key.State.Attr()
-			sel := fmt.Sprintf("%s[%s=\"%s\"]", selectorOf(s.Name, ss.key.Part), attr.Key, attr.Value)
-			sb.WriteString(formatRule([]string{sel}, decls))
+		attr := ss.key.state.Attr()
+		sel := fmt.Sprintf("%s[%s=\"%s\"]", selectorOf(s.widget.WidgetName(), ss.key.part), attr.Key, attr.Value)
+		statesSB.WriteString(formatRule([]string{sel}, ss.decls))
+	}
+
+	// Cue Rules and Interactive Cues
+	cueDecls := make(map[cueKey][]string)
+	for k, cr := range s.cueRules {
+		cueDecls[k] = cr.Decls(s.widget.WidgetKind().Layer())
+	}
+
+	addInteractive := func(p widget.Part, r rule) {
+		if r.interactive {
+			h, f, pr := familyTokens(r.surface)
+			if h.Name != "" {
+				k := cueKey{cue: widget.Hover, part: p}
+				cueDecls[k] = append(cueDecls[k], "background-color: "+h.Var()+";")
+			}
+			if f.Name != "" {
+				k := cueKey{cue: widget.Focus, part: p}
+				cueDecls[k] = append(cueDecls[k], "background-color: "+f.Var()+";")
+			}
+			if pr.Name != "" {
+				k := cueKey{cue: widget.Press, part: p}
+				cueDecls[k] = append(cueDecls[k], "background-color: "+pr.Var()+";")
+			}
 		}
 	}
 
-	// Sort cue rules: by cue value, then part name
+	addInteractive("", s.rootRule)
+	for _, p := range parts {
+		addInteractive(p, s.partRules[p])
+	}
+
 	type sortedCue struct {
-		key  cueKey
-		rule Rule
+		key   cueKey
+		decls []string
 	}
 	var sortedCues []sortedCue
-	for k, r := range s.CueRules {
-		sortedCues = append(sortedCues, sortedCue{key: k, rule: r})
+	for k, decls := range cueDecls {
+		if len(decls) > 0 {
+			sortedCues = append(sortedCues, sortedCue{key: k, decls: decls})
+		}
 	}
 	sort.Slice(sortedCues, func(i, j int) bool {
-		if sortedCues[i].key.Cue != sortedCues[j].key.Cue {
-			return sortedCues[i].key.Cue < sortedCues[j].key.Cue
+		if sortedCues[i].key.cue != sortedCues[j].key.cue {
+			return sortedCues[i].key.cue < sortedCues[j].key.cue
 		}
-		return sortedCues[i].key.Part < sortedCues[j].key.Part
+		return sortedCues[i].key.part < sortedCues[j].key.part
 	})
 
 	for _, sc := range sortedCues {
-		decls := sc.rule.Decls()
-		if len(decls) > 0 {
-			sel := selectorOf(s.Name, sc.key.Part) + cuePseudo(sc.key.Cue)
-			sb.WriteString(formatRule([]string{sel}, decls))
-		}
+		sel := selectorOf(s.widget.WidgetName(), sc.key.part) + cuePseudo(sc.key.cue)
+		statesSB.WriteString(formatRule([]string{sel}, sc.decls))
 	}
 
-	sb.WriteString("}\n")
+	if statesSB.Len() > 0 {
+		sb.WriteString("@layer states {\n" + statesSB.String() + "}\n\n")
+	}
 
-	// Collect selectors carrying motion across all rules (Root, Parts, States, Cues)
+	// Prefers reduced motion (only if any rule carries Animate)
 	var motionSel []string
-	if s.RootRule.HasMotion {
-		motionSel = append(motionSel, selectorOf(s.Name, ""))
+	if s.rootRule.hasMotion {
+		motionSel = append(motionSel, selectorOf(s.widget.WidgetName(), ""))
 	}
 	for _, p := range parts {
-		if s.PartRules[widget.Part(p)].HasMotion {
-			motionSel = append(motionSel, selectorOf(s.Name, widget.Part(p)))
+		if s.partRules[p].hasMotion {
+			motionSel = append(motionSel, selectorOf(s.widget.WidgetName(), p))
 		}
 	}
-	for _, ss := range sortedStates {
-		if ss.rule.HasMotion {
-			attr := ss.key.State.Attr()
-			sel := fmt.Sprintf("%s[%s=\"%s\"]", selectorOf(s.Name, ss.key.Part), attr.Key, attr.Value)
+	for k, sr := range s.stateRules {
+		if sr.hasMotion {
+			attr := k.state.Attr()
+			sel := fmt.Sprintf("%s[%s=\"%s\"]", selectorOf(s.widget.WidgetName(), k.part), attr.Key, attr.Value)
 			motionSel = append(motionSel, sel)
 		}
 	}
-	for _, sc := range sortedCues {
-		if sc.rule.HasMotion {
-			sel := selectorOf(s.Name, sc.key.Part) + cuePseudo(sc.key.Cue)
+	for k, cr := range s.cueRules {
+		if cr.hasMotion {
+			sel := selectorOf(s.widget.WidgetName(), k.part) + cuePseudo(k.cue)
 			motionSel = append(motionSel, sel)
 		}
 	}
 
 	if len(motionSel) > 0 {
+		sort.Strings(motionSel)
 		sb.WriteString("@media (prefers-reduced-motion: reduce) {\n")
 		sb.WriteString(formatRule(motionSel, []string{"transition: none;"}))
 		sb.WriteString("}\n")
 	}
 
-	// Use css.Raw to produce our final, perfectly structured css.Stylesheet
+	// Ensure there are no empty trailing lines or incorrect double spaces
 	return css.NewStylesheet(css.Raw(sb.String()))
+}
+
+// Validate validates the Sheet according to SPECS.md §6.1.
+func (s *Sheet) Validate() []error {
+	var errs []error
+
+	// 1. When/Cue names a part never declared with Part() (excluding empty part, which is root)
+	for k := range s.stateRules {
+		if k.part != "" {
+			if _, exists := s.partRules[k.part]; !exists {
+				errs = append(errs, goFmt.Errorf("sheet %s: rule for undeclared part %q", s.widget.WidgetName(), k.part))
+			}
+		}
+	}
+	for k := range s.cueRules {
+		if k.part != "" {
+			if _, exists := s.partRules[k.part]; !exists {
+				errs = append(errs, goFmt.Errorf("sheet %s: rule for undeclared part %q", s.widget.WidgetName(), k.part))
+			}
+		}
+	}
+
+	// 2. A declared part produces no declarations
+	for p, pr := range s.partRules {
+		if len(pr.Decls(s.widget.WidgetKind().Layer())) == 0 {
+			errs = append(errs, goFmt.Errorf("sheet %s: part %q emits nothing", s.widget.WidgetName(), p))
+		}
+	}
+
+	// 3. Veil() without Backdrop() on the same rule
+	checkVeil := func(p widget.Part, r rule) {
+		if r.hasVeil && !r.hasBackdrop {
+			errs = append(errs, goFmt.Errorf("sheet %s: part %q: Veil() requires Backdrop()", s.widget.WidgetName(), p))
+		}
+	}
+	checkVeil("", s.rootRule)
+	for p, pr := range s.partRules {
+		checkVeil(p, pr)
+	}
+	for k, sr := range s.stateRules {
+		if sr.hasVeil && !sr.hasBackdrop {
+			errs = append(errs, goFmt.Errorf("sheet %s: part %q: Veil() requires Backdrop()", s.widget.WidgetName(), k.part))
+		}
+	}
+	for k, cr := range s.cueRules {
+		if cr.hasVeil && !cr.hasBackdrop {
+			errs = append(errs, goFmt.Errorf("sheet %s: part %q: Veil() requires Backdrop()", s.widget.WidgetName(), k.part))
+		}
+	}
+
+	// 4. When uses a state Kind.Allows rejects
+	for k := range s.stateRules {
+		if !s.widget.WidgetKind().Allows(k.state) {
+			errs = append(errs, goFmt.Errorf("sheet %s: part %q: state %s is not meaningful for kind %s", s.widget.WidgetName(), k.part, k.state, s.widget.WidgetKind()))
+		}
+	}
+
+	// 5. Interactive() on Page or Inactive
+	checkInteractive := func(p widget.Part, r rule) {
+		if r.interactive && (r.surface == Page || r.surface == Inactive) {
+			errs = append(errs, goFmt.Errorf("sheet %s: part %q: surface %s has no interaction states", s.widget.WidgetName(), p, r.surface))
+		}
+	}
+	checkInteractive("", s.rootRule)
+	for p, pr := range s.partRules {
+		checkInteractive(p, pr)
+	}
+
+	return errs
+}
+
+// Parts returns the declared parts, sorted.
+func (s *Sheet) Parts() []widget.Part {
+	var parts []widget.Part
+	for p := range s.partRules {
+		parts = append(parts, p)
+	}
+	sort.Slice(parts, func(i, j int) bool {
+		return parts[i] < parts[j]
+	})
+	return parts
 }

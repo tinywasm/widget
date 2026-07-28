@@ -2,105 +2,104 @@
 
 package style
 
-// Fill toma el alto disponible completo.
-func Fill() Opt {
-	return func(r *Rule) {
-		r.Fill = true
+// Fill takes up the entire available height.
+func Fill() Option {
+	return func(r *rule) {
+		r.fill = true
 	}
 }
 
-// Scrolls desborda internamente en vez de crecer. Implica Fill().
-func Scrolls() Opt {
-	return func(r *Rule) {
-		r.Scrolls = true
-		r.Fill = true
+// Scroll overflows internally instead of growing. Implies Fill().
+func Scroll() Option {
+	return func(r *rule) {
+		r.scroll = true
+		r.fill = true
 	}
 }
 
-// Fixed NO reflota: mantiene su disposición bajo cualquier ancho.
-func Fixed() Opt {
-	return func(r *Rule) {
-		r.Fixed = true
+// KeepSize does NOT reflow: maintains its size under any width.
+func KeepSize() Option {
+	return func(r *rule) {
+		r.keepSize = true
 	}
 }
 
-// Flush es sin radio ni margen: pega a ras del contenedor padre.
-func Flush() Opt {
-	return func(r *Rule) {
-		r.Flush = true
+// EdgeToEdge has no border radius or margin: flush against parent container.
+func EdgeToEdge() Option {
+	return func(r *rule) {
+		r.edgeToEdge = true
 	}
 }
 
-// Clip recorta a los hijos (overflow:hidden).
-func Clip() Opt {
-	return func(r *Rule) {
-		r.Clip = true
+// HideOverflow clips descendants (overflow: hidden).
+func HideOverflow() Option {
+	return func(r *rule) {
+		r.hideOverflow = true
 	}
 }
 
-// Opciones visuales basadas en escalas.
+// Visual options based on scales.
 
-// Pad aplica relleno interno (padding) según la escala de espacio.
-func Pad(s Space) Opt {
-	return func(r *Rule) {
-		r.HasPad = true
-		r.Pad = s
+// Pad applies internal padding according to the space scale.
+func Pad(s Space) Option {
+	return func(r *rule) {
+		r.hasPad = true
+		r.pad = s
 	}
 }
 
-// Round aplica radio de borde (border-radius) según la escala de radio.
-func Round(rad Radius) Opt {
-	return func(r *Rule) {
-		r.HasRound = true
-		r.Round = rad
+// Round applies border radius according to the radius scale.
+func Round(rad Radius) Option {
+	return func(r *rule) {
+		r.hasRound = true
+		r.round = rad
 	}
 }
 
-// Raise aplica elevación (box-shadow) según la escala de elevación.
-func Raise(e Elevation) Opt {
-	return func(r *Rule) {
-		r.HasRaise = true
-		r.Raise = e
+// Raise applies shadow elevation according to the elevation scale.
+func Raise(e Elevation) Option {
+	return func(r *rule) {
+		r.hasRaise = true
+		r.raise = e
 	}
 }
 
-// Width aplica la única medida de ancho relativa (Size) aceptada en la API.
-func Width(s Size) Opt {
-	return func(r *Rule) {
-		r.HasSize = true
-		r.Size = s
+// Width applies the relative width (Size) to the rule.
+func Width(s Size) Option {
+	return func(r *rule) {
+		r.hasSize = true
+		r.size = s
 	}
 }
 
-// On establece la decisión de superficie de color (background, texto y borde).
-func On(s Surface) Opt {
-	return func(r *Rule) {
-		r.HasSurface = true
-		r.Surface = s
+// As sets the surface decision (background, text, border, and radius default).
+func As(s Surface) Option {
+	return func(r *rule) {
+		r.hasSurface = true
+		r.surface = s
 	}
 }
 
-// Text establece el tamaño del texto.
-func Text(ts TextSize) Opt {
-	return func(r *Rule) {
-		r.HasTextSize = true
-		r.TextSize = ts
+// FontSize sets the text size.
+func FontSize(ts TextSize) Option {
+	return func(r *rule) {
+		r.hasTextSize = true
+		r.textSize = ts
 	}
 }
 
-// FontWeight establece el grosor de la fuente.
-func FontWeight(w Weight) Opt {
-	return func(r *Rule) {
-		r.HasWeight = true
-		r.Weight = w
+// FontWeight sets the font weight.
+func FontWeight(w Weight) Option {
+	return func(r *rule) {
+		r.hasWeight = true
+		r.weight = w
 	}
 }
 
-// Animate aplica una transición según la escala de movimiento. El easing no se
-// elige: siempre es --ease-in-out. Una sola forma de hacerlo.
-func Animate(m Motion) Opt {
-	return func(r *Rule) {
-		r.HasMotion = true
-		r.Motion = m
+// Animate applies a transition according to the motion scale.
+func Animate(m Motion) Option {
+	return func(r *rule) {
+		r.hasMotion = true
+		r.motion = m
 	}
 }
