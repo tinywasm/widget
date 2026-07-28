@@ -10,20 +10,11 @@ honest note where the proposal is a judgement call rather than a fix.
 Read this before extending the library, and before concluding that a limitation
 you hit is a bug.
 
-**Status of each proposal.** Six are accepted and scheduled; two are deliberately
-deferred with a named trigger. The reasoning for each verdict — and the test it
-was judged by — is recorded once, in the execution plan, not duplicated here.
-
-| | Cost | Verdict |
-|---|---|---|
-| C-1 | No sanctioned escape | Deferred — trigger: third real request |
-| C-2 | Padding in surfaces | **Accepted**, specified |
-| C-3 | Stacking cannot see composition | **Half accepted** — see below |
-| C-4 | Panic couples cosmetics to the build | **Accepted**, specified |
-| C-5 | One change, three repositories | Deferred — trigger: second surface family |
-| C-6 | Appearance cannot depend on data | **Accepted** as documentation |
-| C-7 | Parts unverified against markup | **Accepted**, specified |
-| C-8 | No viewport-scoped mechanism | **Accepted** as documentation |
+Only **open** costs are recorded here. A weakness that has been accepted and
+scheduled stops being a trade-off and becomes work: its reasoning moves to
+[DESIGN.md](DESIGN.md), its behaviour to [SPECS.md](SPECS.md), and its steps to
+the execution plan. Keeping a copy here would mean two places to keep in sync,
+and the copy would rot first.
 
 ---
 
@@ -75,17 +66,21 @@ tightening it rather than trusting it.
 
 ---
 
-## Part 2 — What it costs, and what to do about it
+## Part 2 — Open costs
+
+Three remain unresolved. Each carries a proposed improvement and the reason it
+has **not** been built yet — in every case, that building it now would cost more
+than leaving it.
 
 ### C-1. Zero escape has no sanctioned exit
 
 **The cost.** Every real project eventually needs a value the scale does not
 have. Zero escape means the author's only recourse is hand-written CSS outside
-the system — which is strictly worse than a controlled escape: it is invisible to
-the drift guard, sits outside the layer model, and is not themeable.
+the system — strictly worse than a controlled escape: invisible to the drift
+guard, outside the layer model, and not themeable.
 
-The constraint is stated as "no new values". That is not actually what the
-architecture needs.
+The constraint is stated as "no new values". That is not what the architecture
+actually needs.
 
 **Proposed improvement.** Restate the rule as **no *undeclared* values**, and add
 one option that accepts a `css.Token` and nothing else:
@@ -94,201 +89,95 @@ one option that accepts a `css.Token` and nothing else:
 func Custom(prop string, t css.Token) Option
 ```
 
-A one-off must therefore still be declared as a token in `tinywasm/css`, where it
-is themeable, dark-mode-aware and contrast-tested. The escape stays inside the
-model.
+A one-off must then still be declared as a token in `tinywasm/css`, where it is
+themeable, dark-mode-aware and contrast-tested. The escape stays inside the model.
 
-**Justification.** The property that matters is not the size of the scale — it is
-that every value has a declaration someone can theme and test. A `css.Token`
-parameter preserves that while removing the incentive to leave the system
-entirely. A `string` parameter would not, which is why the signature takes a
-token.
+**Justification.** What matters is not the size of the scale — it is that every
+value has a declaration someone can theme and test. A `css.Token` parameter
+preserves that while removing the incentive to leave the system entirely. A
+`string` parameter would not, which is why the signature takes a token.
 
-**Risk, stated plainly.** `prop` is a free string, so this is the one place the
-zero-escape guarantee is relaxed. Constrain it to an allow-list of properties the
-engine does not otherwise emit, and have the drift guard assert that `Custom` is
-the only source of such declarations.
+**Why it is not built.** Adding a function is not a breaking change, so it can
+land in any later minor release — the one-breaking-window argument does not apply.
+And shipping an escape *before* knowing which values are genuinely missing is how
+an escape becomes the default path. It is also the only proposal here that
+weakens the core guarantee, which deserves evidence rather than speculation.
 
-### C-2. Padding does not belong to a surface
+**Trigger.** Build it when the third genuine request arrives. Until then the
+answer is to extend the token catalog, which is the sanctioned path already.
 
-**The cost.** [DESIGN.md §5](DESIGN.md#5-why-a-surface-carries-shape) folds
-radius *and padding* into the surface. Radius is genuinely part of a panel's
-identity. Padding is not: the same `Panel` is a padded card in one place and a
-flush container for a table in another, so the "one option" win evaporates
-exactly in the cases that differ, replaced by an override the author must
-remember.
+**Risk to weigh when building it.** `prop` is a free string — the one place zero
+escape would be relaxed. Constrain it to an allow-list of properties the engine
+does not otherwise emit, and have the drift guard assert `Custom` is the only
+source of such declarations.
 
-This is an over-reach in the current proposal, not an inherited defect.
-
-**Proposed improvement.** A surface resolves **background, text, border and
-radius**. Padding returns to being an explicit `Pad()`.
-
-**Justification.** The test for folding a property into a surface is whether its
-value is implied by the surface's *identity*. Two panels always want the same
-radius — it is what makes them look like the same system. Two panels frequently
-want different padding, because padding is a function of what the part contains,
-which is a layout decision the surface cannot see. Folding in a property that
-varies converts a saved call into a remembered exception, which is a net loss.
-
-**Cost of the change.** The reference example goes from 10 options back to 12.
-That is the correct number: the two `Pad()` calls are real decisions, and hiding
-them was the mistake.
-
-### C-3. Stacking derived from `Kind` cannot see composition
+### C-2. Stacking derived from `Kind` cannot see composition
 
 **The cost.** `Kind` yields one stacking level per pattern. Correct stacking is a
 property of the *composition*, not the pattern: a dialog opened from within a
 dialog needs to sit above it, and both resolve to `--z-modal`. Nesting the same
 pattern is unrepresentable.
 
-**Proposed improvement — deferred.** Let a widget that genuinely nests declare a
-relative bump, `Backdrop(Viewport, Above(parentKind))`, resolving to the parent's
-level plus one step — bounded and typed, unlike a free integer.
+**Proposed improvement.** Let a widget that genuinely nests declare a relative
+bump — `Backdrop(Viewport, Above(parentKind))`, resolving to the parent's level
+plus one step. Bounded and typed, unlike a free integer.
 
-**Justification for deferring.** Role and valid states genuinely follow from the
-pattern and should stay derived. Stacking does not. But nested overlays have not
-been shown to occur in this suite, and designing an escape for a case that may
-not exist is how escapes become the default path. The limitation is recorded
-below; the API is not.
+**Justification.** Role and valid states genuinely follow from the pattern and
+should stay derived; stacking does not, because it depends on what contains what,
+which `Kind` cannot know by construction.
 
-**A related claim, withdrawn.** An earlier revision of this document argued that
-`Split`'s `container-type: inline-size` contains `position: fixed` descendants,
-so a modal opened inside a split pane would cover only that pane. **Measured in
-Chromium, that is false**: a fixed child of a `container-type` element covers the
-full viewport, identically to no containment. Only full `contain: layout`
-contains it.
+**Why it is not built.** Nested overlays have not been shown to occur in this
+suite. Designing an escape for a case that may not exist is the same failure as
+C-1, and the cost of being wrong is bounded: a component that needs it cannot be
+built without leaving the library, which is a loud failure rather than a silent
+one.
 
-The measurement did surface a real defect in its place, and a worse one:
-`Split`'s responsive collapse **never fires at all**, because it sets
-`container-type` on the same selector its `@container` rule targets and an
-element is never its own query container. That is now defect D-9, and the fix —
-intrinsic sizing instead of a query — is in this release. Details and
-measurements in [SPECS.md §4.1](SPECS.md#41-split-uses-no-container-query-deliberately).
+**Trigger.** The first component in the suite that nests two overlays of the same
+pattern.
 
-### C-4. Panicking couples a cosmetic mistake to a failed build
-
-**The cost.** `Stylesheet()` panics on an invalid sheet, and `ssr` calls it from
-a generated program at build time. A misspelt part name therefore fails a deploy,
-and the panic surfaces from a program the author never wrote, with a stack that
-points at generated code.
-
-The decision is right — see [DESIGN.md §4](DESIGN.md#4-why-an-invalid-sheet-panics)
-— but its blast radius is larger than that section acknowledges.
-
-**Proposed improvement.** Keep the panic; make it diagnosable, on both sides of
-the boundary.
-
-- Every message names the sheet, the part and the option — specified in
-  [SPECS.md §6.1](SPECS.md#61-validation-conditions).
-- `ssr` recovers per producer and reports *which package and type* panicked,
-  rather than failing the whole extraction opaquely. This is a concrete
-  requirement on the other repository, not a suggestion.
-
-**Justification.** The objection to panicking is really an objection to
-undiagnosable panics. A build that fails with `sheet "targetlist": rule for
-undeclared part "itm"` is a thirty-second fix; the alternative — a warning — is
-how the original silent-CSS problem shipped.
-
-### C-5. One visual change is a three-repository change
+### C-3. One visual change is a three-repository change
 
 **The cost.** Adding a surface family means a token plus a contrast test in
 `css`, a constant plus a resolution entry in `widget`, and a release of each in
 order. What a designer thinks of as "add a colour" is a coordinated multi-repo
-change, and the boundary that makes the architecture sound is what makes this
-slow.
+change — the boundary that makes the architecture sound is what makes this slow.
 
 **Proposed improvement.** Generate the surface resolution table in `widget` from
-the `css` catalog, with a `go:generate` step and a test asserting the generated
+the `css` catalog with a `go:generate` step, plus a test asserting the generated
 table is current. The `widget` side of a new family becomes mechanical and
 verified rather than hand-written and forgettable.
 
 **Justification.** The boundary is worth its cost — see
 [DESIGN.md §1](DESIGN.md#1-why-tinywasmcss-stays) — so the answer is to reduce
-the friction rather than remove the boundary. Generation also closes the drift
-class directly: a hand-written table can disagree with the catalog, and four such
-disagreements are already in the published code.
+the friction, not remove the boundary. Generation also closes a drift class
+directly: a hand-written table can disagree with the catalog, and four such
+disagreements exist in the published code.
+
+**Why it is not built.** Pure internal tooling with no API surface, so it can
+land at any time, and the drift it prevents is already caught by the emitted-CSS
+drift guard. Adding a code generator to a twelve-step release buys nothing.
+
+**Trigger.** When a second surface family is added.
 
 **Not proposed: merging `css` into `widget`.** It would collapse the contrast
-guarantee into the component library and make `css` unusable on its own, which is
-a much larger loss than the coordination cost.
+guarantee into the component library and make `css` unusable on its own — a much
+larger loss than the coordination cost.
 
-### C-6. Appearance cannot depend on component data
-
-**The cost.** Producers run on a zero value, so a component whose appearance
-depends on configuration — a table with a variable column count, a chart with N
-series — cannot express it in its sheet.
-
-**Proposed improvement.** Accept the constraint, and document the sanctioned
-alternative: the component writes a custom property on the element
-(`style="--columns: 7"`) and the sheet consumes it via `var(--columns)`. The
-sheet stays static and cacheable; the variation stays in the markup, where the
-data is.
-
-**Justification.** Static sheets are what make extraction, caching and
-deduplication possible at all. The alternative — sheets parameterised at
-build time — multiplies the emitted CSS by the number of configurations and
-defeats `ssr`'s content-hash cache. The custom-property route costs one
-declaration and keeps every guarantee.
-
-**Limitation of the proposal.** That inline `style` attribute is a genuine hole
-in "no free strings": it is written by the component, not by the engine, and
-nothing checks it. Confining it to numeric custom properties keeps the hole
-small, but it is a hole.
-
-### C-7. A part can exist in markup and not in the sheet, or the reverse
-
-**The cost.** `Validate()` catches a `When` naming an undeclared part, because
-both are in the sheet. It cannot catch the more common pair: markup that
-references a part the sheet never declares, or a declared part no markup ever
-carries. The sheet cannot see the markup.
-
-**Proposed improvement.** Expose the declared set:
-
-```go
-func (s *Sheet) Parts() []widget.Part
-```
-
-and provide a test helper that compares it against the parts a component's render
-actually emits. Component authors already declare parts as constants — the
-pattern in `field.go` — so the comparison is cheap.
-
-**Justification.** This is the one remaining silent-CSS path after this release.
-It cannot be closed by the emitter, only by a test the component owns, so the
-library's job is to make that test one line rather than to attempt detection it
-structurally cannot perform.
-
-### C-8. There is no viewport-scoped mechanism at all
-
-**The cost.** Components size themselves from their own width, never from the
-viewport — `Grid` through `auto-fit`/`minmax`, `Split` through flex basis. That is
-right for components and is what lets one behave identically in a sidebar and on
-a page.
-
-But some decisions are legitimately viewport-scoped — a mobile navigation
-pattern, a print layout — and the API can express none of them, having removed
-`vw`/`vh` and media queries entirely.
-
-**Proposed improvement — accepted, documentation only.** Leave the component API
-as it is and place viewport-level decisions in the application shell, where `css`
-already publishes `--bp-sm` through `--bp-xl`. Document the split explicitly:
-**a component responds to its own width; the shell responds to the viewport.**
-
-**Justification.** A component that reacts to the viewport is unusable inside a
-sidebar — exactly the bug intrinsic sizing avoids. Allowing the escape at
-component level would reintroduce it. The breakpoint tokens already exist and go
-unused, so the shell-level path needs documentation, not new API.
+---
 
 ## Part 3 — Accepted limitations
 
-Recorded so they are not rediscovered as bugs.
+Recorded so they are not rediscovered as bugs. Unlike Part 2 these have no
+proposed improvement: they are consequences of decisions worth keeping.
 
 | Limitation | Why it is accepted |
 |---|---|
 | One token catalog for all widgets | Per-widget theming would defeat the single visual system the library exists to enforce. Scope-level overrides of `--color-*` on a subtree remain available. |
 | `Kind` is a closed enum | A component fitting no ARIA pattern is almost always two components. Extending the enum is a deliberate act, which is the intent. |
-| Nested overlays of the same pattern | Two dialogs both resolve to `--z-modal`. Recorded rather than designed for — see C-3. |
 | No animation beyond a transition scale | Keyframes are an open-ended language; admitting them would reopen the whole surface the closed scales exist to shut. Components needing them fall back to application CSS. |
 | Height cannot be declared | Content-driven height is what makes the primitives composable. `Fill()` and `Scroll()` cover the cases that need it. |
+| Appearance cannot vary with component data | Sheets are static per component type, which is what makes extraction and caching possible. The custom-property route is specified in [ARCHITECTURE.md §8.1](ARCHITECTURE.md#81-appearance-that-depends-on-component-data). |
+| No viewport-scoped mechanism at component level | A component that reacts to the viewport is unusable in a sidebar. Shell-level decisions are covered in [ARCHITECTURE.md §6.4](ARCHITECTURE.md#64-flow-primitives). |
 
 ---
 
@@ -296,4 +185,4 @@ Recorded so they are not rediscovered as bugs.
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) — the structure being assessed.
 - [DESIGN.md](DESIGN.md) — why each decision was taken.
-- [SPECS.md](SPECS.md) — exact behaviour, including the validations referenced here.
+- [SPECS.md](SPECS.md) — exact behaviour.

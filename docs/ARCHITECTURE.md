@@ -134,9 +134,18 @@ in a sidebar and on a page. No emitted rule uses `@container` or `@media`, and
 none needs a wrapper element to work — which keeps the engine from coupling to
 DOM structure.
 
-Decisions that are genuinely viewport-scoped belong to the application shell, not
-to a component — see
-[TRADEOFFS.md C-8](TRADEOFFS.md#c-8-there-is-no-viewport-scoped-mechanism-at-all).
+The consequence is that there is **no viewport-scoped mechanism at component
+level at all**: no `vw`/`vh`, no media queries. Some decisions are legitimately
+viewport-scoped — a mobile navigation pattern, a print layout — and the division
+is deliberate:
+
+> **A component responds to its own width. The application shell responds to the
+> viewport.**
+
+Shell-level decisions belong in application CSS, where `tinywasm/css` already
+publishes `--bp-sm` through `--bp-xl`. Admitting the escape at component level
+would reintroduce exactly the bug intrinsic sizing avoids: a component that
+reacts to the viewport is unusable inside a sidebar.
 
 ### 6.5 Visibility
 
@@ -187,6 +196,29 @@ Sheets are concatenated across components, so anything a single sheet repeats is
 repeated once per component in the shipped stylesheet. That is why this module
 minimises per-sheet preamble and leaves cross-sheet deduplication to `ssr`, which
 is the only layer that can see all sheets at once.
+
+### 8.1 Appearance that depends on component data
+
+A sheet is static per component *type*, so a component whose appearance depends
+on its configuration — a table with a variable column count, a chart with N
+series — cannot express that in the sheet itself.
+
+The sanctioned route is a custom property written by the component onto the
+element, consumed by the sheet through `var()`:
+
+```
+markup   <div class="chart" style="--series: 7">
+sheet    .chart { grid-template-columns: repeat(var(--series), 1fr) }
+```
+
+The sheet stays static and cacheable; the variation stays in the markup, where
+the data already is. Parameterising sheets instead would multiply the emitted CSS
+by the number of configurations and defeat `ssr`'s content-hash cache.
+
+This is the one place the "no free strings" guarantee is not enforced: that
+`style` attribute is written by the component and nothing checks it. Confining it
+to **numeric custom properties** keeps the hole small, and it is a hole by
+design rather than by oversight.
 
 ---
 

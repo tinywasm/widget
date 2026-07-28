@@ -111,27 +111,36 @@ Nothing below compiles until this lands. Details in
 
 ## 3b. Trade-off verdicts
 
-[TRADEOFFS.md](TRADEOFFS.md) proposes eight improvements. Six are in this
-release, two are deliberately not. The test applied to each: **does deferring it
-cost more than doing it now?**
+The architecture review raised eight costs. Six are in this release, two are not.
+The test applied to each: **does deferring it cost more than doing it now?**
 
-| | Proposal | Verdict | Why |
-|---|---|---|---|
-| C-2 | Padding out of surfaces | **In** — step 2 | Changes what `As(Panel)` *emits* without changing its signature. Ship it wrong and removing it later silently changes every consumer's spacing with no compile error. Behaviour breaks with no compile break are the worst thing to defer. |
-| C-3 | `Split` mechanism | **In** — step 4 | Its premise turned out to be a live defect, D-9: the responsive collapse never fires. Replacing the mechanism fixes that and removes the hazard, rather than validating around it. |
-| C-4a | Diagnosable messages | **In** — step 8 | Already specified in SPECS §6.1. Free. |
-| C-6 | Data-dependent appearance | **In** — step 11, docs only | The zero-value contract is being written down for the first time in this release. Leaving the sanctioned alternative undocumented guarantees the first person who hits it invents something worse. |
-| C-7 | `Sheet.Parts()` | **In** — step 9 | Ten lines, and it is the last silent-CSS path. Shipping "we closed silent CSS" while leaving the most common instance open undercuts the release's own claim. |
-| C-8 | Shell vs component responsiveness | **In** — step 11, docs only | No API. One paragraph in `GUIDE.md`. |
-| C-1 | Sanctioned escape `Custom()` | **Out** | Adding a function is not breaking, so the one-window argument does not apply — it can land in any later minor release. And shipping an escape *before* knowing which values are genuinely missing is how the escape becomes the default path. It is also the only proposal that weakens the core guarantee, which deserves evidence rather than speculation. **Trigger: build it when the third real request arrives; until then, extend the catalog.** |
-| C-5 | Generate the surface table | **Out** | Pure internal tooling, no API, lands any time. The drift it prevents is already caught by the guard in step 10. Adding a generator to a twelve-step release buys nothing. **Trigger: when a second surface family is added.** |
+**In this release**
 
-C-3's other half — a relative `Above(parentKind)` for nested overlays — is **out**
-for the same reason as C-1: real, but unevidenced in this suite. Recorded as an
-accepted limitation, not designed speculatively.
+| Improvement | Step | Why it cannot wait |
+|---|---|---|
+| Padding out of surfaces | 2 | Changes what `As(Panel)` *emits* without changing its signature. Ship it wrong and reverting later silently changes every consumer's spacing with no compile error. Behaviour breaks with no compile break are the worst thing to defer. |
+| `Split` without a container query | 4 | Its premise turned out to be a live defect, D-9: the responsive collapse never fires. Replacing the mechanism fixes that and removes the hazard, rather than validating around it. |
+| Diagnosable validation messages | 8 | Already specified in SPECS §6.1. Free. |
+| `Sheet.Parts()` | 9 | Ten lines, and the last silent-CSS path the emitter structurally cannot see. Shipping "we closed silent CSS" while leaving the most common instance open undercuts the release's own claim. |
+| Custom-property route for data-dependent appearance | 11 | Documentation only. The zero-value contract is being written down for the first time here; leaving the sanctioned alternative unstated guarantees the first person who hits it invents something worse. |
+| Component-versus-shell responsiveness | 11 | Documentation only. One paragraph, and the rule is now load-bearing since no primitive emits a query at all. |
 
-C-4's second half, recovering per producer so a panic names its package, is a
-requirement on `tinywasm/ssr` and belongs in that repository's plan.
+Their reasoning now lives in [DESIGN.md](DESIGN.md) and their behaviour in
+[SPECS.md](SPECS.md); they are no longer listed as costs.
+
+**Deliberately out**, with triggers, in [TRADEOFFS.md](TRADEOFFS.md):
+
+- **A sanctioned escape (`Custom`).** Adding a function is not breaking, so the
+  one-window argument does not apply. Shipping an escape before knowing which
+  values are genuinely missing is how it becomes the default path, and it is the
+  only proposal that weakens the core guarantee.
+- **Relative stacking for nested overlays.** Real, but unevidenced in this suite.
+- **Generating the surface table from the catalog.** Internal tooling, no API,
+  lands any time; the drift it prevents is already caught in step 10.
+
+One requirement crossed the boundary: recovering per producer so a panicking
+sheet names its package belongs to `tinywasm/ssr`, and is E-7 in that
+repository's plan.
 
 ---
 
@@ -156,7 +165,7 @@ pair was two words for "faded" with nothing to tell them apart. Reasoning in
 
 **Step 2 — surfaces.** `surface.go`. SPECS §3. Ten constants; interaction variants
 unexported; a surface resolves background, text, border and **radius** — not
-padding (TRADEOFFS C-2, accepted); reject `Interactive` on `Page` and `Inactive`;
+padding — see [DESIGN.md §5](DESIGN.md#5-why-a-surface-carries-shape); reject `Interactive` on `Page` and `Inactive`;
 delete the eighteen local tokens in favour of the `css` ones from the
 prerequisite.
 
@@ -235,7 +244,7 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 }
 ```
 
-**Step 9 — `Sheet.Parts()`.** `sheet.go`. TRADEOFFS C-7, accepted. Returns the
+**Step 9 — `Sheet.Parts()`.** `sheet.go`. SPECS §6. Returns the
 declared parts, sorted, so a component test can compare them against the parts its
 render actually emits. Ten lines, and it closes the last silent-CSS path the
 emitter structurally cannot see.

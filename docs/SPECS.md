@@ -149,9 +149,8 @@ const (
 ```
 
 A surface resolves background, text, border and **radius** together. It does
-**not** resolve padding: padding varies with what a part contains, so folding it
-in converts a saved call into a remembered exception. See
-[TRADEOFFS.md C-2](TRADEOFFS.md#c-2-padding-does-not-belong-to-a-surface).
+**not** resolve padding — reasoning in
+[DESIGN.md §5](DESIGN.md#5-why-a-surface-carries-shape).
 
 | Surface | Background | Text | Border | Radius |
 |---|---|---|---|---|

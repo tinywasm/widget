@@ -147,9 +147,8 @@ convert a saved call into a remembered exception.
 composability, and the set is never complete — every project needs the ninth one.
 
 **History.** An earlier revision folded padding in as well. That was an
-over-reach, argued down in
-[TRADEOFFS.md C-2](TRADEOFFS.md#c-2-padding-does-not-belong-to-a-surface) and
-corrected here.
+over-reach: it converted a saved call into a remembered exception precisely in
+the cases that differ from the default, which is a net loss.
 
 ---
 
