@@ -1,66 +1,189 @@
 # Architecture of `tinywasm/widget`
 
-This document defines the **What** and **Why** of visual contracts, anatomy, states, layout, and the style system for components in the `tinywasm/widget` architecture.
+Defines the **what** and **why** of visual contracts, anatomy, states, layout, and
+the style system. Abstract structure only — exact values, signatures and emission
+tables live in [SPECS.md](SPECS.md); the reasoning behind each choice and the
+alternatives rejected live in [DESIGN.md](DESIGN.md).
+
+> **STATUS (remove this note when the closed-API release lands):** this document
+> describes the target architecture. The published code still exposes the
+> pre-release API — see [MIGRATION.md](MIGRATION.md) for the difference.
 
 ---
 
-## What is `tinywasm/widget`
+## 1. What `tinywasm/widget` is
 
-`tinywasm/widget` is the module governing the structure of visual components. It names and unifies the pieces a visual component consists of, the states it can occupy, and how those pieces are laid out—completely independent of data, transport, DOM, or free CSS text.
+The module governing the **structure** of visual components. It names the pieces a
+component is made of, the states it can occupy, and how those pieces are laid
+out — independent of data, transport, DOM, or free CSS text.
 
-The system is strictly divided into two packages with opposing goals and constraints:
-
-1.  **`github.com/tinywasm/widget` (Root, WASM-compatible):**
-    *   **Purpose:** Defines identity, component anatomy (Open UI), states, browser cues, and ARIA kinds.
-    *   **Constraint:** Must be extremely lightweight (zero style logic or emission) because it **travels inside the WASM binary**.
-
-2.  **`github.com/tinywasm/widget/style` (Stylesheet engine, WASM-exempt):**
-    *   **Purpose:** Defines closed scales for sizing, typography, elevation, color surfaces, flow primitives, and layout exceptions. It produces deterministic CSS stylesheets inside fixed cascade layers.
-    *   **Constraint:** Excluded from compiling on WebAssembly using the `//go:build !wasm` build constraint to prevent it from ever traveling to the client binary.
+It exists to make one claim true: **someone who does not know design can build a
+correct, accessible component without reading this library's source.** Every
+constraint below serves that claim. Where a decision requires design judgement,
+the library makes it; where it requires product judgement, the author makes it.
 
 ---
 
-## Core Structure and Components
+## 2. Position in the suite
 
-### 1. Anatomy and States Contract (Root Package)
+Three modules divide one problem. The boundary is what keeps each of them small.
 
-*   **`Name`:** Identifies a widget. It is used as a prefix for all its emitted classes and selectors, preventing name collisions.
-*   **`Part`:** A named local slot of a widget anatomy (e.g., `"row"`, `"menu"`, `"header"`).
-*   **`Class`:** A CSS class name derived deterministically from a `Name` and a `Part` (e.g., `.targetlist__row`). It is an opaque type without a public constructor outside the package, ensuring naming consistency by construction.
-*   **`State` vs `Cue`:**
-    *   `State` represents logical states owned by the widget in Go (such as `Selected`, `Disabled`, `Open`, `Invalid`). It maps directly to DOM data attributes (`data-selected="true"`) by construction.
-    *   `Cue` represents interactive browser-only states (such as `Hover`, `Focus`, `Press`, `Target`) that are styled in the stylesheet via CSS pseudo-classes (`:hover`, `:focus`).
+| Module | Owns | Never does |
+|---|---|---|
+| `tinywasm/css` | **Values** — what a colour, space, duration or z-level *is*; light/dark switching; contrast guarantees | Know anything about components |
+| `tinywasm/widget` | **Decisions** — which token applies to which part, in which state | Invent a value |
+| `tinywasm/ssr` | **Delivery** — collect the sheets actually used, order and deduplicate them | Know what a widget is |
 
----
+See [diagrams/BOUNDARIES.md](diagrams/BOUNDARIES.md).
 
-## Stylesheet and Layout System (`widget/style`)
-
-The stylesheet engine is designed under the **zero escape** principle: it does not accept free strings, viewport units (`vw`/`vh`), or arbitrary custom styling utilities.
-
-### 1. Closed Scales and Enums
-All visual properties are specified through strict, typed scales:
-*   `Space`: System spacing scale (0 to 12).
-*   `Radius`: Border radius options (`RadiusSm`, `RadiusMd`, `RadiusLg`, `RadiusFull`).
-*   `TextSize` & `Weight`: A closed typography system.
-*   `Elevation`: Shadows representing height (`Flat`, `Raised`, `Floating`, `Overlay`).
-*   `Size`: Relative container-based width options (`Content`, `Prose`, `Third`, `Half`, `TwoThirds`, `Full`). Height cannot be directly declared, promoting automatic content flow.
-
-### 2. Colors as Complete Decisions: `Surface`
-Arbitrary color selections for backgrounds or text are not allowed. A `Surface` unifies background, text color, and borders into a single cohesive visual decision (e.g., `Page`, `Panel`, `Sunken`, `Accent`), ensuring proper contrast ratio by design.
-
-### 3. Responsive Flow Primitives (`Flow`)
-Inspired by *Every Layout*, it defines primitives like `Stack`, `Row`, `Split`, and `Grid`. These are inherently responsive and use container queries (`@container`) instead of media queries (`@media`), reacting directly to their own container's width.
+`tinywasm/css` is a hard dependency and is meant to stay one. This module emits
+*references* (`var(--color-primary, …)`); something must declare those variables
+and switch them for dark mode, and that is `css`. More importantly, `css` owns the
+contrast guarantee across the palette — which is what makes a surface safe to hand
+to an author who cannot evaluate contrast themselves. Rationale in
+[DESIGN.md §1](DESIGN.md#1-why-tinywasmcss-stays).
 
 ---
 
-## CSS Emission Guarantees
+## 3. Package boundaries
 
-The stylesheet generator (`emit.go`) outputs CSS conforming to the following guarantees:
+Two packages with opposing constraints.
 
-1.  **Fixed Layer Order (Cascade Layers):**
-    ```css
-    @layer tokens, primitives, widgets, states;
-    ```
-    This completely eliminates specificity conflicts and avoids any use of `!important`.
-2.  **Stable Output:** Generating the stylesheet twice yields byte-for-byte identical output, keeping version control diffs clean.
-3.  **Flat Specificity:** All generated widget rules have a flat specificity (e.g., `.class` or `.class[data-state]`), avoiding coupling to the DOM structure.
+**`github.com/tinywasm/widget` (root, WASM-compatible).** Identity, anatomy,
+states, browser cues, ARIA kinds. It **travels inside the WASM binary**, so it
+carries zero style logic and zero emission.
+
+**`github.com/tinywasm/widget/style` (stylesheet engine, WASM-exempt).** Closed
+scales, surfaces, flow primitives, and deterministic CSS emission. Excluded from
+WebAssembly by `//go:build !wasm` so it can never reach the client binary. This is
+enforced by test, not by convention.
+
+---
+
+## 4. Anatomy and state contract
+
+- **`Name`** identifies a widget and prefixes every class it emits, so two widgets
+  cannot collide even if they choose the same part name.
+- **`Part`** is a named local slot of the anatomy (Open UI vocabulary): `"row"`,
+  `"menu"`, `"header"`. Local to its widget; never prefixed by the author.
+- **`Class`** is derived deterministically from a `Name` and a `Part`. It has **no
+  public constructor**: the only way to obtain one is to derive it. This is what
+  makes markup and stylesheet agree by construction rather than by discipline.
+- **`State`** is a state the **widget owns**: written by Go, read by the sheet. It
+  maps to a data attribute (`data-selected="true"`).
+- **`Cue`** is a state the **browser owns**. It can only be styled, never written
+  from Go — which is why it is a separate type with no attribute method.
+
+`State` and `Cue` are distinct types because confusing them is the most common way
+to produce a stylesheet that cannot be driven from the application.
+
+---
+
+## 5. Kind is load-bearing
+
+A widget declares its WAI-ARIA pattern once. The library derives from it:
+
+- the **ARIA role** the markup must carry,
+- the **stacking level** an overlay of that pattern belongs at,
+- which **states are meaningful** for that pattern, used to reject nonsense.
+
+This is the central mechanism for removing decisions from the author. Someone who
+declares "this is a Dialog" should not additionally be asked to choose a role, a
+z-index, and a set of valid states — those follow from the pattern, and getting
+them wrong is exactly what a non-specialist cannot detect.
+
+`Kind` is closed on purpose: a component that fits none of the patterns is almost
+always two components.
+
+---
+
+## 6. The style system
+
+### 6.1 Zero escape
+
+The engine accepts no free strings, no viewport units, no arbitrary values, and
+emits no `!important`. If a value is not on a closed scale, it cannot be
+expressed. The sheet builder is the only public construction path; the rule
+structures behind it are private, so there is no second way in.
+
+### 6.2 Closed scales
+
+Every visual property is chosen from a small, typed, semantic scale. Scales are
+sized to the underlying token catalog — a scale never offers a step the token
+system cannot distinguish, because a step that changes nothing teaches the author
+that the library does not work.
+
+### 6.3 Surfaces are complete decisions
+
+A `Surface` is not a colour. It is a whole visual decision — background, text,
+border, radius, padding — resolved together, plus its own hover, focus and press
+treatments. An author picks *what a thing is* (`Panel`, `Accent`, `Danger`), never
+*what it looks like*, and cannot pair one surface's base with another surface's
+hover.
+
+### 6.4 Flow primitives
+
+Layout is expressed with a closed set of primitives in the spirit of *Every
+Layout*: `Stack`, `Row`, `Split`, `Grid`, `Center`, `Cover`, `Reel`, `Frame`.
+They are inherently responsive and react to their **own container's** width via
+container queries, not to the viewport. Height is never declared directly;
+content flow determines it.
+
+### 6.5 Visibility
+
+Showing and hiding is a single declaration bound to a state, not a pair of
+opposing rules the author must place correctly. The engine restores the display
+mode the element's own flow requires, so revealing an element never destroys its
+layout.
+
+### 6.6 Validation
+
+A sheet is checked before it is emitted, and a malformed sheet is treated as a
+programming error rather than a runtime condition. Silent dead CSS — a rule for a
+part that does not exist, a modifier with no effect — is the failure mode this
+library most needs to prevent, because it is invisible in both the Go source and
+the rendered page.
+
+---
+
+## 7. Emission guarantees
+
+1. **Fixed cascade layers**, declared in a stable order: `tokens, primitives,
+   widgets, states`. This removes specificity conflicts without `!important`.
+2. **Stable output.** Emitting twice yields byte-identical bytes, so version
+   control diffs stay meaningful.
+3. **Flat specificity.** Every rule is `.class`, `.class[data-state]` or
+   `.class:pseudo`. Nothing couples to DOM structure.
+4. **No invented values.** Every emitted value is a token reference. This is
+   enforced by a drift guard that compares each `var()` against the catalog,
+   fallback included.
+5. **No unreachable selectors.** The engine emits only selectors that some markup
+   can actually carry.
+
+---
+
+## 8. Contract with `tinywasm/ssr`
+
+`ssr` compiles a generated program that instantiates a component as a **zero
+value** and calls a provider method matched **by name**. For CSS that method is
+`RenderCSS()`.
+
+Two obligations follow for every component author, and they are architectural
+rather than stylistic:
+
+1. A style builder **must not read fields**. It runs on `&T{}`.
+2. A style builder **must be pure and deterministic**.
+
+Sheets are concatenated across components, so anything a single sheet repeats is
+repeated once per component in the shipped stylesheet. That is why this module
+minimises per-sheet preamble and leaves cross-sheet deduplication to `ssr`, which
+is the only layer that can see all sheets at once.
+
+---
+
+## Related documents
+
+- [SPECS.md](SPECS.md) — exact API surface, scale mappings, and emission tables.
+- [DESIGN.md](DESIGN.md) — why each decision was made, and what was rejected.
+- [MIGRATION.md](MIGRATION.md) — moving from the pre-release API.
+- [diagrams/BOUNDARIES.md](diagrams/BOUNDARIES.md) — module boundaries.
