@@ -2,21 +2,42 @@ package widget
 
 import "github.com/tinywasm/fmt"
 
-// State es un estado que POSEE el widget: lo escribe Go, lo lee la hoja de estilos.
+// State is a state that the widget POSSESSES: written by Go, read by the stylesheet.
 type State uint8
 
 const (
 	Selected State = iota
 	Disabled
-	Locked   // solo lectura, pero plenamente legible
+	Locked  // read-only, but fully legible
 	Invalid
 	Busy
-	Open     // desplegado / expandido
-	Current  // ítem de navegación activo
+	Open    // deployed / expanded
+	Current // active navigation item
 )
 
-// Attr devuelve el atributo que el DOM escribe y sobre el que la hoja selecciona.
-// Markup y CSS coinciden por construcción, no por convención.
+func (s State) String() string {
+	switch s {
+	case Selected:
+		return "Selected"
+	case Disabled:
+		return "Disabled"
+	case Locked:
+		return "Locked"
+	case Invalid:
+		return "Invalid"
+	case Busy:
+		return "Busy"
+	case Open:
+		return "Open"
+	case Current:
+		return "Current"
+	default:
+		return "Unknown"
+	}
+}
+
+// Attr returns the attribute that the DOM writes and upon which the stylesheet selects.
+// Markup and CSS match by construction, not by convention.
 func (s State) Attr() fmt.KeyValue {
 	switch s {
 	case Selected:
@@ -38,8 +59,8 @@ func (s State) Attr() fmt.KeyValue {
 	}
 }
 
-// Cue es un estado que posee el NAVEGADOR. Solo se estiliza; no se puede escribir
-// desde Go — por eso es un tipo distinto y no tiene Attr().
+// Cue is a state that the BROWSER possesses. It is only styled;
+// it cannot be written from Go — which is why it is a separate type and has no Attr().
 type Cue uint8
 
 const (

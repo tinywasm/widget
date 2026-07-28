@@ -1,13 +1,12 @@
 package widget
 
-// Widget es la identidad. Es lo único obligatorio.
+// Widget is the identity. It is the only mandatory interface.
 type Widget interface {
 	WidgetName() Name
 	WidgetKind() Kind
 }
 
-// Capacidades — cada costura asevera solo la que necesita (patrón de la casa,
-// el mismo de view.Saver / view.Deleter).
+// Capabilities — each hook asserts only the capability it needs.
 type Selectable interface{ Select(id string) }
 type Dismissible interface{ Dismiss() }
 type Expandable interface{ Expand(open bool) }

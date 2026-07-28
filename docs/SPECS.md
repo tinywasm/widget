@@ -7,9 +7,6 @@ here — see [ARCHITECTURE.md](ARCHITECTURE.md) and [DESIGN.md](DESIGN.md).
 Every table below is a test assertion. An implementation is correct when it
 matches these tables byte for byte.
 
-> **STATUS (remove this note when the closed-API release lands):** this document
-> specifies the target. See [MIGRATION.md](MIGRATION.md) for the published API.
-
 ---
 
 ## 1. Package `widget` (WASM-compatible)

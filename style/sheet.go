@@ -2,121 +2,124 @@
 
 package style
 
-import "github.com/tinywasm/widget"
+import (
+	"github.com/tinywasm/widget"
+)
 
-// Opt es una opción visual que configura una regla.
-type Opt func(*Rule)
+// Option is a visual option that configures a rule.
+type Option func(*rule)
 
-// Rule contiene todas las propiedades visuales acumuladas para un elemento (Root o Part).
-type Rule struct {
-	HasFlow   bool
-	FlowType  string // "stack", "row", "split", "grid", "center", "cover", "reel", "frame"
-	FlowGap   Space
-	FlowRatio Ratio
-	FlowTrack Track
+// rule contains all accumulated visual properties for an element.
+type rule struct {
+	hasFlow    bool
+	flowType   flowType
+	flowGap    Space
+	flowRatio  SplitRatio
+	flowAspect Aspect
+	flowWidth  ColumnWidth
 
-	HasSurface bool
-	Surface    Surface
+	hasSurface  bool
+	surface     Surface
+	interactive bool
 
-	HasPad bool
-	Pad    Space
+	hasPad bool
+	pad    Space
 
-	HasRound bool
-	Round    Radius
+	hasRound bool
+	round    Radius
 
-	HasRaise bool
-	Raise    Elevation
+	hasRaise bool
+	raise    Elevation
 
-	HasSize bool
-	Size    Size
+	hasSize bool
+	size    Size
 
-	Fill    bool
-	Scrolls bool
-	Fixed   bool
-	Flush   bool
-	Clip    bool
+	fill         bool
+	scroll       bool
+	keepSize     bool
+	edgeToEdge   bool
+	hideOverflow bool
 
-	HasTextSize bool
-	TextSize    TextSize
-	HasWeight   bool
-	Weight      Weight
+	hasTextSize bool
+	textSize    TextSize
+	hasWeight   bool
+	weight      Weight
 
-	HasMotion bool
-	Motion    Motion
+	hasMotion bool
+	motion    Motion
 
-	HasBackdrop   bool
-	BackdropScope Scope
-	Above        bool
-	Scrim        bool
-	Hidden       bool
-	Shown        bool
+	hasBackdrop   bool
+	backdropScope Scope
+	hasVeil       bool
+	revealedBy    widget.State
+	hasRevealed   bool
 }
 
 type stateKey struct {
-	State widget.State
-	Part  widget.Part
+	state widget.State
+	part  widget.Part
 }
 
 type cueKey struct {
-	Cue  widget.Cue
-	Part widget.Part
+	cue  widget.Cue
+	part widget.Part
 }
 
-// Sheet representa el bloque de estilo scoped a un widget.
+// Sheet represents a scoped stylesheet for a widget.
 type Sheet struct {
-	Name       widget.Name
-	RootRule   Rule
-	PartRules  map[widget.Part]Rule
-	StateRules map[stateKey]Rule
-	CueRules   map[cueKey]Rule
+	widget     widget.Widget
+	rootRule   rule
+	partRules  map[widget.Part]rule
+	stateRules map[stateKey]rule
+	cueRules   map[cueKey]rule
 }
 
-// Of abre el bloque de estilo de un widget. Todas sus reglas quedan scoped a n.
-func Of(n widget.Name) *Sheet {
+// For opens the styling block for a widget.
+func For(w widget.Widget) *Sheet {
 	return &Sheet{
-		Name:       n,
-		PartRules:  make(map[widget.Part]Rule),
-		StateRules: make(map[stateKey]Rule),
-		CueRules:   make(map[cueKey]Rule),
+		widget:     w,
+		partRules:  make(map[widget.Part]rule),
+		stateRules: make(map[stateKey]rule),
+		cueRules:   make(map[cueKey]rule),
 	}
 }
 
-// Root define el estilo de la raíz del widget.
-func (s *Sheet) Root(opts ...Opt) *Sheet {
+// Root defines the style for the root element of the widget.
+func (s *Sheet) Root(opts ...Option) *Sheet {
 	for _, opt := range opts {
-		opt(&s.RootRule)
+		opt(&s.rootRule)
 	}
 	return s
 }
 
-// Part define el estilo de una parte anatómica del widget.
-func (s *Sheet) Part(p widget.Part, opts ...Opt) *Sheet {
-	r := s.PartRules[p]
+// Part defines the style for an anatomical part of the widget.
+func (s *Sheet) Part(p widget.Part, opts ...Option) *Sheet {
+	r := s.partRules[p]
 	for _, opt := range opts {
 		opt(&r)
 	}
-	s.PartRules[p] = r
+	s.partRules[p] = r
 	return s
 }
 
-// When define el estilo de una parte (o Root si p es "") cuando el widget posee un estado.
-func (s *Sheet) When(st widget.State, p widget.Part, opts ...Opt) *Sheet {
-	key := stateKey{State: st, Part: p}
-	r := s.StateRules[key]
+// When defines the style for a part (or Root if p is "") when the widget has a specific state.
+func (s *Sheet) When(st widget.State, p widget.Part, opts ...Option) *Sheet {
+	key := stateKey{state: st, part: p}
+	r := s.stateRules[key]
 	for _, opt := range opts {
 		opt(&r)
 	}
-	s.StateRules[key] = r
+	s.stateRules[key] = r
 	return s
 }
 
-// Cue define el estilo de una parte (o Root si p es "") cuando el navegador posee un cue (hover, focus, etc.).
-func (s *Sheet) Cue(c widget.Cue, p widget.Part, opts ...Opt) *Sheet {
-	key := cueKey{Cue: c, Part: p}
-	r := s.CueRules[key]
+// Cue defines the style for a part (or Root if p is "") when the browser has a cue.
+func (s *Sheet) Cue(c widget.Cue, p widget.Part, opts ...Option) *Sheet {
+	key := cueKey{cue: c, part: p}
+	r := s.cueRules[key]
 	for _, opt := range opts {
 		opt(&r)
 	}
-	s.CueRules[key] = r
+	s.cueRules[key] = r
 	return s
 }

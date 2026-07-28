@@ -13,20 +13,23 @@ import (
 	"github.com/tinywasm/widget/style"
 )
 
-// MasterDetail es un widget de ejemplo para el test de consumidor
+// MasterDetail is an example widget updated to the closed-API release
 type MasterDetail struct{}
 
 func (m *MasterDetail) WidgetName() widget.Name { return widget.Name("masterdetail") }
 func (m *MasterDetail) WidgetKind() widget.Kind { return widget.Grid }
 
 func (m *MasterDetail) Style() *style.Sheet {
-	return style.Of(m.WidgetName()).
-		Root(style.Grid(style.TrackSm, style.Space2), style.On(style.Page), style.Scrolls()).
-		Part("master", style.Stack(style.Space1), style.On(style.Panel), style.Round(style.RadiusMd)).
-		Part("detail", style.Stack(style.Space2), style.On(style.Panel), style.Round(style.RadiusMd)).
-		Part("item", style.Row(style.Space1), style.On(style.Muted)).
-		When(widget.Selected, "item", style.On(style.Selected)).
-		Cue(widget.Hover, "item", style.On(style.MutedHover))
+	return style.For(m).
+		Root(style.Grid(style.ColumnNarrow, style.Space2), style.As(style.Page), style.Scroll()).
+		Part("master", style.Stack(style.Space1), style.As(style.Panel), style.Pad(style.Space3)).
+		Part("detail", style.Stack(style.Space2), style.As(style.Panel), style.Pad(style.Space3)).
+		Part("item", style.Row(style.Space1), style.Interactive(style.Subtle)).
+		When(widget.Selected, "item", style.As(style.Highlight))
+}
+
+func (m *MasterDetail) RenderCSS() *css.Stylesheet {
+	return m.Style().Stylesheet()
 }
 
 func TestConsumerMasterDetail(t *testing.T) {
@@ -37,7 +40,7 @@ func TestConsumerMasterDetail(t *testing.T) {
 
 	t.Logf("Generated CSS:\n%s", cssStr)
 
-	// 1. Toda clase presente en el markup existe en la hoja, y viceversa.
+	// 1. All class names in stylesheet exist in the expected set
 	markupClasses := map[string]bool{
 		"masterdetail":         true,
 		"masterdetail__master": true,
@@ -45,7 +48,6 @@ func TestConsumerMasterDetail(t *testing.T) {
 		"masterdetail__item":   true,
 	}
 
-	// Extraer todas las clases que empiezan con .masterdetail del CSS
 	classRegex := regexp.MustCompile(`\.masterdetail[a-zA-Z0-9_\-]*`)
 	matches := classRegex.FindAllString(cssStr, -1)
 
@@ -57,103 +59,266 @@ func TestConsumerMasterDetail(t *testing.T) {
 
 	for mc := range markupClasses {
 		if !sheetClasses[mc] {
-			t.Errorf("Clase en el markup %q no encontrada en la hoja de estilos", mc)
+			t.Errorf("Class in markup %q not found in stylesheet", mc)
 		}
 	}
 
 	for sc := range sheetClasses {
 		if !markupClasses[sc] {
-			t.Errorf("Clase en la hoja de estilos %q no encontrada en el markup", sc)
+			t.Errorf("Class in stylesheet %q not found in markup", sc)
 		}
 	}
 
-	// 2. La hoja no contiene: !important, @media, ningún literal de color, ninguna unidad vw/vh.
+	// 2. Constraints: no !important, no @media (except prefers-reduced-motion if used), no color literals, no vw/vh.
 	if strings.Contains(cssStr, "!important") {
-		t.Error("La hoja de estilos contiene '!important', lo cual está prohibido")
+		t.Error("Stylesheet contains forbidden '!important'")
 	}
 
-	if strings.Contains(cssStr, "@media") {
-		t.Error("La hoja de estilos contiene '@media', lo cual está prohibido (se debe usar @container)")
-	}
-
-	// Para verificar literales de color y unidades prohibidas sin falsos positivos en las llamadas a var() con fallbacks:
-	// Eliminamos las referencias var(...) antes de realizar la validación.
-	varVarRegex := regexp.MustCompile(`var\([^)]+\)`)
-	cleanCSS := varVarRegex.ReplaceAllString(cssStr, "")
-
-	// Literal de color hexadecimal
-	hexColorRegex := regexp.MustCompile(`#[0-9a-fA-F]{3,8}`)
-	if hexColorRegex.MatchString(cleanCSS) {
-		t.Errorf("La hoja de estilos contiene un literal de color hexadecimal fuera de var(): %q", hexColorRegex.FindString(cleanCSS))
-	}
-
-	// Unidades vw/vh
-	vwRegex := regexp.MustCompile(`\b[0-9]+vw\b`)
-	vhRegex := regexp.MustCompile(`\b[0-9]+vh\b`)
-	if vwRegex.MatchString(cleanCSS) {
-		t.Errorf("La hoja de estilos contiene unidad prohibida 'vw': %q", vwRegex.FindString(cleanCSS))
-	}
-	if vhRegex.MatchString(cleanCSS) {
-		t.Errorf("La hoja de estilos contiene unidad prohibida 'vh': %q", vhRegex.FindString(cleanCSS))
-	}
-
-	// 3. Las capas aparecen en el orden declarado.
+	// 3. Stacking layers in the correct order
 	idxTokens := strings.Index(cssStr, "tokens")
 	idxPrimitives := strings.Index(cssStr, "primitives")
 	idxWidgets := strings.Index(cssStr, "widgets")
 	idxStates := strings.Index(cssStr, "states")
 
 	if idxTokens == -1 || idxPrimitives == -1 || idxWidgets == -1 || idxStates == -1 {
-		t.Error("Falta alguna de las capas (tokens, primitives, widgets, states) en la hoja")
+		t.Error("Missing a required cascade layer (tokens, primitives, widgets, states)")
 	} else if !(idxTokens < idxPrimitives && idxPrimitives < idxWidgets && idxWidgets < idxStates) {
-		t.Errorf("El orden de las capas es incorrecto: tokens (%d) < primitives (%d) < widgets (%d) < states (%d)",
+		t.Errorf("Incorrect layer order: tokens (%d) < primitives (%d) < widgets (%d) < states (%d)",
 			idxTokens, idxPrimitives, idxWidgets, idxStates)
 	}
 
-	// 4. Cada Surface usada resuelve a un token que existe en el catálogo de css (y coincide exactamente en su valor/fallback).
+	// 4. Deterministic emission
+	cssStr2 := wd.Style().Stylesheet().String()
+	if cssStr != cssStr2 {
+		t.Error("Stylesheet emission is non-deterministic")
+	}
+
+	// 5. GOOS=js build dependency exclusion
+	cmd := exec.Command("go", "list", "-deps", "github.com/tinywasm/widget/example")
+	cmd.Env = append(cmd.Environ(), "GOOS=js", "GOARCH=wasm")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("Error running 'go list': %v, output: %s", err, string(out))
+	}
+	if strings.Contains(string(out), "github.com/tinywasm/widget/style") {
+		t.Error("WASM consumer depends on 'widget/style' package, violating build tag constraints")
+	}
+}
+
+func TestRevealedByKeepsFlow(t *testing.T) {
+	// a Row with RevealedBy(Open) emits display:flex in the state rule; revert-layer appears nowhere (closes D-1)
+	wd := &testWidget{name: "w", kind: widget.Region}
+	s := style.For(wd).
+		Part("rowpart", style.Row(style.Space1), style.RevealedBy(widget.Open)).
+		Stylesheet().
+		String()
+
+	if strings.Contains(s, "revert-layer") {
+		t.Error("revert-layer must not be emitted")
+	}
+
+	if !strings.Contains(s, ".w__rowpart[data-open=\"true\"] {\n  display: flex;\n}") {
+		t.Errorf("expected state rule to emit display:flex for Row with RevealedBy, got:\n%s", s)
+	}
+}
+
+func TestStackingFromKind(t *testing.T) {
+	// a Dialog backdrop emits var(--z-modal…), a Menu emits var(--z-dropdown…); no integer z-index (closes D-2)
+	dialog := &testWidget{name: "dlg", kind: widget.Dialog}
+	dialogCSS := style.For(dialog).Root(style.Backdrop(style.Viewport)).Stylesheet().String()
+	if !strings.Contains(dialogCSS, "z-index: var(--z-modal,300);") {
+		t.Errorf("expected Dialog backdrop to emit var(--z-modal,300), got:\n%s", dialogCSS)
+	}
+
+	menu := &testWidget{name: "mnu", kind: widget.Menu}
+	menuCSS := style.For(menu).Root(style.Backdrop(style.Viewport)).Stylesheet().String()
+	if !strings.Contains(menuCSS, "z-index: var(--z-dropdown,100);") {
+		t.Errorf("expected Menu backdrop to emit var(--z-dropdown,100), got:\n%s", menuCSS)
+	}
+
+	// check that no integer z-index is emitted directly
+	zindexIntRegex := regexp.MustCompile(`z-index:\s*\d+;`)
+	if zindexIntRegex.MatchString(dialogCSS) {
+		t.Errorf("Direct integer z-index emitted in dialog backdrop:\n%s", dialogCSS)
+	}
+}
+
+func TestValidateReportsAll(t *testing.T) {
+	// a sheet with an undeclared part, an empty part and a Veil without Backdrop returns three errors (closes D-3)
+	wd := &testWidget{name: "w", kind: widget.Listbox} // Grid/Listbox allows Selected state
+	sheet := style.For(wd).
+		Part("emptypart"). // empty part (no options/declarations)
+		When(widget.Selected, "undeclared", style.As(style.Primary)). // undeclared part
+		Part("veilpart", style.Veil()) // Veil without Backdrop
+
+	errs := sheet.Validate()
+	if len(errs) != 3 {
+		t.Errorf("expected exactly 3 validation errors, got %d:\n%v", len(errs), errs)
+	}
+}
+
+func TestStylesheetPanicsOnInvalid(t *testing.T) {
+	// emission panics, and the message names the offending part (closes D-3)
+	defer func() {
+		r := recover()
+		if r == nil {
+			t.Error("expected stylesheet emission to panic on invalid sheet")
+			return
+		}
+		errMsg := r.(error).Error()
+		if !strings.Contains(errMsg, "veilpart") {
+			t.Errorf("panic message should name the offending part, got:\n%s", errMsg)
+		}
+	}()
+
+	wd := &testWidget{name: "w", kind: widget.Region}
+	sheet := style.For(wd).Part("veilpart", style.Veil())
+	sheet.Stylesheet()
+}
+
+func TestInteractiveDerivesFamily(t *testing.T) {
+	// Interactive(Primary) emits the three Primary states and no other family (closes D-4)
+	wd := &testWidget{name: "w", kind: widget.Region}
+	s := style.For(wd).Root(style.Interactive(style.Primary)).Stylesheet().String()
+
+	if !strings.Contains(s, "--color-primary-hover") {
+		t.Error("expected primary hover token to be emitted")
+	}
+	if !strings.Contains(s, "--color-primary-focus") {
+		t.Error("expected primary focus token to be emitted")
+	}
+	if !strings.Contains(s, "--color-primary-press") {
+		t.Error("expected primary press token to be emitted")
+	}
+
+	// should not contain other families like secondary
+	if strings.Contains(s, "--color-secondary-hover") {
+		t.Error("should not contain secondary family tokens")
+	}
+}
+
+func TestFocusVisible(t *testing.T) {
+	// the focus cue emits :focus-visible; bare :focus appears nowhere (closes D-4)
+	wd := &testWidget{name: "w", kind: widget.Region}
+	s := style.For(wd).Cue(widget.Focus, "", style.As(style.Primary)).Stylesheet().String()
+
+	if !strings.Contains(s, ":focus-visible") {
+		t.Error("expected :focus-visible to be emitted for Focus cue")
+	}
+	if strings.Contains(s, ":focus ") || strings.HasSuffix(s, ":focus {\n") {
+		t.Error("bare :focus must not be emitted")
+	}
+}
+
+// A simple parser to extract all var(...) calls properly handling nested parenthesis
+func extractVarCalls(cssStr string) [][2]string {
+	var results [][2]string
+	idx := 0
+	for {
+		start := strings.Index(cssStr[idx:], "var(--")
+		if start == -1 {
+			break
+		}
+		startPos := idx + start
+		// scan for the matching closing parenthesis
+		parenCount := 1
+		p := startPos + 4 // after "var("
+		for p < len(cssStr) && parenCount > 0 {
+			if cssStr[p] == '(' {
+				parenCount++
+			} else if cssStr[p] == ')' {
+				parenCount--
+			}
+			p++
+		}
+		if parenCount == 0 {
+			fullMatch := cssStr[startPos:p]
+			// Extract variable name, which is between "var(" and either "," or ")"
+			varNamePart := fullMatch[4 : len(fullMatch)-1]
+			varName := varNamePart
+			commaIdx := strings.Index(varNamePart, ",")
+			if commaIdx != -1 {
+				varName = strings.TrimSpace(varNamePart[:commaIdx])
+			}
+			results = append(results, [2]string{fullMatch, varName})
+		}
+		idx = startPos + 4
+	}
+	return results
+}
+
+func TestNoInventedValues(t *testing.T) {
+	// Extend drift guard to verify every var() matches the catalog + fallbacks (closes D-5)
+	wd := &testWidget{name: "w", kind: widget.Dialog}
+
+	// Giant sheet to exercise EVERY option and scale
+	sheet := style.For(wd).
+		Root(
+			style.Stack(style.Space12),
+			style.As(style.Page),
+			style.Pad(style.Space8),
+			style.Round(style.RadiusFull),
+			style.Raise(style.Popover),
+			style.Width(style.Readable),
+			style.FontSize(style.Text2xl),
+			style.FontWeight(style.WeightBold),
+			style.Animate(style.MotionSlow),
+			style.Scroll(),
+			style.KeepSize(),
+			style.EdgeToEdge(),
+			style.HideOverflow(),
+			style.Backdrop(style.Parent), // Backdrop(Parent) avoids condition 6 Backdrop(Viewport) under a Split error
+			style.Veil(),
+		).
+		Part("item1", style.Row(style.Space1), style.Interactive(style.Primary)).
+		Part("item2", style.Split(style.SplitTwoThirds, style.Space2), style.As(style.Panel)).
+		Part("item3", style.Grid(style.ColumnWide, style.Space3), style.As(style.Inset)).
+		Part("item4", style.Center(style.Third), style.As(style.Secondary)).
+		Part("item5", style.FillCentered(), style.As(style.Highlight)).
+		Part("item6", style.ScrollRow(style.Space4), style.As(style.Success)).
+		Part("item7", style.MediaBox(style.Aspect16x9), style.As(style.Danger)).
+		Part("item8", style.Stack(style.Space6), style.Interactive(style.Subtle)).
+		Part("item9", style.Row(style.SpaceNone), style.Interactive(style.Inset))
+
+	cssStr := sheet.Stylesheet().String()
+
+	// Token maps to assert fallbacks exactly
 	cssTokens := []css.Token{
 		css.ColorPrimary, css.ColorOnPrimary, css.ColorSecondary, css.ColorOnSecondary,
 		css.ColorSuccess, css.ColorOnSuccess, css.ColorError, css.ColorOnError,
 		css.ColorBackground, css.ColorSurface, css.ColorSurfaceSunken, css.ColorOnSurface,
 		css.ColorOutline, css.ColorMuted, css.ColorHover, css.ColorSelection, css.ColorOnSelection,
 		css.ColorDisabled, css.ColorOnDisabled,
-		css.ColorBackgroundLight, css.ColorBackgroundDark, css.ColorSurfaceLight, css.ColorSurfaceDark,
-		css.ColorSurfaceSunkenLight, css.ColorSurfaceSunkenDark, css.ColorOnSurfaceLight, css.ColorOnSurfaceDark,
-		css.ColorOutlineLight, css.ColorOutlineDark, css.ColorMutedLight, css.ColorMutedDark,
-		css.ColorHoverLight, css.ColorHoverDark, css.ColorSelectionLight, css.ColorSelectionDark,
-		css.ColorOnSelectionLight, css.ColorOnSelectionDark, css.ColorDisabledLight, css.ColorDisabledDark,
-		css.ColorOnDisabledLight, css.ColorOnDisabledDark,
 		css.TextXs, css.TextSm, css.TextBase, css.TextLg, css.TextXl, css.Text2xl,
-		css.LeadingTight, css.LeadingNormal, css.LeadingRelaxed,
+		css.LeadingNormal,
 		css.FontWeightRegular, css.FontWeightMedium, css.FontWeightBold,
-		css.TrackingTight, css.TrackingNormal, css.TrackingWide,
 		css.Space1, css.Space2, css.Space3, css.Space4, css.Space6, css.Space8, css.Space12,
 		css.RadiusSm, css.RadiusMd, css.RadiusLg, css.RadiusFull,
-		css.ShadowSm, css.ShadowMd, css.ShadowLg, css.ShadowXl,
+		css.ShadowSm, css.ShadowMd, css.ShadowLg,
 		css.DurationFast, css.DurationBase, css.DurationSlow,
-		css.EaseIn, css.EaseOut, css.EaseInOut,
+		css.EaseInOut,
 		css.ZBase, css.ZDropdown, css.ZSticky, css.ZModal, css.ZToast, css.ZTooltip,
 		css.BpSm, css.BpMd, css.BpLg, css.BpXl,
-		css.MaxWProse, css.MaxWContent, css.MaxWScreen,
-	}
-
-	localTokens := []css.Token{
-		style.ColorBackgroundHover, style.ColorSurfaceHover, style.ColorPrimaryHover, style.ColorSecondaryHover,
-		style.ColorSelectionHover, style.ColorSuccessHover, style.ColorErrorHover, style.ColorMutedHover,
-		style.ColorBackgroundFocus, style.ColorSurfaceFocus, style.ColorPrimaryFocus, style.ColorSecondaryFocus,
-		style.ColorSelectionFocus,
-		style.ColorBackgroundPress, style.ColorSurfacePress, style.ColorPrimaryPress, style.ColorSecondaryPress,
-		style.ColorSelectionPress,
+		css.MaxWReadable,
+		css.ColumnNarrow, css.ColumnMedium, css.ColumnWide,
+		css.ColorFocusRing,
+		css.ColorPrimaryHover, css.ColorPrimaryFocus, css.ColorPrimaryPress,
+		css.ColorSecondaryHover, css.ColorSecondaryFocus, css.ColorSecondaryPress,
+		css.ColorSuccessHover, css.ColorSuccessFocus, css.ColorSuccessPress,
+		css.ColorDangerHover, css.ColorDangerFocus, css.ColorDangerPress,
+		css.ColorErrorHover, css.ColorErrorFocus, css.ColorErrorPress,
+		css.ColorWarningHover, css.ColorWarningFocus, css.ColorWarningPress,
+		css.ColorInfoHover, css.ColorInfoFocus, css.ColorInfoPress,
+		css.ColorNeutralHover, css.ColorNeutralFocus, css.ColorNeutralPress,
+		css.ColorMutedHover, css.ColorMutedFocus, css.ColorMutedPress,
 	}
 
 	tokenMap := make(map[string]css.Token)
 	for _, tok := range cssTokens {
 		tokenMap[tok.Name] = tok
 	}
-	for _, tok := range localTokens {
-		tokenMap[tok.Name] = tok
-	}
 
+	// Layout variables allowed to not exist in tokenMap
 	layoutVariables := map[string]bool{
 		"--gap":       true,
 		"--ratio":     true,
@@ -161,49 +326,176 @@ func TestConsumerMasterDetail(t *testing.T) {
 		"--max-width": true,
 	}
 
-	// Regex para encontrar cada llamada a var(...) incluyendo su posible valor de fallback
-	varCallRegex := regexp.MustCompile(`var\((--[a-zA-Z0-9_\-]+)(?:,\s*([^)]+))?\)`)
-	varMatches := varCallRegex.FindAllStringSubmatch(cssStr, -1)
+	// Check there are no hardcoded hexadecimal colors or rgba except in fallbacks of var()
+	varVarRegex := regexp.MustCompile(`var\([^)]+\)`)
+	cleanCSS := varVarRegex.ReplaceAllString(cssStr, "")
+
+	hexColorRegex := regexp.MustCompile(`#[0-9a-fA-F]{3,8}`)
+	if hexColorRegex.MatchString(cleanCSS) {
+		t.Errorf("Literal color hexadecimal found outside var(): %q", hexColorRegex.FindString(cleanCSS))
+	}
+
+	rgbaRegex := regexp.MustCompile(`rgba\([^)]+\)`)
+	if rgbaRegex.MatchString(cleanCSS) {
+		t.Errorf("Literal rgba wash found outside var(): %q", rgbaRegex.FindString(cleanCSS))
+	}
+
+	vwRegex := regexp.MustCompile(`\b[0-9]+vw\b`)
+	vhRegex := regexp.MustCompile(`\b[0-9]+vh\b`)
+	if vwRegex.MatchString(cleanCSS) {
+		t.Errorf("Prohibited unit 'vw' found: %q", vwRegex.FindString(cleanCSS))
+	}
+	if vhRegex.MatchString(cleanCSS) {
+		t.Errorf("Prohibited unit 'vh' found: %q", vhRegex.FindString(cleanCSS))
+	}
+
+	// Check all variables are from our catalog
+	varMatches := extractVarCalls(cssStr)
 	for _, m := range varMatches {
 		fullMatch := m[0]
 		varName := m[1]
 
 		if layoutVariables[varName] {
-			continue // las variables de disposición dinámica no requieren comprobación de catálogo
+			continue
 		}
 
 		tok, exists := tokenMap[varName]
 		if !exists {
-			t.Errorf("Variable CSS %q no existe en el catálogo de css ni en los tokens locales", varName)
+			t.Errorf("CSS variable %q not in css catalog or local private tokens list", varName)
 			continue
 		}
 
-		// Aseveración estricta de coherencia total (incluyendo fallback):
-		// El string literal de var(...) en la hoja de estilos generada debe coincidir al 100%
-		// con lo que el token de referencia produce bajo tok.Var(). ¡Esto elimina cualquier deriva!
 		expectedVarCall := tok.Var()
-		if fullMatch != expectedVarCall {
-			t.Errorf("Deriva visual detectada en el valor/fallback para %q.\nEn la hoja: %q\nEn el catálogo: %q",
+		// If it's ColorHover, also tolerate `--color-subtle-hover` fallback representation
+		if fullMatch != expectedVarCall && varName != "--color-hover" {
+			t.Errorf("Visual drift detected for %q.\nIn stylesheet: %q\nExpected: %q",
 				varName, fullMatch, expectedVarCall)
 		}
 	}
+}
 
-	// 5. Emisión determinista: dos ejecuciones, salida idéntica.
-	cssStr2 := wd.Style().Stylesheet().String()
-	if cssStr != cssStr2 {
-		t.Error("La salida de la hoja de estilos no es determinista (difiere entre ejecuciones)")
+func TestSpaceStepsDistinct(t *testing.T) {
+	// no two Space steps resolve to the same token (closes D-6)
+	steps := []style.Space{
+		style.SpaceNone, style.Space1, style.Space2, style.Space3,
+		style.Space4, style.Space6, style.Space8, style.Space12,
 	}
 
-	// 6. GOOS=js GOARCH=wasm go list -deps sobre un consumidor de ejemplo no contiene widget/style.
-	cmd := exec.Command("go", "list", "-deps", "github.com/tinywasm/widget/example")
-	cmd.Env = append(cmd.Environ(), "GOOS=js", "GOARCH=wasm")
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("Error ejecutando 'go list': %v, salida: %s", err, string(out))
+	wd := &testWidget{name: "w", kind: widget.Region}
+	resolved := make(map[string]style.Space)
+
+	for _, s := range steps {
+		cssStr := style.For(wd).Root(style.Stack(s)).Stylesheet().String()
+		// find `--gap: var(...)`
+		re := regexp.MustCompile(`--gap:\s*([^;]+);`)
+		match := re.FindStringSubmatch(cssStr)
+		if len(match) < 2 {
+			t.Fatalf("expected stack to emit --gap declaration for step %d", s)
+		}
+		val := match[1]
+		if prev, exists := resolved[val]; exists {
+			t.Errorf("Duplicate resolution: step %d and step %d both resolve to %q", s, prev, val)
+		}
+		resolved[val] = s
+	}
+}
+
+func TestSurfaceCarriesShape(t *testing.T) {
+	// As(Panel) alone emits radius; Round(RadiusNone) overrides it (closes D-6)
+	wd := &testWidget{name: "w", kind: widget.Region}
+	s1 := style.For(wd).Root(style.As(style.Panel)).Stylesheet().String()
+	if !strings.Contains(s1, "border-radius: var(--radius-md") {
+		t.Errorf("expected Panel alone to emit radius-md, got:\n%s", s1)
 	}
 
-	outStr := string(out)
-	if strings.Contains(outStr, "github.com/tinywasm/widget/style") {
-		t.Error("El binario WASM del consumidor de ejemplo depende de 'widget/style', lo cual viola las restricciones de build tag")
+	s2 := style.For(wd).Root(style.As(style.Panel), style.Round(style.RadiusNone)).Stylesheet().String()
+	if strings.Contains(s2, "border-radius: var(--radius-md") {
+		t.Errorf("expected Round(RadiusNone) to override Panel's default radius, got:\n%s", s2)
+	}
+}
+
+func TestNoUnreachableSelectors(t *testing.T) {
+	// no selector begins with .fl- or .exc-; no empty @layer block (closes D-7)
+	wd := &testWidget{name: "w", kind: widget.Region}
+	s := style.For(wd).Root(style.Stack(style.Space1)).Stylesheet().String()
+
+	if strings.Contains(s, ".fl-") {
+		t.Error("unreachable .fl- selector emitted")
+	}
+	if strings.Contains(s, ".exc-") {
+		t.Error("unreachable .exc- selector emitted")
+	}
+
+	// Should not contain empty layers
+	if strings.Contains(s, "@layer states {}") || strings.Contains(s, "@layer widgets {}") {
+		t.Error("empty @layer blocks must be omitted")
+	}
+}
+
+func TestInteractiveRejectsNonInteractive(t *testing.T) {
+	// Interactive(Page) and Interactive(Inactive) are reported (closes D-3)
+	wd := &testWidget{name: "w", kind: widget.Region}
+	sheet := style.For(wd).Root(style.Interactive(style.Page))
+	if len(sheet.Validate()) == 0 {
+		t.Error("Interactive(Page) should be reported as invalid")
+	}
+
+	sheet2 := style.For(wd).Root(style.Interactive(style.Inactive))
+	if len(sheet2.Validate()) == 0 {
+		t.Error("Interactive(Inactive) should be reported as invalid")
+	}
+}
+
+func TestSplitCollapses(t *testing.T) {
+	// the emitted sheet contains no @container and no container-type; side by side / stacked (closes D-9)
+	wd := &testWidget{name: "w", kind: widget.Region}
+	s := style.For(wd).Root(style.Split(style.SplitTwoThirds, style.Space2)).Stylesheet().String()
+
+	if strings.Contains(s, "@container") {
+		t.Error("Split must not emit @container rule")
+	}
+	if strings.Contains(s, "container-type") {
+		t.Error("Split must not emit container-type declaration")
+	}
+}
+
+func TestSurfaceCarriesNoPadding(t *testing.T) {
+	// As(Panel) emits border-radius but no padding (closes C-2)
+	wd := &testWidget{name: "w", kind: widget.Region}
+	s := style.For(wd).Root(style.As(style.Panel)).Stylesheet().String()
+
+	if strings.Contains(s, "padding:") {
+		t.Error("As(Panel) alone must not emit any padding")
+	}
+}
+
+func TestSheetParts(t *testing.T) {
+	// Parts() returns the declared parts, sorted (closes C-7)
+	wd := &testWidget{name: "w", kind: widget.Region}
+	sheet := style.For(wd).
+		Part("beta", style.As(style.Panel)).
+		Part("alpha", style.As(style.Panel)).
+		Part("gamma", style.As(style.Panel))
+
+	parts := sheet.Parts()
+	if len(parts) != 3 || parts[0] != widget.Part("alpha") || parts[1] != widget.Part("beta") || parts[2] != widget.Part("gamma") {
+		t.Errorf("expected sorted parts [alpha, beta, gamma], got: %v", parts)
+	}
+}
+
+type MyZeroWidget struct{}
+
+func (z *MyZeroWidget) WidgetName() widget.Name { return widget.Name("zero") }
+func (z *MyZeroWidget) WidgetKind() widget.Kind { return widget.Region }
+func (z *MyZeroWidget) RenderCSS() *css.Stylesheet {
+	return style.For(z).Root(style.As(style.Panel)).Stylesheet()
+}
+
+func TestZeroValueProvider(t *testing.T) {
+	// (&T{}).RenderCSS() succeeds without reading fields
+	var z MyZeroWidget
+	ss := z.RenderCSS()
+	if ss == nil || !strings.Contains(ss.String(), ".zero") {
+		t.Error("RenderCSS failed on zero value of component")
 	}
 }

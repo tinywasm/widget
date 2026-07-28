@@ -5,10 +5,6 @@ the style system. Abstract structure only — exact values, signatures and emiss
 tables live in [SPECS.md](SPECS.md); the reasoning behind each choice and the
 alternatives rejected live in [DESIGN.md](DESIGN.md).
 
-> **STATUS (remove this note when the closed-API release lands):** this document
-> describes the target architecture. The published code still exposes the
-> pre-release API — see [MIGRATION.md](MIGRATION.md) for the difference.
-
 ---
 
 ## 1. What `tinywasm/widget` is

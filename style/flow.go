@@ -2,74 +2,94 @@
 
 package style
 
-// Stack define un ritmo vertical con hijos a ancho completo.
-func Stack(gap Space) Opt {
-	return func(r *Rule) {
-		r.HasFlow = true
-		r.FlowType = "stack"
-		r.FlowGap = gap
+type flowType uint8
+
+const (
+	flowNone flowType = iota
+	flowStack
+	flowRow
+	flowSplit
+	flowGrid
+	flowCenter
+	flowFillCentered
+	flowScrollRow
+	flowMediaBox
+)
+
+// Stack defines a vertical rhythm with children at full width.
+func Stack(gap Space) Option {
+	return func(r *rule) {
+		r.hasFlow = true
+		r.flowType = flowStack
+		r.flowGap = gap
 	}
 }
 
-// Row define un flujo horizontal que envuelve cuando no cabe.
-func Row(gap Space) Opt {
-	return func(r *Rule) {
-		r.HasFlow = true
-		r.FlowType = "row"
-		r.FlowGap = gap
+// Row defines a horizontal flow that wraps when it does not fit.
+func Row(gap Space) Option {
+	return func(r *rule) {
+		r.hasFlow = true
+		r.flowType = flowRow
+		r.flowGap = gap
 	}
 }
 
-// Split define dos paneles que se apilan bajo su propio ancho.
-func Split(ratio Ratio, gap Space) Opt {
-	return func(r *Rule) {
-		r.HasFlow = true
-		r.FlowType = "split"
-		r.FlowRatio = ratio
-		r.FlowGap = gap
+// Split defines two panels that stack below their own width.
+func Split(ratio SplitRatio, gap Space) Option {
+	return func(r *rule) {
+		r.hasFlow = true
+		r.flowType = flowSplit
+		r.flowRatio = ratio
+		r.flowGap = gap
 	}
 }
 
-// Grid define auto-fit + minmax sin número fijo de columnas.
-func Grid(min Track, gap Space) Opt {
-	return func(r *Rule) {
-		r.HasFlow = true
-		r.FlowType = "grid"
-		r.FlowTrack = min
-		r.FlowGap = gap
+// Grid defines auto-fit + minmax without a fixed number of columns.
+func Grid(min ColumnWidth, gap Space) Option {
+	return func(r *rule) {
+		r.hasFlow = true
+		r.flowType = flowGrid
+		r.flowWidth = min
+		r.flowGap = gap
 	}
 }
 
-// Center define una columna centrada con tope Prose/Content.
-func Center() Opt {
-	return func(r *Rule) {
-		r.HasFlow = true
-		r.FlowType = "center"
+// Center defines a centered column with an optional maximum size (defaults to Readable).
+func Center(max ...Size) Option {
+	sz := Readable
+	if len(max) > 0 {
+		sz = max[0]
+	}
+	return func(r *rule) {
+		r.hasFlow = true
+		r.flowType = flowCenter
+		r.hasSize = true
+		r.size = sz
 	}
 }
 
-// Cover llena el contenedor con un hijo centrado.
-func Cover() Opt {
-	return func(r *Rule) {
-		r.HasFlow = true
-		r.FlowType = "cover"
+// FillCentered fills the container with a centered child.
+func FillCentered() Option {
+	return func(r *rule) {
+		r.hasFlow = true
+		r.flowType = flowFillCentered
 	}
 }
 
-// Reel define una tira horizontal con scroll-snap.
-func Reel(gap Space) Opt {
-	return func(r *Rule) {
-		r.HasFlow = true
-		r.FlowType = "reel"
-		r.FlowGap = gap
+// ScrollRow defines a horizontal scrolling strip with scroll-snap.
+func ScrollRow(gap Space) Option {
+	return func(r *rule) {
+		r.hasFlow = true
+		r.flowType = flowScrollRow
+		r.flowGap = gap
 	}
 }
 
-// Frame define una caja de proporción fija (media).
-func Frame(ratio Ratio) Opt {
-	return func(r *Rule) {
-		r.HasFlow = true
-		r.FlowType = "frame"
-		r.FlowRatio = ratio
+// MediaBox defines a box of fixed aspect ratio.
+func MediaBox(a Aspect) Option {
+	return func(r *rule) {
+		r.hasFlow = true
+		r.flowType = flowMediaBox
+		r.flowAspect = a
 	}
 }
