@@ -2,6 +2,8 @@
 PLAN: "widget/style: vocabulario de overlay (backdrop, scrim, apilado y visibilidad por estado)"
 TAG: v0.3.0
 EXECUTOR: jules
+STATUS: running
+SESSION: 107778640786533136
 ---
 
 > Este plan se despacha con el flujo CodeJob. Ver skill: **agents-workflow**.
