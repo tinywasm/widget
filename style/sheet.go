@@ -41,6 +41,9 @@ type Rule struct {
 	HasWeight   bool
 	Weight      Weight
 
+	HasMotion bool
+	Motion    Motion
+
 	HasBackdrop   bool
 	BackdropScope Scope
 	Above        bool
@@ -116,10 +119,4 @@ func (s *Sheet) Cue(c widget.Cue, p widget.Part, opts ...Opt) *Sheet {
 	}
 	s.CueRules[key] = r
 	return s
-}
-
-// Styler es la capacidad "este widget tiene aspecto". La asevera el recolector SSR.
-type Styler interface {
-	widget.Widget
-	Style() *Sheet
 }

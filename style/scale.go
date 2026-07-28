@@ -86,3 +86,14 @@ const (
 	TwoThirds
 	Full // 100% del contenedor
 )
+
+// Motion es la ÚNICA escala de transición. La duración la posee css (--duration-*);
+// aquí solo se elige el peldaño. Valores arbitrarios no existen en esta API.
+type Motion uint8
+
+const (
+	MotionNone Motion = iota // sin transición
+	MotionFast               // realce inmediato: hover, focus
+	MotionBase               // cambio de estado
+	MotionSlow               // entrada/salida de un panel u overlay
+)
