@@ -1,8 +1,9 @@
 ---
 PLAN: "widget: delete style.Styler and close the motion gap with a typed Motion scale"
 EXECUTOR: jules
-STATUS: running
+STATUS: review
 SESSION: 2166551128364663081
+PR: https://github.com/tinywasm/widget/pull/4
 ---
 
 > This plan is dispatched via the CodeJob workflow. See skill: **agents-workflow**.
