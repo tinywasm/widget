@@ -307,7 +307,7 @@ func (r rule) Decls(layer widget.Layer) []string {
 	}
 
 	if r.hasVeil {
-		decls = append(decls, "background-color: color-mix(in srgb, var(--color-surface,#F2F2F7) 60%, transparent);")
+		decls = append(decls, "background-color: color-mix(in srgb, "+css.ColorSurface.Var()+" 60%, transparent);")
 	}
 
 	if r.hasRevealed {
@@ -343,22 +343,22 @@ func formatRule(selectors []string, decls []string) string {
 	return sb.String()
 }
 
-func familyTokens(s Surface) (hover, focus, press css.Token) {
+func familyBase(s Surface) css.Token {
 	switch s {
 	case Panel, Inset, Highlight:
-		return css.ColorNeutralHover, css.ColorNeutralFocus, css.ColorNeutralPress
+		return css.ColorSurface
 	case Primary:
-		return css.ColorPrimaryHover, css.ColorPrimaryFocus, css.ColorPrimaryPress
+		return css.ColorPrimary
 	case Secondary:
-		return css.ColorSecondaryHover, css.ColorSecondaryFocus, css.ColorSecondaryPress
+		return css.ColorSurface
 	case Success:
-		return css.ColorSuccessHover, css.ColorSuccessFocus, css.ColorSuccessPress
+		return css.ColorSuccess
 	case Danger:
-		return css.ColorDangerHover, css.ColorDangerFocus, css.ColorDangerPress
+		return css.ColorDanger
 	case Subtle:
-		return css.ColorHover, css.ColorMutedFocus, css.ColorHover
+		return css.ColorMuted
 	default:
-		return css.Token{}, css.Token{}, css.Token{}
+		return css.Token{}
 	}
 }
 
@@ -639,18 +639,16 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 
 	addInteractive := func(p widget.Part, r rule) {
 		if r.interactive {
-			h, f, pr := familyTokens(r.surface)
-			if h.Name != "" {
-				k := cueKey{cue: widget.Hover, part: p}
-				cueDecls[k] = append(cueDecls[k], "background-color: "+h.Var()+";")
-			}
-			if f.Name != "" {
-				k := cueKey{cue: widget.Focus, part: p}
-				cueDecls[k] = append(cueDecls[k], "background-color: "+f.Var()+";")
-			}
-			if pr.Name != "" {
-				k := cueKey{cue: widget.Press, part: p}
-				cueDecls[k] = append(cueDecls[k], "background-color: "+pr.Var()+";")
+			base := familyBase(r.surface)
+			if base.Name != "" {
+				kHover := cueKey{cue: widget.Hover, part: p}
+				cueDecls[kHover] = append(cueDecls[kHover], "background-color: "+css.Hover(base)+";")
+
+				kFocus := cueKey{cue: widget.Focus, part: p}
+				cueDecls[kFocus] = append(cueDecls[kFocus], "background-color: "+css.Focus(base)+";")
+
+				kPress := cueKey{cue: widget.Press, part: p}
+				cueDecls[kPress] = append(cueDecls[kPress], "background-color: "+css.Press(base)+";")
 			}
 		}
 	}
