@@ -317,6 +317,16 @@ func (r rule) Decls(layer widget.Layer) []string {
 	return decls
 }
 
+// emitsNothing reports whether the rule contributes no CSS at all. Decls covers
+// the widgets layer only; flows and exceptions are emitted into the primitives
+// layer by collect, so both have to be consulted to answer the question.
+func (r rule) emitsNothing(layer widget.Layer) bool {
+	if len(r.Decls(layer)) > 0 {
+		return false
+	}
+	return !r.hasFlow && !r.fill && !r.scroll && !r.keepSize && !r.edgeToEdge && !r.hideOverflow
+}
+
 // Formats a CSS rule block deterministically.
 func formatRule(selectors []string, decls []string) string {
 	if len(selectors) == 0 || len(decls) == 0 {
@@ -733,7 +743,7 @@ func (s *Sheet) Validate() []error {
 
 	// 2. A declared part produces no declarations
 	for p, pr := range s.partRules {
-		if len(pr.Decls(s.widget.WidgetKind().Layer())) == 0 {
+		if pr.emitsNothing(s.widget.WidgetKind().Layer()) {
 			errs = append(errs, goFmt.Errorf("sheet %s: part %q emits nothing", s.widget.WidgetName(), p))
 		}
 	}
