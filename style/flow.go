@@ -14,6 +14,8 @@ const (
 	flowFillCentered
 	flowScrollRow
 	flowMediaBox
+	flowCover
+	flowSidebar
 )
 
 // Stack defines a vertical rhythm with children at full width.
@@ -91,5 +93,33 @@ func MediaBox(a Aspect) Option {
 		r.hasFlow = true
 		r.flowType = flowMediaBox
 		r.flowAspect = a
+	}
+}
+
+// Cover fills the viewport height and stacks its children vertically.
+// It is the outermost frame of an application shell: use KeepSize() on the
+// children that must not shrink (a header) and Fill() on the one that takes
+// the remaining height. Do not nest one Cover inside another.
+func Cover() Option {
+	return func(r *rule) {
+		r.hasFlow = true
+		r.flowType = flowCover
+	}
+}
+
+// Sidebar places a fixed-width rail beside a fluid content area. The rail keeps
+// its width; the content takes everything else. Below the point where the content
+// can no longer hold its minimum width the two reflow into a single column, with
+// no media query involved.
+//
+// The container MUST have exactly two element children. Which one is the rail is
+// decided by side, not by DOM order: SideEnd makes the LAST child the rail.
+func Sidebar(side Side, width RailWidth, gap Space) Option {
+	return func(r *rule) {
+		r.hasFlow = true
+		r.flowType = flowSidebar
+		r.flowSide = side
+		r.flowRail = width
+		r.flowGap = gap
 	}
 }

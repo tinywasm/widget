@@ -7,7 +7,7 @@ This guide helps you choose the correct layout, styling, and structural componen
 The substitute for design judgement: you do not choose, you look up.
 
 | I want… | Use |
-|---|---|
+|---|---|---|
 | a column of things | `Stack(Space2)` |
 | a row of buttons | `Row(Space1)` |
 | a grid that adapts by itself | `Grid(ColumnNarrow, Space2)` |
@@ -15,6 +15,11 @@ The substitute for design judgement: you do not choose, you look up.
 | a centred column of text | `Center(Readable)` |
 | a horizontal scrolling strip | `ScrollRow(Space2)` |
 | an image with a fixed proportion | `MediaBox(Aspect16x9)` |
+| the frame of a whole application | `Cover()` |
+| a fixed nav rail beside the content | `Sidebar(SideEnd, RailNarrow, SpaceNone)` |
+| a panel that slides in from an edge | `Drawer(SideEnd, TwoThirds)` + `RevealedBy(widget.Open)` |
+| a different arrangement on phones | `On(css.Mobile, "part", …)` |
+| an element that exists only on phones | `OnlyOn(css.Mobile, "part", …)` |
 | the page background | `As(Page)` |
 | a card or panel | `As(Panel)` |
 | something clickable | `Interactive(Primary)` |

@@ -389,6 +389,53 @@ already breaking; not worth a release of its own.
 
 ---
 
+## 14. Why `100dvh` is allowed in `Cover` alone
+
+**Decision.** The `Cover` primitive emits `min-height: 100dvh`, which is a viewport
+unit and therefore the only literal the drift guard permits outside geometry
+(`Size` percentages and `Aspect` fractions).
+
+An application shell is by definition sized against the viewport — there is no
+container to be relative to, because it *is* the outermost container. `dvh` (not
+`vh`) because `vh` is wrong on mobile browsers with retracting toolbars, which is a
+bug the previous hand-written chassis carried.
+
+This is a single value in a single primitive, not permission to widen the hole
+to `vw`, `svh`, or any other viewport unit.
+
+## 15. Why device scoping is a closed enum from `css`
+
+**Decision.** `On()` takes a `css.Device`, never a free-form string or a
+media-query expression.
+
+A string parameter would reopen the entire surface that the closed scales exist to
+shut. Every escaped media query would be a unique, unshared, untested expression
+that the drift guard cannot validate. The `Device` enum in `css` owns the
+thresholds, the overlap test, and the partition proof; here we only reference it.
+
+## 16. Why `On()` is a last resort
+
+**Decision.** The intrinsic primitives (`Split`, `Grid`, `Sidebar`) reflow on their
+own without any query at all. Reach for one of those first. `On()` exists only when
+the ARRANGEMENT itself differs between devices — e.g. a nav rail that becomes a
+drawer on mobile.
+
+## 17. Why `StateAttrs()` exists
+
+**Decision.** `RevealedBy()` emits `display: none` and a state attribute selector
+like `[data-open="true"]`. If the markup never writes `data-open`, the element is
+invisible forever and nothing — not the compiler, not `Validate()`, not any test —
+says a word. The two halves (Go writes attributes, Go+CSS writes selectors) live
+in different build tags and cannot be checked statically. `StateAttrs()` gives the
+consumer a list to assert against in a test that renders their markup, closing the
+loop.
+
+This does not weaken the architecture's claim of *class* agreement by construction
+(§P-2 in TRADEOFFS.md). Classes are derived from `Name` and `Part`, which are
+compile-time identifiers; state attributes are runtime choices the component makes,
+and the only mechanical check is `Kind.Allows()`, which says a state *may* be used,
+not that it *is*.
+
 ## Related documents
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) — the structure these decisions produce.

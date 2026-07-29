@@ -284,7 +284,11 @@ func TestNoInventedValues(t *testing.T) {
 		Part("item6", style.ScrollRow(style.Space4), style.As(style.Success)).
 		Part("item7", style.MediaBox(style.Aspect16x9), style.As(style.Danger)).
 		Part("item8", style.Stack(style.Space6), style.Interactive(style.Subtle)).
-		Part("item9", style.Row(style.SpaceNone), style.Interactive(style.Inset))
+		Part("item9", style.Row(style.SpaceNone), style.Interactive(style.Inset)).
+		Part("item10", style.Cover()).
+		Part("item11", style.Sidebar(style.SideEnd, style.RailNarrow, style.SpaceNone)).
+		Part("item12", style.Drawer(style.SideEnd, style.TwoThirds), style.RevealedBy(widget.Open)).
+		On(css.Mobile, "item10", style.Stack(style.Space1))
 
 	cssStr := sheet.Stylesheet().String()
 
@@ -311,6 +315,7 @@ func TestNoInventedValues(t *testing.T) {
 		css.BpSm, css.BpMd, css.BpLg, css.BpXl,
 		css.MaxWReadable,
 		css.ColumnNarrow, css.ColumnMedium, css.ColumnWide,
+		css.RailNarrow, css.RailWide,
 	}
 
 	tokenMap := make(map[string]css.Token)
@@ -323,6 +328,7 @@ func TestNoInventedValues(t *testing.T) {
 		"--gap":       true,
 		"--ratio":     true,
 		"--track":     true,
+		"--rail":      true,
 		"--max-width": true,
 	}
 

@@ -86,6 +86,23 @@ const (
 	ColumnWide
 )
 
+// Side names which edge a Sidebar's rail or a Drawer's panel is anchored to.
+// Logical, not physical: it follows writing direction.
+type Side uint8
+
+const (
+	SideStart Side = iota // inline-start — left in LTR
+	SideEnd               // inline-end   — right in LTR
+)
+
+// RailWidth is the closed scale for a Sidebar's fixed column.
+type RailWidth uint8
+
+const (
+	RailNarrow RailWidth = iota // icon only
+	RailWide                    // icon plus label
+)
+
 // Size is the relative size measurement.
 type Size uint8
 

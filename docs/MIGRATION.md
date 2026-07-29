@@ -222,6 +222,61 @@ style.For(m).
 
 ---
 
+## 8. Upgrading to v0.5.0 — application-shell primitives
+
+v0.5.0 is purely additive. No existing identifier is renamed or removed.
+
+### New primitives
+
+| What | API |
+|---|---|
+| Viewport-height flex column | `Cover()` |
+| Fixed rail beside fluid content | `Sidebar(side, width, gap)` |
+| Edge-anchored overlay panel | `Drawer(side, size)` |
+| Device-scoped override | `On(css.Device, "part", …)` |
+| Device-only part | `OnlyOn(css.Device, "part", …)` |
+
+### New Sheet methods
+
+`StateAttrs()` returns every `[data-*="true"]` pair the emitted CSS selects on.
+Any consumer using `RevealedBy()` should add a test that renders their markup and
+asserts every returned pair appears in it.
+
+### Before/after: application shell
+
+Before (hypothetical — the old API had no cover or sidebar):
+
+```go
+style.For(app).
+    Root(style.Stack(style.SpaceNone), style.As(style.Page)).
+    Part("header", style.KeepSize(), style.As(style.Panel)).
+    Part("body", style.Fill()).
+    Part("rail", style.Width(style.Content), style.As(style.Panel)).
+    Part("content", style.Fill())
+```
+
+After:
+
+```go
+style.For(app).
+    Root(style.Cover(), style.As(style.Page)).
+    Part("header", style.KeepSize(), style.As(style.Panel)).
+    Part("body", style.Fill()).
+    Part("rail", style.KeepSize(), style.As(style.Panel)).
+    Part("content", style.Fill())
+```
+
+Mobile nav rail that becomes a drawer:
+
+```go
+style.For(nav).
+    Root(style.As(style.Page)).
+    Part("rail", style.Sidebar(style.SideEnd, style.RailNarrow, style.SpaceNone), style.As(style.Panel)).
+    On(css.Mobile, "rail", style.Drawer(style.SideEnd, style.TwoThirds), style.RevealedBy(widget.Open))
+```
+
+---
+
 ## Related documents
 
 - [SPECS.md](SPECS.md) — the target API in full.

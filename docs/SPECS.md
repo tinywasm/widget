@@ -117,7 +117,7 @@ of these.
 ### 2.2 Other scales
 
 | Type | Constants | Tokens |
-|---|---|---|
+|---|---|---|---|
 | `Radius` | `RadiusNone, RadiusSm, RadiusMd, RadiusLg, RadiusFull` | `0`, `--radius-sm/md/lg/full` |
 | `TextSize` | `TextXs, TextSm, TextBase, TextLg, TextXl, Text2xl` | `--text-*` |
 | `Weight` | `WeightRegular, WeightMedium, WeightBold` | `--font-weight-*` |
@@ -128,9 +128,12 @@ of these.
 | `SplitRatio` | `SplitHalf, SplitTwoThirds, SplitThreeQuarters` | `1fr`, `2fr`, `3fr` (against a trailing `1fr`) |
 | `Aspect` | `AspectSquare, Aspect3x2, Aspect4x3, Aspect16x9` | `1/1`, `3/2`, `4/3`, `16/9` |
 | `Scope` | `Parent, Viewport` | `position: absolute` / `fixed` |
+| `Side` | `SideStart, SideEnd` | `inline-start`, `inline-end` |
+| `RailWidth` | `RailNarrow, RailWide` | `--rail-narrow`, `--rail-wide` |
 
 `Size` percentages and `Aspect` fractions are geometry, not theme, and are the
-only literals the drift guard permits. `ColumnWidth` requires `--column-*`, and `Readable` requires `--max-w-readable`
+only literals the drift guard permits, **except** `100dvh` which is permitted
+exclusively in the `Cover` primitive. `ColumnWidth` requires `--column-*`, and `Readable` requires `--max-w-readable`
 (today `--max-w-prose`); both are prerequisites of the release, because a scale
 step is named after the token it emits and the two must not drift apart.
 
@@ -197,7 +200,7 @@ family's interaction state.
 ## 4. Flow primitives
 
 | Option | Emits |
-|---|---|
+|---|---|---|
 | `Stack(gap)` | `display:flex; flex-direction:column; min-height:0`, and `> * + * { margin-block-start: var(--gap) }` |
 | `Row(gap)` | `display:flex; flex-wrap:wrap; gap:var(--gap); align-items:center` |
 | `Split(r, gap)` | `display:flex; flex-wrap:wrap; gap:var(--gap)`, and `> * { flex-grow:1; flex-basis:calc((40rem - 100%) * 999) }` plus `> :first-child { flex-grow:var(--ratio) }` — stacks below ~40rem of **its own** width, no query and no wrapper element |
@@ -206,6 +209,8 @@ family's interaction state.
 | `FillCentered()` | `display:grid; place-items:center; min-height:100%; width:100%` |
 | `ScrollRow(gap)` | `display:flex; gap:var(--gap); overflow-x:auto; scroll-snap-type:x mandatory`, and `> * { scroll-snap-align:start; flex:0 0 auto }` |
 | `MediaBox(a)` | `aspect-ratio:var(--ratio); overflow:hidden; display:flex; justify-content:center; align-items:center`, and `> img, > video { width:100%; height:100%; object-fit:cover }` |
+| `Cover()` | `display:flex; flex-direction:column; min-height:100dvh` |
+| `Sidebar(side, width, gap)` | `display:flex; flex-wrap:wrap; gap:var(--gap)`, and `> :first-child` / `> :last-child` rail/content split based on `side` |
 
 No emitted selector may begin with `.fl-` or `.exc-`.
 
@@ -269,6 +274,9 @@ func EdgeToEdge() Option
 func HideOverflow() Option
 func Backdrop(Scope) Option
 func Veil() Option
+func Cover() Option
+func Sidebar(side Side, width RailWidth, gap Space) Option
+func Drawer(side Side, size Size) Option
 ```
 
 | Option | Emits |
@@ -281,6 +289,7 @@ func Veil() Option
 | `Backdrop(Parent)` | `position:absolute; inset:0; z-index:var(<Kind layer>)` |
 | `Backdrop(Viewport)` | `position:fixed; inset:0; z-index:var(<Kind layer>)` |
 | `Veil()` | `background-color: color-mix(in srgb, var(--color-surface,<fallback>) 60%, transparent)` |
+| `Drawer(side, size)` | `position:fixed; inset-block:0; inset-inline-{start|end}:0; width:var(<size>); z-index:var(<Kind layer>)` |
 | `Animate(m)` | `transition: all var(--duration-*) var(--ease-in-out)` |
 
 `Veil()` must emit the token **with its catalog fallback**. Every rule carrying
@@ -310,7 +319,10 @@ func (s *Sheet) Root(opts ...Option) *Sheet
 func (s *Sheet) Part(p widget.Part, opts ...Option) *Sheet
 func (s *Sheet) When(st widget.State, p widget.Part, opts ...Option) *Sheet
 func (s *Sheet) Cue(c widget.Cue, p widget.Part, opts ...Option) *Sheet
+func (s *Sheet) On(d css.Device, p widget.Part, opts ...Option) *Sheet
+func (s *Sheet) OnlyOn(d css.Device, p widget.Part, opts ...Option) *Sheet
 func (s *Sheet) Parts() []widget.Part   // declared parts, sorted — for component tests
+func (s *Sheet) StateAttrs() []fmt.KeyValue
 func (s *Sheet) Validate() []error
 func (s *Sheet) Stylesheet() *css.Stylesheet   // panics if Validate() is non-empty
 ```
@@ -329,6 +341,12 @@ not a string. An empty `Part` argument to `When`/`Cue` targets the root.
 | `Veil()` without `Backdrop()` on the same rule | `sheet <name>: Veil() requires Backdrop()` |
 | `When` uses a state `Kind.Allows` rejects | `sheet <name>: state <state> is not meaningful for kind <kind>` |
 | `Interactive()` on `Page` or `Inactive` (§3.2) | `sheet <name>: surface <surface> has no interaction states` |
+| `On()` names a part never declared with `Part()` | `sheet <name>: device rule for undeclared part "<part>"` |
+| An `On()` rule emits nothing | `sheet <name>: device rule for part "<part>" on <device> emits nothing` |
+| `Drawer()` and `Backdrop()` on the same rule | `sheet <name>: part "<part>": Drawer() and Backdrop() both set position; use one` |
+| `Drawer()` and `Width()` on the same rule | `sheet <name>: part "<part>": Drawer() already sets width; remove Width()` |
+| `Drawer()` without `RevealedBy()` in any rule for that part | `sheet <name>: part "<part>": Drawer() without RevealedBy(); the panel would be permanently visible` |
+| `OnlyOn` called twice for the same part with different devices | `sheet <name>: part "<part>" declared OnlyOn for both <device1> and <device2>` |
 
 Every message names the sheet and the part. The panic in `Stylesheet()` is the
 only signal the author gets, and it surfaces from inside `ssr`'s generated
@@ -347,6 +365,13 @@ Exact order of the emitted document:
 @layer widgets    { … }    omitted entirely when empty
 @layer states     { … }    omitted entirely when empty
 
+@media (max-width: 639.98px) {     one block per device that has rules
+  @layer widgets { … }
+  @layer states  { … }
+}
+@media (min-width: 640px) and (max-width: 1023.98px) { … }
+@media (min-width: 1024px) { … }
+
 @media (prefers-reduced-motion: reduce) { … }   only if some rule carries Animate
 ```
 
@@ -355,7 +380,24 @@ rules ordered by state value then part name; cue rules ordered by cue value then
 part name. Declarations within a rule are sorted; selectors within a rule are
 sorted.
 
-### 7.1 Global invariants
+Device blocks appear after `@layer states` and before `prefers-reduced-motion`,
+ordered by device ascending (Mobile, Tablet, Desktop), parts ascending within
+each. Query strings come from `css.Device.Query()` — never built here.
+
+### 7.1 Device block emission rules
+
+1. The query string is `d.Query()` from `css`. Never build a query string here.
+2. Device rules emit into `@layer widgets`, not `@layer primitives`.
+3. A flow primitive used inside `On()` emits its full declaration set inline in
+   that widgets block, including its child-combinator rules. It does not
+   contribute to the top-level primitive buckets.
+4. `RevealedBy()` inside `On()` puts `display: none` in the media `@layer widgets`
+   block and the `[data-state="true"] { display: <flow> }` rule in the media
+   `@layer states` block.
+5. Omit an empty `@layer` block entirely, exactly as the top level already does.
+6. No `@layer <list>;` statement is emitted inside `@media`.
+
+### 7.2 Global invariants
 
 1. Two emissions of the same sheet are byte-identical.
 2. Every `var()` matches a `tinywasm/css` token **including its fallback**.

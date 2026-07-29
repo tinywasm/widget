@@ -34,6 +34,11 @@ and a `Part`, so the selector in the sheet and the attribute in the markup come
 from the same expression. Divergence is not a discipline problem; it is
 impossible.
 
+This holds for **classes** by construction and for **state attributes** only when
+the consumer runs the `StateAttrs()` check (`docs/DESIGN.md §17`). State attributes
+are runtime choices; the selector and the markup live in different build tags and
+cannot be compared statically.
+
 ### P-3. Design knowledge is encoded rather than required
 
 A surface is a complete decision, contrast is guaranteed by the token catalog's

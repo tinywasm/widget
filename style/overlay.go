@@ -37,3 +37,17 @@ func RevealedBy(st widget.State) Option {
 		r.revealedBy = st
 	}
 }
+
+// Drawer anchors the element to one inline edge of the viewport, full height,
+// at the widget kind's stacking layer. It is the slide-in panel of a mobile
+// navigation; pair it with RevealedBy(widget.Open) to control visibility and
+// with a sibling Backdrop(Viewport)+Veil() for the dimmed page behind it.
+//
+// Drawer sets the element's width. Do NOT also pass Width() — Validate rejects it.
+func Drawer(side Side, size Size) Option {
+	return func(r *rule) {
+		r.hasDrawer = true
+		r.drawerSide = side
+		r.drawerSize = size
+	}
+}
