@@ -155,30 +155,27 @@ A surface resolves background, text, border and **radius** together. It does
 | `Panel` | `--color-surface` | `--color-on-surface` | `1px solid --color-outline` | `RadiusMd` |
 | `Inset` | `--color-surface-sunken` | `--color-on-surface` | `1px solid --color-outline` | `RadiusSm` |
 | `Primary` | `--color-primary` | `--color-on-primary` | — | `RadiusSm` |
-| `Secondary` | `--color-secondary` | `--color-on-secondary` | — | `RadiusSm` |
+| `Secondary` | `--color-surface` | `--color-on-surface` | — | `RadiusSm` |
 | `Highlight` | `--color-selection` | `--color-on-selection` | — | `RadiusSm` |
 | `Success` | `--color-success` | `--color-on-success` | — | `RadiusSm` |
-| `Danger` | `--color-error` | `--color-on-error` | — | `RadiusSm` |
+| `Danger` | `--color-danger` | `--color-on-danger` | — | `RadiusSm` |
 | `Subtle` | `transparent` | `--color-muted` | — | none |
-| `Inactive` | `--color-disabled` | `--color-on-disabled` | — | `RadiusSm` |
+| `Inactive` | `--color-surface` | `--color-muted` | — | `RadiusSm` |
 
 Explicit `Round()` or `Raise()` on the same rule overrides the surface default.
 `Pad()` is always explicit — there is no default to override.
 
 ### 3.1 Interaction families
 
-`Interactive(s)` emits the base surface plus three state rules. The per-state
-tokens are **private** and follow the pattern `--color-<family>-hover|focus|press`,
-declared in `tinywasm/css`.
+`Interactive(s)` emits the base surface plus three state rules. The interactive states
+are derived programmatically from the base token of the surface family using functions
+`css.Hover(base)`, `css.Focus(base)`, and `css.Press(base)` defined in `tinywasm/css`.
 
 | Cue | Selector suffix | Change |
 |---|---|---|
-| hover | `:hover` | background → `--color-<family>-hover` |
-| focus | `:focus-visible` | background → `--color-<family>-focus` |
-| press | `:active` | background → `--color-<family>-press` |
-
-`Subtle` is the one family whose hover/press must not be a black wash: it resolves
-to `--color-hover` so it remains visible in dark mode.
+| hover | `:hover` | background → `css.Hover(base)` |
+| focus | `:focus-visible` | background → `css.Focus(base)` |
+| press | `:active` | background → `css.Press(base)` |
 
 ### 3.2 Which surfaces accept `Interactive`
 
