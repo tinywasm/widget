@@ -1,8 +1,6 @@
 ---
 PLAN: "feat: closed-API release with css v0.3.2 migration (PLAN-css-v032.md)"
 TAG: v0.4.2
-STATUS: review
-SESSION: 6653728148363084649
 ---
 
 # PLAN — closed-API release
@@ -15,6 +13,7 @@ when a step is ambiguous — do not re-derive their content here:
 
 | If you need… | Read |
 |---|---|
+| the constraints no step may violate | [../AGENTS.md](../AGENTS.md) |
 | the exact target API, values, and emitted output | [SPECS.md](SPECS.md) |
 | why a decision was made, or what was already rejected | [DESIGN.md](DESIGN.md) |
 | the structure and invariants being preserved | [ARCHITECTURE.md](ARCHITECTURE.md) |
@@ -25,6 +24,9 @@ when a step is ambiguous — do not re-derive their content here:
 ---
 
 ## Development Rules
+
+The full set lives in [../AGENTS.md](../AGENTS.md) and applies to every step of this
+plan. The ones this release touches most often:
 
 - **Documentation first.** The docs above are already written to the target. Code
   follows them; if code and SPECS disagree, SPECS is wrong or the code is — decide
@@ -100,15 +102,18 @@ needs no query and no wrapper element.
 
 ---
 
-## 3. Prerequisite: `tinywasm/css` v0.3.2 migration
+## 3. Prerequisite: `tinywasm/css` v0.3.3 migration
 
 Executed first in [PLAN-css-v032.md](PLAN-css-v032.md). This plan assumes that
-plan has completed and the code compiles against css v0.3.2.
+plan has completed and the code compiles against css v0.3.3 or later.
 
-When the css catalog was finalised, interaction tokens (Hover/Focus/Press) were
-removed and replaced with inline `color-mix()` expressions. The migration plan
-rewrites `familyTokens()` and the surface resolver accordingly, and syncs the
-consumer test token list.
+When the css catalog was finalised, the 27 interaction tokens (Hover/Focus/Press)
+were removed. They are **not** replaced by component-level formulas — that would
+break "never invent a value". css v0.3.3 republishes the derivation as
+`css.Hover/Focus/Press(base)` plus the computed tokens `ColorSurfaceSunken`,
+`ColorSelection` and `ColorOnSelection`. The migration plan rewrites
+`familyTokens()` and the surface resolver to call them, removes the last
+hand-written `var()` fallback in `Veil()`, and syncs the consumer test token list.
 
 ---
 

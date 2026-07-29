@@ -36,6 +36,7 @@ func main() {
 
 ## Documentation
 
+- [AGENTS.md](AGENTS.md) — constraints for anyone (human or agent) changing this library: the WASM boundary, zero escape, never invent a value, and the SSR contract every style builder must satisfy.
 - [GUIDE.md](GUIDE.md) — task-oriented decision guide and standard scales.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — package boundaries (WASM / non-WASM), anatomy and state contracts, and CSS emission guarantees.
 - [docs/SPECS.md](docs/SPECS.md) — exact public surface, scale-to-token mappings, emission tables, and validation conditions.
