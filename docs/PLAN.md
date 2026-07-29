@@ -93,19 +93,15 @@ needs no query and no wrapper element.
 
 ---
 
-## 3. Prerequisite: `tinywasm/css` release
+## 3. Prerequisite: `tinywasm/css` v0.3.2 migration
 
-Nothing below compiles until this lands. Details in
-[MIGRATION.md §1](MIGRATION.md#1-prerequisite-tinywasmcss).
+Executed first in [PLAN-css-v032.md](PLAN-css-v032.md). This plan assumes that
+plan has completed and the code compiles against css v0.3.2.
 
-- Interaction tokens for every surface family, contrast-tested alongside the rest
-  of the palette.
-- A real token behind the `Subtle` interaction states, replacing the `rgba()`
-  washes.
-- `--column-narrow`, `--column-medium`, `--column-wide`.
-- `--max-w-readable`, replacing `--max-w-prose`, so `Size.Readable` mirrors it.
-- `--color-focus-ring`, so the focus ring is visible on every surface including
-  `Primary` — it currently reuses `--color-primary`.
+When the css catalog was finalised, interaction tokens (Hover/Focus/Press) were
+removed and replaced with inline `color-mix()` expressions. The migration plan
+rewrites `familyTokens()` and the surface resolver accordingly, and syncs the
+consumer test token list.
 
 ---
 
