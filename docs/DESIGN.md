@@ -333,8 +333,8 @@ name says which is which, so the pair can only be used correctly by someone who
 already knows.
 
 They are renamed for their **role**, not their appearance: `Subtle` and
-`Inactive`. `Inactive` additionally matches `--color-disabled`, restoring the
-mirror.
+`Inactive`. `Inactive` now maps to `--color-surface` and `--color-muted`, avoiding the
+need for a separate, private disabled color.
 
 `Accent` has the same defect in a quieter form: it resolves to `--color-primary`,
 so the name adds a translation step and buys nothing. It becomes `Primary`.

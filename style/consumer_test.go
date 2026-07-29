@@ -365,6 +365,14 @@ func TestNoInventedValues(t *testing.T) {
 			continue
 		}
 
+		// ACCEPTED DRIFT GUARD EXCEPTION:
+		// We tolerate a bare "var(--name)" call with no local fallback string only when the variable
+		// name is a valid token from the css catalog.
+		// Why this is safe: These matches represent nested variable references within larger formulas
+		// (such as those returned by ColorSurfaceSunken or ColorSelection from tinywasm/css v0.3.3+).
+		// Because they are nested inside an outer var() call, they are already protected by the outer
+		// var()'s fallback. Enforcing fallback matching on these nested references is both redundant
+		// and structurally impossible here since the formulas themselves are owned and defined by tinywasm/css.
 		expectedVarCall := tok.Var()
 		if fullMatch != expectedVarCall && fullMatch != "var("+varName+")" {
 			t.Errorf("Visual drift detected for %q.\nIn stylesheet: %q\nExpected: %q",
