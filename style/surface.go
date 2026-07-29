@@ -66,17 +66,17 @@ func (s Surface) resolve() triplet {
 	case Primary:
 		return triplet{bg: css.ColorPrimary.Var(), text: css.ColorOnPrimary.Var()}
 	case Secondary:
-		return triplet{bg: css.ColorSecondary.Var(), text: css.ColorOnSecondary.Var()}
+		return triplet{bg: css.ColorSurface.Var(), text: css.ColorOnSurface.Var()}
 	case Highlight:
 		return triplet{bg: css.ColorSelection.Var(), text: css.ColorOnSelection.Var()}
 	case Success:
 		return triplet{bg: css.ColorSuccess.Var(), text: css.ColorOnSuccess.Var()}
 	case Danger:
-		return triplet{bg: css.ColorError.Var(), text: css.ColorOnError.Var()}
+		return triplet{bg: css.ColorDanger.Var(), text: css.ColorOnDanger.Var()}
 	case Subtle:
 		return triplet{bg: "transparent", text: css.ColorMuted.Var()}
 	case Inactive:
-		return triplet{bg: css.ColorDisabled.Var(), text: css.ColorOnDisabled.Var()}
+		return triplet{bg: css.ColorSurface.Var(), text: css.ColorMuted.Var()}
 	default:
 		return triplet{}
 	}

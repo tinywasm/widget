@@ -13,7 +13,7 @@ lands.
 
 | Addition to `css` | Why |
 |---|---|
-| `--color-<family>-hover|focus|press` for every surface family | These tokens currently live in `widget/style` with hardcoded hex, outside the reach of the contrast test |
+| `--color-<family>-hover|focus|press` for every surface family | These tokens have been replaced by dynamic, programmatic state derivations (`css.Hover()`, `css.Focus()`, and `css.Press()`) to ensure contrast-tested safety. |
 | A real token behind the `Subtle` interaction states | They are literal `rgba(0,0,0,0.05)` washes today, invisible on a dark surface |
 | `--column-narrow`, `--column-medium`, `--column-wide` | `Grid` column minimums are hardcoded `rem` values with no token |
 | `--max-w-readable`, replacing `--max-w-prose` | `Size.Readable` must mirror the token it emits; leaving the token named `prose` reintroduces the translation step |
