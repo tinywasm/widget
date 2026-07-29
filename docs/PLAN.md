@@ -1,3 +1,8 @@
+---
+PLAN: "feat: closed-API release with css v0.3.2 migration (PLAN-css-v032.md)"
+TAG: v0.4.2
+---
+
 # PLAN — closed-API release
 
 Execution document. Steps, reference code, test strategy. **Ephemeral**: not
