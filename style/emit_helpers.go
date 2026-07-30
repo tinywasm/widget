@@ -320,6 +320,8 @@ func familyBase(s Surface) css.Token {
 		return css.ColorSurface
 	case Primary:
 		return css.ColorPrimary
+	case Accent:
+		return css.ColorAccent
 	case Secondary:
 		return css.ColorSurface
 	case Success:

@@ -14,6 +14,7 @@ const (
 	Primary
 	Secondary
 	Highlight
+	Accent
 	Success
 	Danger
 	Subtle
@@ -34,6 +35,8 @@ func (s Surface) String() string {
 		return "Secondary"
 	case Highlight:
 		return "Highlight"
+	case Accent:
+		return "Accent"
 	case Success:
 		return "Success"
 	case Danger:
@@ -69,6 +72,8 @@ func (s Surface) resolve() triplet {
 		return triplet{bg: css.ColorSurface.Var(), text: css.ColorOnSurface.Var()}
 	case Highlight:
 		return triplet{bg: css.ColorSelection.Var(), text: css.ColorOnSelection.Var()}
+	case Accent:
+		return triplet{bg: css.ColorAccent.Var(), text: css.ColorOnAccent.Var()}
 	case Success:
 		return triplet{bg: css.ColorSuccess.Var(), text: css.ColorOnSuccess.Var()}
 	case Danger:

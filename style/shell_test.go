@@ -205,6 +205,35 @@ func TestOnEdgeStraddlesTheLine(t *testing.T) {
 	}
 }
 
+func TestGlyphTintsWithoutFilling(t *testing.T) {
+	// A nav item that is merely available shows a coloured icon; only the
+	// selected one gets the filled surface. Icons follow currentColor, so the
+	// tint has to reach fill as well as color.
+	w := testWidget{name: "pd", kind: widget.Menu}
+	s := style.For(w).Part("nav-link", style.Glyph(style.Primary)).Stylesheet().String()
+
+	if !strings.Contains(s, "fill: currentColor;") {
+		t.Errorf("expected Glyph to reach the icon through fill, got:\n%s", s)
+	}
+	if strings.Contains(s, "background-color") {
+		t.Errorf("Glyph must not paint a background, got:\n%s", s)
+	}
+}
+
+func TestControlBoxSharesOneHeight(t *testing.T) {
+	// A list row and a form field have to be measured against the same token or
+	// they drift apart the moment either one's padding changes.
+	w := testWidget{name: "x", kind: widget.Region}
+	s := style.For(w).
+		Part("row", style.ControlBox()).
+		Part("field", style.ControlBox()).
+		Stylesheet().String()
+
+	if !strings.Contains(s, "min-height: "+css.ControlHeight.Var()+";") {
+		t.Errorf("expected ControlBox to emit the shared height token, got:\n%s", s)
+	}
+}
+
 func TestPushEndMovesFreeSpaceInFront(t *testing.T) {
 	// Once flex-wrap drops an item onto a line of its own, nothing else on that
 	// line can push it: the free space has to go in front of it.

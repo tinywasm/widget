@@ -145,7 +145,7 @@ step is named after the token it emits and the two must not drift apart.
 ```go
 type Surface uint8
 const (
-    Page, Panel, Inset, Primary, Secondary, Highlight, Success, Danger, Subtle, Inactive
+    Page, Panel, Inset, Primary, Secondary, Highlight, Accent, Success, Danger, Subtle, Inactive
 )
 ```
 
@@ -161,6 +161,7 @@ A surface resolves background, text, border and **radius** together. It does
 | `Primary` | `--color-primary` | `--color-on-primary` | — | `RadiusSm` |
 | `Secondary` | `--color-surface` | `--color-on-surface` | — | `RadiusSm` |
 | `Highlight` | `--color-selection` | `--color-on-selection` | — | `RadiusSm` |
+| `Accent` | `--color-accent` | `--color-on-accent` | — | `RadiusSm` |
 | `Success` | `--color-success` | `--color-on-success` | — | `RadiusSm` |
 | `Danger` | `--color-danger` | `--color-on-danger` | — | `RadiusSm` |
 | `Subtle` | `transparent` | `--color-muted` | — | none |
@@ -273,6 +274,8 @@ func Animate(Motion) Option
 func Fill() Option
 func Grow() Option
 func PushEnd() Option
+func Glyph(Surface) Option
+func ControlBox() Option
 func CenterContent() Option
 func Anchor() Option
 func Docked(scope Scope, edge Edge, side Side, gap Space) Option
@@ -303,6 +306,8 @@ func Drawer(side Side, size Size) Option
 | `Backdrop(Parent)` | `position:absolute; inset:0; z-index:var(<Kind layer>)` |
 | `Backdrop(Viewport)` | `position:fixed; inset:0; z-index:var(<Kind layer>)` |
 | `Veil()` | `background-color: color-mix(in srgb, var(--color-surface,<fallback>) 60%, transparent)` |
+| `Glyph(s)` | `color:<surface base>; fill:currentColor` — tints the content, paints no background |
+| `ControlBox()` | `min-height:var(--control-height)` |
 | `CenterContent()` | `display:flex; align-items:center; justify-content:center` |
 | `Docked(scope, edge, side, gap)` | `position:{absolute\|fixed}; margin:0; inset-block-{start\|end}:<gap>; inset-inline-{start\|end}:<gap>; z-index:var(<Kind layer>)` |
 | `OnEdge(edge, side, block, inline)` | `position:absolute; margin:0; inset-block-{start\|end}:<block>; inset-inline-{start\|end}:<inline>; transform:translateY(∓50%); z-index:var(<Kind layer>)` |

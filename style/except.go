@@ -49,6 +49,26 @@ func CenterContent() Option {
 	}
 }
 
+// Glyph colours what the element draws — its text and, through currentColor,
+// its icons — with a surface's base colour, and leaves the background alone. It
+// is the "tinted, not filled" treatment: a nav item that is merely available
+// shows a coloured icon, the selected one gets the filled surface via As().
+func Glyph(s Surface) Option {
+	return func(r *rule) {
+		r.hasGlyph = true
+		r.glyph = s
+	}
+}
+
+// ControlBox gives the element the shared control height, the rhythm every
+// interactive row in the app is measured against — a list row, a form field.
+// Pinning both to one token is what keeps them from drifting apart.
+func ControlBox() Option {
+	return func(r *rule) {
+		r.controlBox = true
+	}
+}
+
 // KeepSize does NOT reflow: maintains its size under any width.
 func KeepSize() Option {
 	return func(r *rule) {

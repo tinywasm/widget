@@ -117,6 +117,15 @@ func (r rule) Decls(layer widget.Layer) []string {
 		decls = append(decls, "z-index: "+layerVar(layer)+";")
 	}
 
+	if r.hasGlyph {
+		decls = append(decls, "color: "+familyBase(r.glyph).Var()+";")
+		decls = append(decls, "fill: currentColor;")
+	}
+
+	if r.controlBox {
+		decls = append(decls, "min-height: "+css.ControlHeight.Var()+";")
+	}
+
 	if r.centerContent {
 		decls = append(decls, "display: flex;")
 		decls = append(decls, "align-items: center;")
@@ -219,7 +228,7 @@ func (r rule) emitsNothing(layer widget.Layer) bool {
 	if len(r.Decls(layer)) > 0 {
 		return false
 	}
-	return !r.hasFlow && !r.fill && !r.grow && !r.pushEnd && !r.scroll && !r.keepSize && !r.edgeToEdge && !r.hideOverflow && !r.hasIcon
+	return !r.hasFlow && !r.fill && !r.grow && !r.pushEnd && !r.scroll && !r.keepSize && !r.edgeToEdge && !r.hideOverflow && !r.hasIcon && !r.controlBox && !r.hasGlyph
 }
 
 func formatRule(selectors []string, decls []string) string {

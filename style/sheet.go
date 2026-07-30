@@ -27,6 +27,10 @@ type rule struct {
 	drawerSize Size
 
 	centerContent bool
+	controlBox    bool
+
+	hasGlyph bool
+	glyph    Surface
 
 	hasDocked   bool
 	dockedScope Scope
