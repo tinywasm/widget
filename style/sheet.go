@@ -45,6 +45,7 @@ type rule struct {
 	icon    IconSize
 
 	fill         bool
+	grow         bool
 	scroll       bool
 	keepSize     bool
 	edgeToEdge   bool

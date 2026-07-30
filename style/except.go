@@ -17,6 +17,17 @@ func Scroll() Option {
 	}
 }
 
+// Grow takes the free space along the inline axis and nothing else. It is the
+// Row counterpart of Fill(): Fill() also claims `height: 100%`, which inside a
+// Row resolves against the row and stretches the part into a full-height block.
+// Use Grow() for the item in a Row that should push its siblings to the
+// trailing edge.
+func Grow() Option {
+	return func(r *rule) {
+		r.grow = true
+	}
+}
+
 // KeepSize does NOT reflow: maintains its size under any width.
 func KeepSize() Option {
 	return func(r *rule) {

@@ -51,6 +51,23 @@ func TestIconBoxEmitsSquareThatCannotShrink(t *testing.T) {
 	}
 }
 
+func TestGrowClaimsWidthWithoutHeight(t *testing.T) {
+	// Fill() also emits height: 100%, which inside a Row resolves against the
+	// row and stretches the part into a full-height block. Grow() must not.
+	w := testWidget{name: "shell", kind: widget.Region}
+	s := style.For(w).Part("label", style.Grow()).Stylesheet().String()
+
+	if !strings.Contains(s, "flex-grow: 1;") {
+		t.Errorf("expected Grow to emit flex-grow: 1, got:\n%s", s)
+	}
+	if !strings.Contains(s, "min-width: 0;") {
+		t.Errorf("expected Grow to emit min-width: 0, got:\n%s", s)
+	}
+	if strings.Contains(s, "height: 100%;") {
+		t.Errorf("Grow must not claim height, got:\n%s", s)
+	}
+}
+
 func TestIconBoxStepsAreDistinct(t *testing.T) {
 	w := testWidget{name: "shell", kind: widget.Region}
 	seen := make(map[string]style.IconSize)

@@ -269,6 +269,7 @@ func FontSize(TextSize) Option
 func FontWeight(Weight) Option
 func Animate(Motion) Option
 func Fill() Option
+func Grow() Option
 func Scroll() Option
 func KeepSize() Option
 func EdgeToEdge() Option
@@ -283,6 +284,7 @@ func Drawer(side Side, size Size) Option
 | Option | Emits |
 |---|---|
 | `Fill()` | `height:100%; min-height:0; flex-grow:1` |
+| `Grow()` | `flex-grow:1; min-width:0` — the Row counterpart of `Fill()`, no height claim |
 | `Scroll()` | `overflow-y:auto` plus everything `Fill()` emits |
 | `KeepSize()` | `flex-shrink:0; flex-grow:0` |
 | `EdgeToEdge()` | `margin:0; border-radius:0` |
