@@ -61,13 +61,19 @@ func Flyout(side Side) Option {
 	}
 }
 
-// Docked pins the element inside a corner of its Anchor, above the content and
-// out of the flow, at the widget kind's stacking layer. Use it for a control
-// that must not cost the content a band of its own: a floating action button, a
-// row's overflow menu.
-func Docked(edge Edge, side Side, gap Space) Option {
+// Docked pins the element inside a corner, above the content and out of the
+// flow, at the widget kind's stacking layer. Use it for a control that must not
+// cost the content a band of its own: a floating action button, a row's
+// overflow menu.
+//
+// Parent pins it to the corner of the nearest Anchor. Viewport pins it to the
+// screen, so it stays put while the content behind it scrolls or swipes — and
+// it disappears with the widget, because a fixed descendant of a display:none
+// ancestor is not rendered either.
+func Docked(scope Scope, edge Edge, side Side, gap Space) Option {
 	return func(r *rule) {
 		r.hasDocked = true
+		r.dockedScope = scope
 		r.dockedEdge = edge
 		r.dockedSide = side
 		r.dockedGap = gap

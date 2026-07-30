@@ -275,7 +275,7 @@ func Grow() Option
 func PushEnd() Option
 func CenterContent() Option
 func Anchor() Option
-func Docked(edge Edge, side Side, gap Space) Option
+func Docked(scope Scope, edge Edge, side Side, gap Space) Option
 func OnEdge(edge Edge, side Side, block Space, inline Space) Option
 func Flyout(side Side) Option
 func Scroll() Option
@@ -304,7 +304,7 @@ func Drawer(side Side, size Size) Option
 | `Backdrop(Viewport)` | `position:fixed; inset:0; z-index:var(<Kind layer>)` |
 | `Veil()` | `background-color: color-mix(in srgb, var(--color-surface,<fallback>) 60%, transparent)` |
 | `CenterContent()` | `display:flex; align-items:center; justify-content:center` |
-| `Docked(edge, side, gap)` | `position:absolute; margin:0; inset-block-{start\|end}:<gap>; inset-inline-{start\|end}:<gap>; z-index:var(<Kind layer>)` |
+| `Docked(scope, edge, side, gap)` | `position:{absolute\|fixed}; margin:0; inset-block-{start\|end}:<gap>; inset-inline-{start\|end}:<gap>; z-index:var(<Kind layer>)` |
 | `OnEdge(edge, side, block, inline)` | `position:absolute; margin:0; inset-block-{start\|end}:<block>; inset-inline-{start\|end}:<inline>; transform:translateY(∓50%); z-index:var(<Kind layer>)` |
 | `Anchor()` | `position:relative` — the positioning reference a `Flyout` hangs from |
 | `Flyout(side)` | `position:absolute; inset-block-start:100%; inset-inline-{start\|end}:0; z-index:var(<Kind layer>)` |

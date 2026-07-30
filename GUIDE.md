@@ -22,7 +22,8 @@ The substitute for design judgement: you do not choose, you look up.
 | list and detail swiped on a phone | `On(css.Mobile, "", MasterDetail(Most))` |
 | a fixed nav rail beside the content | `Sidebar(SideEnd, RailNarrow, SpaceNone)` |
 | a button holding only an icon | `CenterContent()` |
-| a floating action pinned to a corner | `Anchor()` on the panel + `Docked(EdgeBottom, SideEnd, Space4)` |
+| a floating action pinned to a corner | `Anchor()` on the panel + `Docked(Parent, EdgeBottom, SideEnd, Space4)` |
+| an action that stays put while panels swipe | `Docked(Viewport, EdgeBottom, SideEnd, Space4)` |
 | a chip riding a box's border, legend-style | `Anchor()` on the box + `OnEdge(EdgeTop, SideStart, …)` |
 | a dropdown that does not push the page | `Anchor()` on the trigger + `Flyout(SideEnd)` on the list |
 | a panel that slides in from an edge | `Drawer(SideEnd, TwoThirds)` + `RevealedBy(widget.Open)` |

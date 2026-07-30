@@ -128,7 +128,11 @@ func (r rule) Decls(layer widget.Layer) []string {
 	}
 
 	if r.hasDocked {
-		decls = append(decls, "position: absolute;")
+		if r.dockedScope == Viewport {
+			decls = append(decls, "position: fixed;")
+		} else {
+			decls = append(decls, "position: absolute;")
+		}
 		decls = append(decls, "margin: 0;")
 		if r.dockedEdge == EdgeTop {
 			decls = append(decls, "inset-block-start: "+spaceVar(r.dockedGap)+";")

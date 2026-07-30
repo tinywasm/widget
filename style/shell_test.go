@@ -162,7 +162,7 @@ func TestDockedPinsToTheAnchorCorner(t *testing.T) {
 	w := testWidget{name: "cv", kind: widget.Disclosure}
 	s := style.For(w).
 		Part("aside", style.Anchor()).
-		Part("action", style.Docked(style.EdgeBottom, style.SideEnd, style.Space4), style.CenterContent()).
+		Part("action", style.Docked(style.Parent, style.EdgeBottom, style.SideEnd, style.Space4), style.CenterContent()).
 		Stylesheet().String()
 
 	for _, want := range []string{
