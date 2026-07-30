@@ -60,6 +60,26 @@ func Glyph(s Surface) Option {
 	}
 }
 
+// ChipBox gives the element the shared chip width, the box a legend or a badge
+// occupies. Fixing it is what makes a column of chips line up instead of each
+// one hugging its own text; the text itself is truncated by the component that
+// renders it.
+func ChipBox() Option {
+	return func(r *rule) {
+		r.chipBox = true
+	}
+}
+
+// Hide removes the element. Its use is inside On(): a part that exists on wide
+// screens and not on a phone keeps its base styling and is switched off for the
+// one device, which OnlyOn cannot express — OnlyOn hides by default and reveals
+// per device, the opposite direction.
+func Hide() Option {
+	return func(r *rule) {
+		r.hidden = true
+	}
+}
+
 // ControlBox gives the element the shared control height, the rhythm every
 // interactive row in the app is measured against — a list row, a form field.
 // Pinning both to one token is what keeps them from drifting apart.
@@ -97,6 +117,18 @@ func Pad(s Space) Option {
 	return func(r *rule) {
 		r.hasPad = true
 		r.pad = s
+	}
+}
+
+// PadEdge pads one block edge only. Pad() is all four sides, which is the right
+// default; this exists for the case where a fixed overlay covers the top of a
+// panel and the content underneath has to start below it without gaining the
+// same inset left and right.
+func PadEdge(e Edge, s Space) Option {
+	return func(r *rule) {
+		r.hasPadEdge = true
+		r.padEdge = e
+		r.padEdgeSpace = s
 	}
 }
 

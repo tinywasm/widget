@@ -209,10 +209,15 @@ func motionValue(m Motion) string {
 
 func displayFor(f flowType) string {
 	switch f {
-	case flowStack, flowRow, flowScrollRow, flowMediaBox, flowCover, flowMasterDetail:
+	case flowStack, flowRow, flowScrollRow, flowMediaBox, flowCover, flowMasterDetail, flowDeck:
 		return "flex"
-	case flowSplit, flowGrid, flowFillCentered, flowSidebar:
+	case flowGrid, flowFillCentered:
 		return "grid"
+	case flowSplit, flowSidebar:
+		// Both emit display:flex in @layer primitives. Saying "grid" here would
+		// win from @layer states and strand every flex-basis/flex-grow the
+		// primitive laid down.
+		return "flex"
 	default:
 		return "block"
 	}
@@ -245,6 +250,64 @@ func railVar(rw RailWidth) string {
 		return css.RailWide.Var()
 	default:
 		return css.RailNarrow.Var()
+	}
+}
+
+// flowSelfDecls returns the declarations a flow puts on the CONTAINER itself,
+// without the child rules that go with it. The main path groups flows into
+// shared selectors collected from the root and the parts; a rule that is
+// neither — a CueWithin — has nothing to group with and needs them inline, or
+// it silently emits no `display` at all.
+func flowSelfDecls(r rule) []string {
+	switch r.flowType {
+	case flowStack:
+		return []string{"display: flex;", "flex-direction: column;", "gap: var(--gap);", "min-height: 0;"}
+	case flowRow:
+		return []string{"display: flex;", "flex-wrap: wrap;", "gap: var(--gap);", "align-items: center;"}
+	case flowSplit:
+		return []string{"display: flex;", "flex-wrap: wrap;", "gap: var(--gap);"}
+	case flowGrid:
+		return []string{"display: grid;", "gap: var(--gap);", "grid-template-columns: repeat(auto-fit, minmax(min(var(--track), 100%), 1fr));"}
+	case flowCenter:
+		return []string{"margin-inline: auto;", "max-width: var(--max-width);", "width: 100%;"}
+	case flowFillCentered:
+		return []string{"display: grid;", "place-items: center;", "min-height: 100%;", "width: 100%;"}
+	case flowScrollRow:
+		return []string{"display: flex;", "gap: var(--gap);", "overflow-x: auto;", "scroll-snap-type: x mandatory;"}
+	case flowMediaBox:
+		return []string{"aspect-ratio: var(--ratio);", "overflow: hidden;", "display: flex;", "justify-content: center;", "align-items: center;"}
+	case flowCover:
+		return []string{"height: 100dvh;", "display: flex;", "flex-direction: column;"}
+	case flowSidebar:
+		return []string{"display: flex;", "flex-wrap: wrap;", "gap: var(--gap);"}
+	case flowDeck:
+		return deckStripDecls()
+	case flowMasterDetail:
+		return masterDetailStripDecls()
+	default:
+		return nil
+	}
+}
+
+// deckStripDecls lays the children out as full-width snap pages. scroll-behavior
+// is the whole point: it is what turns a ScrollIntoView into a slide.
+func deckStripDecls() []string {
+	return []string{
+		"display: flex;",
+		"flex-direction: row;",
+		"flex-wrap: nowrap;",
+		"gap: var(--gap);",
+		"overflow-x: auto;",
+		"overflow-y: hidden;",
+		"scroll-snap-type: x mandatory;",
+		"scroll-behavior: smooth;",
+	}
+}
+
+func deckPageDecls() []string {
+	return []string{
+		"flex: 0 0 100%;",
+		"scroll-snap-align: start;",
 	}
 }
 

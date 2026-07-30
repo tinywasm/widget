@@ -17,6 +17,7 @@ const (
 	flowCover
 	flowSidebar
 	flowMasterDetail
+	flowDeck
 )
 
 // Stack defines a vertical rhythm with children at full width.
@@ -110,6 +111,22 @@ func Cover() Option {
 	return func(r *rule) {
 		r.hasFlow = true
 		r.flowType = flowCover
+	}
+}
+
+// Deck lays its children out as a horizontal scroll-snap strip in which every
+// child is exactly one container wide, and scrolls smoothly between them. It is
+// how a shell changes panel with a slide instead of a jump: RevealedBy toggles
+// `display`, which is a discrete property and cannot transition, so the movement
+// has to come from the scroller. Move between children with ScrollIntoView.
+//
+// Every child stays in the DOM. That is the trade: the panels are all mounted,
+// and the strip decides which one is on screen.
+func Deck(gap Space) Option {
+	return func(r *rule) {
+		r.hasFlow = true
+		r.flowType = flowDeck
+		r.flowGap = gap
 	}
 }
 

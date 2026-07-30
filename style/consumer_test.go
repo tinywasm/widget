@@ -153,9 +153,9 @@ func TestValidateReportsAll(t *testing.T) {
 	// a sheet with an undeclared part, an empty part and a Veil without Backdrop returns three errors (closes D-3)
 	wd := &testWidget{name: "w", kind: widget.Listbox} // Grid/Listbox allows Selected state
 	sheet := style.For(wd).
-		Part("emptypart"). // empty part (no options/declarations)
+		Part("emptypart").                                            // empty part (no options/declarations)
 		When(widget.Selected, "undeclared", style.As(style.Primary)). // undeclared part
-		Part("veilpart", style.Veil()) // Veil without Backdrop
+		Part("veilpart", style.Veil())                                // Veil without Backdrop
 
 	errs := sheet.Validate()
 	if len(errs) != 3 {

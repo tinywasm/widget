@@ -125,8 +125,8 @@ const (
 type Size uint8
 
 const (
-	Content Size = iota // adjusts to its content
-	Readable            // readable line length
+	Content  Size = iota // adjusts to its content
+	Readable             // readable line length
 	Third
 	Half
 	TwoThirds

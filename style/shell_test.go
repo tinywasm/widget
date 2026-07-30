@@ -234,6 +234,88 @@ func TestControlBoxSharesOneHeight(t *testing.T) {
 	}
 }
 
+func TestCueWithinReachesADescendant(t *testing.T) {
+	// The one descendant selector in the package. A rail that reveals its own
+	// labels on hover has no other expression: Cue() only ever emits
+	// `.n__part:hover`, and the label is a different element from the trigger.
+	w := testWidget{name: "pd", kind: widget.Menu}
+	s := style.For(w).
+		Part("menu", style.Stack(style.Space1)).
+		Part("link-text", style.FontSize(style.TextBase)).
+		CueWithin(widget.Hover, "menu", "link-text", style.Row(style.SpaceNone)).
+		Stylesheet().String()
+
+	if !strings.Contains(s, ".pd__menu:hover .pd__link-text") {
+		t.Errorf("expected the descendant selector, got:\n%s", s)
+	}
+}
+
+func TestDeckPagesAreOneContainerWide(t *testing.T) {
+	// display is discrete, so a panel swap cannot transition. The movement has
+	// to come from a scroller, and smooth scrolling is what makes ScrollIntoView
+	// a slide rather than a jump.
+	w := testWidget{name: "pd", kind: widget.Region}
+	s := style.For(w).Part("stage", style.Deck(style.SpaceNone)).Stylesheet().String()
+
+	for _, want := range []string{
+		"scroll-snap-type: x mandatory;",
+		"scroll-behavior: smooth;",
+		"flex-wrap: nowrap;",
+		".pd__stage > *",
+		"flex: 0 0 100%;",
+		"scroll-snap-align: start;",
+	} {
+		if !strings.Contains(s, want) {
+			t.Errorf("expected Deck to emit %q, got:\n%s", want, s)
+		}
+	}
+}
+
+func TestHideSwitchesAPartOffForOneDevice(t *testing.T) {
+	// OnlyOn hides by default and reveals per device. Hide() is the other
+	// direction: keep the base styling, switch the part off on one device.
+	w := testWidget{name: "pd", kind: widget.Region}
+	s := style.For(w).
+		Part("header", style.Row(style.Space2), style.As(style.Panel)).
+		On(css.Mobile, "header", style.Hide()).
+		Stylesheet().String()
+
+	if !strings.Contains(s, "@media (max-width: 639.98px)") {
+		t.Errorf("expected the rule to be device-scoped, got:\n%s", s)
+	}
+	if !strings.Contains(s, "display: none;") {
+		t.Errorf("expected Hide to emit display:none, got:\n%s", s)
+	}
+	if !strings.Contains(s, "background-color") {
+		t.Errorf("the base styling must survive, got:\n%s", s)
+	}
+}
+
+func TestChipBoxSharesOneWidth(t *testing.T) {
+	w := testWidget{name: "x", kind: widget.Region}
+	s := style.For(w).Part("badge", style.ChipBox()).Stylesheet().String()
+
+	if !strings.Contains(s, "width: "+css.ChipWidth.Var()+";") {
+		t.Errorf("expected ChipBox to emit the shared width token, got:\n%s", s)
+	}
+	if !strings.Contains(s, "overflow: hidden;") {
+		t.Errorf("expected ChipBox to clip, got:\n%s", s)
+	}
+}
+
+func TestRevealedSplitStaysFlex(t *testing.T) {
+	// Split emits display:flex in @layer primitives; a state rule saying "grid"
+	// would win from @layer states and strand every flex-basis under it.
+	w := testWidget{name: "w", kind: widget.Disclosure}
+	s := style.For(w).
+		Part("panel", style.Split(style.SplitTwoThirds, style.Space2), style.RevealedBy(widget.Open)).
+		Stylesheet().String()
+
+	if !strings.Contains(s, ".w__panel[data-open=\"true\"] {\n  display: flex;\n}") {
+		t.Errorf("expected a revealed Split to stay flex, got:\n%s", s)
+	}
+}
+
 func TestPushEndMovesFreeSpaceInFront(t *testing.T) {
 	// Once flex-wrap drops an item onto a line of its own, nothing else on that
 	// line can push it: the free space has to go in front of it.

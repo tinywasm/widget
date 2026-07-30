@@ -28,6 +28,7 @@ type rule struct {
 
 	centerContent bool
 	controlBox    bool
+	chipBox       bool
 
 	hasGlyph bool
 	glyph    Surface
@@ -54,6 +55,10 @@ type rule struct {
 
 	hasPad bool
 	pad    Space
+
+	hasPadEdge   bool
+	padEdge      Edge
+	padEdgeSpace Space
 
 	hasRound bool
 	round    Radius
@@ -102,6 +107,16 @@ type cueKey struct {
 	part widget.Part
 }
 
+// cueWithinKey addresses a part through an ancestor's cue. Every other rule in
+// this package is one selector on one element; this is the single exception,
+// and it exists because a container that reveals its own children on hover — a
+// nav rail that expands — has no other expression.
+type cueWithinKey struct {
+	cue       widget.Cue
+	container widget.Part
+	part      widget.Part
+}
+
 type deviceKey struct {
 	device css.Device
 	part   widget.Part
@@ -114,6 +129,7 @@ type Sheet struct {
 	partRules   map[widget.Part]rule
 	stateRules  map[stateKey]rule
 	cueRules    map[cueKey]rule
+	cueWithin   map[cueWithinKey]rule
 	deviceRules map[deviceKey]rule
 }
 
@@ -124,6 +140,7 @@ func For(w widget.Widget) *Sheet {
 		partRules:   make(map[widget.Part]rule),
 		stateRules:  make(map[stateKey]rule),
 		cueRules:    make(map[cueKey]rule),
+		cueWithin:   make(map[cueWithinKey]rule),
 		deviceRules: make(map[deviceKey]rule),
 	}
 }
@@ -165,6 +182,20 @@ func (s *Sheet) Cue(c widget.Cue, p widget.Part, opts ...Option) *Sheet {
 		opt(&r)
 	}
 	s.cueRules[key] = r
+	return s
+}
+
+// CueWithin styles a part while an ANCESTOR part carries a browser cue —
+// `.n__container:hover .n__part`. Reach for Cue() first; this is only for the
+// case where the trigger and the thing that reacts are different elements, such
+// as a rail that shows its labels while the pointer is over it.
+func (s *Sheet) CueWithin(c widget.Cue, container, p widget.Part, opts ...Option) *Sheet {
+	key := cueWithinKey{cue: c, container: container, part: p}
+	r := s.cueWithin[key]
+	for _, opt := range opts {
+		opt(&r)
+	}
+	s.cueWithin[key] = r
 	return s
 }
 

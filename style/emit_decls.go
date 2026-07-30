@@ -60,6 +60,13 @@ func (r rule) Decls(layer widget.Layer) []string {
 	if r.hasPad {
 		decls = append(decls, "padding: "+spaceVar(r.pad)+";")
 	}
+	if r.hasPadEdge {
+		if r.padEdge == EdgeTop {
+			decls = append(decls, "padding-block-start: "+spaceVar(r.padEdgeSpace)+";")
+		} else {
+			decls = append(decls, "padding-block-end: "+spaceVar(r.padEdgeSpace)+";")
+		}
+	}
 	if r.hasRound {
 		decls = append(decls, "border-radius: "+radiusVar(r.round)+";")
 	}
@@ -120,6 +127,11 @@ func (r rule) Decls(layer widget.Layer) []string {
 	if r.hasGlyph {
 		decls = append(decls, "color: "+familyBase(r.glyph).Var()+";")
 		decls = append(decls, "fill: currentColor;")
+	}
+
+	if r.chipBox {
+		decls = append(decls, "width: "+css.ChipWidth.Var()+";")
+		decls = append(decls, "overflow: hidden;")
 	}
 
 	if r.controlBox {
@@ -228,7 +240,7 @@ func (r rule) emitsNothing(layer widget.Layer) bool {
 	if len(r.Decls(layer)) > 0 {
 		return false
 	}
-	return !r.hasFlow && !r.fill && !r.grow && !r.pushEnd && !r.scroll && !r.keepSize && !r.edgeToEdge && !r.hideOverflow && !r.hasIcon && !r.controlBox && !r.hasGlyph
+	return !r.hasFlow && !r.fill && !r.grow && !r.pushEnd && !r.scroll && !r.keepSize && !r.edgeToEdge && !r.hideOverflow && !r.hasIcon && !r.controlBox && !r.chipBox && !r.hasGlyph && !r.hasPadEdge
 }
 
 func formatRule(selectors []string, decls []string) string {

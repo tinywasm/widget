@@ -124,6 +124,7 @@ of these.
 | `Elevation` | `Flat, Raised, Floating, Popover` | `none`, `--shadow-sm/md/lg` |
 | `Motion` | `MotionNone, MotionFast, MotionBase, MotionSlow` | `none`, `--duration-*` + `--ease-in-out` |
 | `ColumnWidth` | `ColumnNarrow, ColumnMedium, ColumnWide` | `--column-narrow/medium/wide` |
+| shared boxes | `ControlBox()`, `ChipBox()` | `--control-height`, `--chip-width` |
 | `Size` | `Content, Readable, Third, Half, TwoThirds, Most, Full` | `max-content`, `--max-w-readable`, `33.33%`, `50%`, `66.66%`, `90%`, `100%` |
 | `SplitRatio` | `SplitHalf, SplitTwoThirds, SplitThreeQuarters` | `1`, `2`, `3` — unitless, they feed `flex-grow` against a trailing `1` |
 | `Aspect` | `AspectSquare, Aspect3x2, Aspect4x3, Aspect16x9` | `1/1`, `3/2`, `4/3`, `16/9` |
@@ -213,6 +214,7 @@ family's interaction state.
 | `MediaBox(a)` | `aspect-ratio:var(--ratio); overflow:hidden; display:flex; justify-content:center; align-items:center`, and `> img, > video { width:100%; height:100%; object-fit:cover }` |
 | `Cover()` | `display:flex; flex-direction:column; height:100dvh` |
 | `MasterDetail(detail)` | `display:flex; flex-direction:row; flex-wrap:nowrap; direction:rtl; gap:0; overflow-x:auto; overflow-y:hidden; scroll-snap-type:x mandatory; scroll-behavior:smooth`, and `> * { flex:0 0 auto }` plus `> :nth-child(1) { direction:ltr; flex:0 0 <detail>; scroll-snap-align:end; order:2 }` plus `> :nth-child(2) { direction:ltr; flex:0 0 100%; scroll-snap-align:start; order:1 }` |
+| `Deck(gap)` | `display:flex; flex-direction:row; flex-wrap:nowrap; gap:var(--gap); overflow-x:auto; overflow-y:hidden; scroll-snap-type:x mandatory; scroll-behavior:smooth`, and `> * { flex:0 0 100%; scroll-snap-align:start }` |
 | `Sidebar(side, width, gap)` | `display:flex; flex-wrap:wrap; gap:var(--gap)`, and `> :first-child` / `> :last-child` rail/content split based on `side` |
 
 No emitted selector may begin with `.fl-` or `.exc-`.
@@ -264,6 +266,7 @@ func As(s Surface) Option
 func Interactive(s Surface) Option
 func RevealedBy(st widget.State) Option
 func Pad(Space) Option
+func PadEdge(Edge, Space) Option
 func Round(Radius) Option
 func Raise(Elevation) Option
 func Width(Size) Option
@@ -276,6 +279,8 @@ func Grow() Option
 func PushEnd() Option
 func Glyph(Surface) Option
 func ControlBox() Option
+func ChipBox() Option
+func Hide() Option
 func CenterContent() Option
 func Anchor() Option
 func Docked(scope Scope, edge Edge, side Side, gap Space) Option
@@ -289,6 +294,7 @@ func Backdrop(Scope) Option
 func Veil() Option
 func Cover() Option
 func Sidebar(side Side, width RailWidth, gap Space) Option
+func Deck(gap Space) Option
 func MasterDetail(detail Size) Option
 func Drawer(side Side, size Size) Option
 ```
@@ -302,12 +308,15 @@ func Drawer(side Side, size Size) Option
 | `KeepSize()` | `flex-shrink:0; flex-grow:0` |
 | `EdgeToEdge()` | `margin:0; border-radius:0` |
 | `HideOverflow()` | `overflow:hidden` |
+| `PadEdge(e, s)` | `padding-block-{start\|end}:var(--space-N)` |
 | `IconBox(s)` | `width:<1em\|1.5em\|2.5em>; height:<same>; flex-shrink:0` |
 | `Backdrop(Parent)` | `position:absolute; inset:0; z-index:var(<Kind layer>)` |
 | `Backdrop(Viewport)` | `position:fixed; inset:0; z-index:var(<Kind layer>)` |
 | `Veil()` | `background-color: color-mix(in srgb, var(--color-surface,<fallback>) 60%, transparent)` |
 | `Glyph(s)` | `color:<surface base>; fill:currentColor` — tints the content, paints no background |
 | `ControlBox()` | `min-height:var(--control-height)` |
+| `ChipBox()` | `width:var(--chip-width); overflow:hidden` |
+| `Hide()` | `display:none` — for use inside `On()`, the inverse of `OnlyOn` |
 | `CenterContent()` | `display:flex; align-items:center; justify-content:center` |
 | `Docked(scope, edge, side, gap)` | `position:{absolute\|fixed}; margin:0; inset-block-{start\|end}:<gap>; inset-inline-{start\|end}:<gap>; z-index:var(<Kind layer>)` |
 | `OnEdge(edge, side, block, inline)` | `position:absolute; margin:0; inset-block-{start\|end}:<block>; inset-inline-{start\|end}:<inline>; transform:translateY(∓50%); z-index:var(<Kind layer>)` |
@@ -326,7 +335,7 @@ Base rule emits `display:none`. The state rule emits:
 
 | Flow declared on the same part | `display` |
 |---|---|
-| `Stack`, `Row`, `Split`, `ScrollRow`, `MediaBox` | `flex` |
+| `Stack`, `Row`, `Split`, `Sidebar`, `ScrollRow`, `MediaBox`, `Cover`, `MasterDetail`, `Deck` | `flex` |
 | `Grid`, `FillCentered` | `grid` |
 | `Center`, or no flow | `block` |
 

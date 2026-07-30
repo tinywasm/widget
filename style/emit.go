@@ -26,7 +26,7 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 	sb.WriteString("@layer tokens, primitives, widgets, states;\n\n")
 
 	var stackSel, rowSel, splitSel, gridSel, centerSel, fillCenteredSel, scrollRowSel, mediaBoxSel []string
-	var coverSels []string
+	var coverSels, deckSels []string
 
 	type sidebarInfo struct {
 		sel  string
@@ -65,6 +65,8 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 				coverSels = append(coverSels, sel)
 			case flowSidebar:
 				sidebarInfos = append(sidebarInfos, sidebarInfo{sel: sel, side: r.flowSide})
+			case flowDeck:
+				deckSels = append(deckSels, sel)
 			case flowMasterDetail:
 				masterDetailInfos = append(masterDetailInfos, masterDetailInfo{sel: sel, detail: r.flowDetail})
 			}
@@ -234,6 +236,15 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 		})
 	}
 
+	if len(deckSels) > 0 {
+		emitPrimitive(deckSels, deckStripDecls())
+		var deckKids []string
+		for _, sel := range deckSels {
+			deckKids = append(deckKids, sel+" > *")
+		}
+		emitPrimitive(deckKids, deckPageDecls())
+	}
+
 	for _, mi := range masterDetailInfos {
 		emitPrimitive([]string{mi.sel}, masterDetailStripDecls())
 		emitPrimitive([]string{mi.sel + " > *"}, masterDetailResetDecls())
@@ -391,6 +402,41 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 		statesSB.WriteString(formatRule([]string{sel}, sc.decls))
 	}
 
+	// The one descendant selector in the package: an ancestor's cue reaching a
+	// part inside it.
+	type cueWithinEntry struct {
+		key   cueWithinKey
+		decls []string
+	}
+	var sortedCueWithin []cueWithinEntry
+	for k, r := range s.cueWithin {
+		var d []string
+		if r.hasFlow {
+			d = append(d, flowSelfDecls(r)...)
+		}
+		d = append(d, r.Decls(s.widget.WidgetKind().Layer())...)
+		d = append(d, primitiveDecls(r)...)
+		if len(d) == 0 {
+			continue
+		}
+		sortedCueWithin = append(sortedCueWithin, cueWithinEntry{key: k, decls: d})
+	}
+	sort.Slice(sortedCueWithin, func(i, j int) bool {
+		a, b := sortedCueWithin[i].key, sortedCueWithin[j].key
+		if a.cue != b.cue {
+			return a.cue < b.cue
+		}
+		if a.container != b.container {
+			return a.container < b.container
+		}
+		return a.part < b.part
+	})
+	for _, sc := range sortedCueWithin {
+		sel := selectorOf(s.widget.WidgetName(), sc.key.container) + cuePseudo(sc.key.cue) +
+			" " + selectorOf(s.widget.WidgetName(), sc.key.part)
+		statesSB.WriteString(formatRule([]string{sel}, sc.decls))
+	}
+
 	states := statesSB.GetString(fmt.BuffOut)
 	if len(states) > 0 {
 		sb.WriteString("@layer states {\n")
@@ -454,6 +500,9 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 					devWidSB.WriteString(formatRule([]string{sel + " > img", sel + " > video"}, []string{"width: 100%;", "height: 100%;", "object-fit: cover;"}))
 				case flowCover:
 					devWidSB.WriteString(formatRule([]string{sel}, []string{"height: 100dvh;", "display: flex;", "flex-direction: column;"}))
+				case flowDeck:
+					devWidSB.WriteString(formatRule([]string{sel}, deckStripDecls()))
+					devWidSB.WriteString(formatRule([]string{sel + " > *"}, deckPageDecls()))
 				case flowMasterDetail:
 					devWidSB.WriteString(formatRule([]string{sel}, masterDetailStripDecls()))
 					devWidSB.WriteString(formatRule([]string{sel + " > *"}, masterDetailResetDecls()))
@@ -518,6 +567,18 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 			attr := k.state.Attr()
 			sel := fmt.Sprintf("%s[%s=\"%s\"]", selectorOf(s.widget.WidgetName(), k.part), attr.Key, attr.Value)
 			motionSel = append(motionSel, sel)
+		}
+	}
+	for k, cr := range s.cueWithin {
+		if cr.hasMotion {
+			motionSel = append(motionSel,
+				selectorOf(s.widget.WidgetName(), k.container)+cuePseudo(k.cue)+
+					" "+selectorOf(s.widget.WidgetName(), k.part))
+		}
+	}
+	for k, dr := range s.deviceRules {
+		if dr.hasMotion {
+			motionSel = append(motionSel, selectorOf(s.widget.WidgetName(), k.part))
 		}
 	}
 	for k, cr := range s.cueRules {

@@ -61,6 +61,33 @@ func (s *Sheet) Validate() []error {
 			errs = append(errs, fmt.Errf("sheet %s: part %q: Anchor/Docked/OnEdge/Flyout/Backdrop/Drawer all set position; use one", string(s.widget.WidgetName()), string(p)))
 		}
 	}
+	// Both ends of a descendant rule have to exist, or it silently styles
+	// nothing.
+	for k := range s.cueWithin {
+		if _, ok := s.partRules[k.container]; !ok && k.container != "" {
+			errs = append(errs, fmt.Errf("sheet %s: CueWithin container %q is not a declared part", string(s.widget.WidgetName()), string(k.container)))
+		}
+		if _, ok := s.partRules[k.part]; !ok && k.part != "" {
+			errs = append(errs, fmt.Errf("sheet %s: CueWithin part %q is not a declared part", string(s.widget.WidgetName()), string(k.part)))
+		}
+		if k.container == k.part {
+			errs = append(errs, fmt.Errf("sheet %s: CueWithin container and part are both %q; use Cue()", string(s.widget.WidgetName()), string(k.part)))
+		}
+	}
+
+	// A device rule that only paints is invisible: OnlyOn hides the part by
+	// default, and inside the query only a flow, CenterContent or the state rule
+	// RevealedBy generates puts a `display` back on it.
+	for k, dr := range s.deviceRules {
+		pr, ok := s.partRules[k.part]
+		if !ok || !pr.hidden || dr.hidden {
+			continue
+		}
+		if !dr.hasFlow && !dr.centerContent && !dr.hasRevealed {
+			errs = append(errs, fmt.Errf("sheet %s: part %q is OnlyOn but its device rule declares no flow, so it can never show", string(s.widget.WidgetName()), string(k.part)))
+		}
+	}
+
 	checkPosition("", s.rootRule)
 	for p, pr := range s.partRules {
 		checkPosition(p, pr)
