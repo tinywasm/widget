@@ -162,7 +162,7 @@ func TestDockedPinsToTheAnchorCorner(t *testing.T) {
 	w := testWidget{name: "cv", kind: widget.Disclosure}
 	s := style.For(w).
 		Part("aside", style.Anchor()).
-		Part("action", style.Docked(style.SideEnd, style.Space4), style.CenterContent()).
+		Part("action", style.Docked(style.EdgeBottom, style.SideEnd, style.Space4), style.CenterContent()).
 		Stylesheet().String()
 
 	for _, want := range []string{
@@ -175,6 +175,32 @@ func TestDockedPinsToTheAnchorCorner(t *testing.T) {
 	} {
 		if !strings.Contains(s, want) {
 			t.Errorf("expected Docked/CenterContent to emit %q, got:\n%s", want, s)
+		}
+	}
+}
+
+func TestOnEdgeStraddlesTheLine(t *testing.T) {
+	// A fieldset legend rides the border it labels. Half of the chip has to sit
+	// outside the box and half inside, at any font size — which is why the shift
+	// is half of the element's own height and not a guessed length.
+	w := testWidget{name: "tw-field", kind: widget.Form}
+	s := style.For(w).
+		Root(style.Anchor()).
+		Part("label", style.OnEdge(style.EdgeTop, style.SideStart, style.Space2, style.Space4)).
+		Part("badge", style.OnEdge(style.EdgeBottom, style.SideEnd, style.SpaceNone, style.Space3)).
+		Stylesheet().String()
+
+	for _, want := range []string{
+		"inset-block-start: var(--space-2,0.5rem);",
+		"inset-inline-start: var(--space-4,1rem);",
+		"transform: translateY(-50%);",
+		"inset-block-end: 0;",
+		"inset-inline-end: var(--space-3,0.75rem);",
+		"transform: translateY(50%);",
+		"margin: 0;",
+	} {
+		if !strings.Contains(s, want) {
+			t.Errorf("expected OnEdge to emit %q, got:\n%s", want, s)
 		}
 	}
 }

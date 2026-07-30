@@ -129,11 +129,37 @@ func (r rule) Decls(layer widget.Layer) []string {
 
 	if r.hasDocked {
 		decls = append(decls, "position: absolute;")
-		decls = append(decls, "inset-block-end: "+spaceVar(r.dockedGap)+";")
+		decls = append(decls, "margin: 0;")
+		if r.dockedEdge == EdgeTop {
+			decls = append(decls, "inset-block-start: "+spaceVar(r.dockedGap)+";")
+		} else {
+			decls = append(decls, "inset-block-end: "+spaceVar(r.dockedGap)+";")
+		}
 		if r.dockedSide == SideStart {
 			decls = append(decls, "inset-inline-start: "+spaceVar(r.dockedGap)+";")
 		} else {
 			decls = append(decls, "inset-inline-end: "+spaceVar(r.dockedGap)+";")
+		}
+		decls = append(decls, "z-index: "+layerVar(layer)+";")
+	}
+
+	if r.hasOnEdge {
+		decls = append(decls, "position: absolute;")
+		decls = append(decls, "margin: 0;")
+		// translate by half of the element's OWN height: the straddle stays
+		// exact whatever the chip's font size and padding turn out to be, which
+		// a fixed negative margin can only approximate.
+		if r.onEdgeEdge == EdgeTop {
+			decls = append(decls, "inset-block-start: "+spaceVar(r.onEdgeBlock)+";")
+			decls = append(decls, "transform: translateY(-50%);")
+		} else {
+			decls = append(decls, "inset-block-end: "+spaceVar(r.onEdgeBlock)+";")
+			decls = append(decls, "transform: translateY(50%);")
+		}
+		if r.onEdgeSide == SideStart {
+			decls = append(decls, "inset-inline-start: "+spaceVar(r.onEdgeInline)+";")
+		} else {
+			decls = append(decls, "inset-inline-end: "+spaceVar(r.onEdgeInline)+";")
 		}
 		decls = append(decls, "z-index: "+layerVar(layer)+";")
 	}

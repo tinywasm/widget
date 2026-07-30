@@ -48,6 +48,14 @@ const (
 	WeightBold
 )
 
+// Edge is a block-axis edge of a box.
+type Edge uint8
+
+const (
+	EdgeTop Edge = iota
+	EdgeBottom
+)
+
 // IconSize is the square size scale for icon-sized parts. The steps are
 // relative to the inherited font size, so an icon tracks the text it sits with.
 type IconSize uint8

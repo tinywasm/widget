@@ -29,8 +29,15 @@ type rule struct {
 	centerContent bool
 
 	hasDocked  bool
+	dockedEdge Edge
 	dockedSide Side
 	dockedGap  Space
+
+	hasOnEdge    bool
+	onEdgeEdge   Edge
+	onEdgeSide   Side
+	onEdgeBlock  Space
+	onEdgeInline Space
 
 	hasAnchor  bool
 	hasFlyout  bool

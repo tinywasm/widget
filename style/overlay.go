@@ -61,15 +61,35 @@ func Flyout(side Side) Option {
 	}
 }
 
-// Docked pins the element to the bottom corner of its Anchor, above the content
-// and out of the flow, at the widget kind's stacking layer. It is the floating
-// action button of a narrow screen: the list keeps the whole panel and the
-// action stays reachable without a band of its own.
-func Docked(side Side, gap Space) Option {
+// Docked pins the element inside a corner of its Anchor, above the content and
+// out of the flow, at the widget kind's stacking layer. Use it for a control
+// that must not cost the content a band of its own: a floating action button, a
+// row's overflow menu.
+func Docked(edge Edge, side Side, gap Space) Option {
 	return func(r *rule) {
 		r.hasDocked = true
+		r.dockedEdge = edge
 		r.dockedSide = side
 		r.dockedGap = gap
+	}
+}
+
+// OnEdge centres the element ON one of its Anchor's edge lines — half outside
+// the box, half inside — the way a fieldset legend rides the border it labels.
+//
+// block is the distance from the Anchor's border to the line being ridden: pass
+// the Anchor's padding to ride the box that padding encloses, or SpaceNone to
+// ride the Anchor's own border. inline is how far the chip is indented along
+// that line. The straddle itself is exact at any font size or padding, because
+// the element is shifted by half of its OWN rendered height rather than by a
+// guessed length.
+func OnEdge(edge Edge, side Side, block Space, inline Space) Option {
+	return func(r *rule) {
+		r.hasOnEdge = true
+		r.onEdgeEdge = edge
+		r.onEdgeSide = side
+		r.onEdgeBlock = block
+		r.onEdgeInline = inline
 	}
 }
 

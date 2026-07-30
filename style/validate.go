@@ -44,6 +44,30 @@ func (s *Sheet) Validate() []error {
 	for p, pr := range s.partRules {
 		checkVeil(p, pr)
 	}
+
+	// Every one of these sets `position`, and the emitted declarations are
+	// sorted, so two of them on one rule means the alphabetically later keyword
+	// silently wins. Anchor() alongside Docked()/Flyout() is the easy mistake:
+	// both of those are already containing blocks, so the Anchor is redundant
+	// as well as destructive.
+	checkPosition := func(p widget.Part, r rule) {
+		n := 0
+		for _, on := range []bool{r.hasAnchor, r.hasDocked, r.hasOnEdge, r.hasFlyout, r.hasBackdrop, r.hasDrawer} {
+			if on {
+				n++
+			}
+		}
+		if n > 1 {
+			errs = append(errs, fmt.Errf("sheet %s: part %q: Anchor/Docked/OnEdge/Flyout/Backdrop/Drawer all set position; use one", string(s.widget.WidgetName()), string(p)))
+		}
+	}
+	checkPosition("", s.rootRule)
+	for p, pr := range s.partRules {
+		checkPosition(p, pr)
+	}
+	for k, dr := range s.deviceRules {
+		checkPosition(k.part, dr)
+	}
 	for k, sr := range s.stateRules {
 		if sr.hasVeil && !sr.hasBackdrop {
 			errs = append(errs, fmt.Errf("sheet %s: part %q: Veil() requires Backdrop()", string(s.widget.WidgetName()), string(k.part)))
