@@ -61,6 +61,18 @@ func Flyout(side Side) Option {
 	}
 }
 
+// Docked pins the element to the bottom corner of its Anchor, above the content
+// and out of the flow, at the widget kind's stacking layer. It is the floating
+// action button of a narrow screen: the list keeps the whole panel and the
+// action stays reachable without a band of its own.
+func Docked(side Side, gap Space) Option {
+	return func(r *rule) {
+		r.hasDocked = true
+		r.dockedSide = side
+		r.dockedGap = gap
+	}
+}
+
 // Drawer anchors the element to one inline edge of the viewport, full height,
 // at the widget kind's stacking layer. It is the slide-in panel of a mobile
 // navigation; pair it with RevealedBy(widget.Open) to control visibility and

@@ -22,9 +22,15 @@ type rule struct {
 	flowRail   RailWidth
 	flowDetail Size
 
-	hasDrawer   bool
-	drawerSide  Side
-	drawerSize  Size
+	hasDrawer  bool
+	drawerSide Side
+	drawerSize Size
+
+	centerContent bool
+
+	hasDocked  bool
+	dockedSide Side
+	dockedGap  Space
 
 	hasAnchor  bool
 	hasFlyout  bool

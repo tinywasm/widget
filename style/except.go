@@ -39,6 +39,16 @@ func PushEnd() Option {
 	}
 }
 
+// CenterContent centers whatever the element contains, on both axes. A button
+// holding nothing but an icon needs it: the icon is a replaced element with
+// display: block, so the text-align a button carries by default does not move
+// it and it sits against the leading edge.
+func CenterContent() Option {
+	return func(r *rule) {
+		r.centerContent = true
+	}
+}
+
 // KeepSize does NOT reflow: maintains its size under any width.
 func KeepSize() Option {
 	return func(r *rule) {

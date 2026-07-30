@@ -272,7 +272,9 @@ func Animate(Motion) Option
 func Fill() Option
 func Grow() Option
 func PushEnd() Option
+func CenterContent() Option
 func Anchor() Option
+func Docked(side Side, gap Space) Option
 func Flyout(side Side) Option
 func Scroll() Option
 func KeepSize() Option
@@ -299,6 +301,8 @@ func Drawer(side Side, size Size) Option
 | `Backdrop(Parent)` | `position:absolute; inset:0; z-index:var(<Kind layer>)` |
 | `Backdrop(Viewport)` | `position:fixed; inset:0; z-index:var(<Kind layer>)` |
 | `Veil()` | `background-color: color-mix(in srgb, var(--color-surface,<fallback>) 60%, transparent)` |
+| `CenterContent()` | `display:flex; align-items:center; justify-content:center` |
+| `Docked(side, gap)` | `position:absolute; inset-block-end:<gap>; inset-inline-{start\|end}:<gap>; z-index:var(<Kind layer>)` |
 | `Anchor()` | `position:relative` — the positioning reference a `Flyout` hangs from |
 | `Flyout(side)` | `position:absolute; inset-block-start:100%; inset-inline-{start\|end}:0; z-index:var(<Kind layer>)` |
 | `Drawer(side, size)` | `position:fixed; inset-block:0; inset-inline-{start|end}:0; width:var(<size>); z-index:var(<Kind layer>)` |

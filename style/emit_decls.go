@@ -117,8 +117,25 @@ func (r rule) Decls(layer widget.Layer) []string {
 		decls = append(decls, "z-index: "+layerVar(layer)+";")
 	}
 
+	if r.centerContent {
+		decls = append(decls, "display: flex;")
+		decls = append(decls, "align-items: center;")
+		decls = append(decls, "justify-content: center;")
+	}
+
 	if r.hasAnchor {
 		decls = append(decls, "position: relative;")
+	}
+
+	if r.hasDocked {
+		decls = append(decls, "position: absolute;")
+		decls = append(decls, "inset-block-end: "+spaceVar(r.dockedGap)+";")
+		if r.dockedSide == SideStart {
+			decls = append(decls, "inset-inline-start: "+spaceVar(r.dockedGap)+";")
+		} else {
+			decls = append(decls, "inset-inline-end: "+spaceVar(r.dockedGap)+";")
+		}
+		decls = append(decls, "z-index: "+layerVar(layer)+";")
 	}
 
 	if r.hasFlyout {

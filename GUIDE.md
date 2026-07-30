@@ -21,6 +21,8 @@ The substitute for design judgement: you do not choose, you look up.
 | the frame of a whole application | `Cover()` |
 | list and detail swiped on a phone | `On(css.Mobile, "", MasterDetail(Most))` |
 | a fixed nav rail beside the content | `Sidebar(SideEnd, RailNarrow, SpaceNone)` |
+| a button holding only an icon | `CenterContent()` |
+| a floating action pinned to a corner | `Anchor()` on the panel + `Docked(SideEnd, Space4)` |
 | a dropdown that does not push the page | `Anchor()` on the trigger + `Flyout(SideEnd)` on the list |
 | a panel that slides in from an edge | `Drawer(SideEnd, TwoThirds)` + `RevealedBy(widget.Open)` |
 | a different arrangement on phones | `On(css.Mobile, "part", …)` |

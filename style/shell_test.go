@@ -158,6 +158,27 @@ func TestMasterDetailRestsOnTheMaster(t *testing.T) {
 	}
 }
 
+func TestDockedPinsToTheAnchorCorner(t *testing.T) {
+	w := testWidget{name: "cv", kind: widget.Disclosure}
+	s := style.For(w).
+		Part("aside", style.Anchor()).
+		Part("action", style.Docked(style.SideEnd, style.Space4), style.CenterContent()).
+		Stylesheet().String()
+
+	for _, want := range []string{
+		"position: relative;",
+		"position: absolute;",
+		"inset-block-end: var(--space-4,1rem);",
+		"inset-inline-end: var(--space-4,1rem);",
+		"z-index: var(--z-dropdown,100);",
+		"justify-content: center;",
+	} {
+		if !strings.Contains(s, want) {
+			t.Errorf("expected Docked/CenterContent to emit %q, got:\n%s", want, s)
+		}
+	}
+}
+
 func TestPushEndMovesFreeSpaceInFront(t *testing.T) {
 	// Once flex-wrap drops an item onto a line of its own, nothing else on that
 	// line can push it: the free space has to go in front of it.
