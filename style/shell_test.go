@@ -68,6 +68,17 @@ func TestGrowClaimsWidthWithoutHeight(t *testing.T) {
 	}
 }
 
+func TestPushEndMovesFreeSpaceInFront(t *testing.T) {
+	// Once flex-wrap drops an item onto a line of its own, nothing else on that
+	// line can push it: the free space has to go in front of it.
+	w := testWidget{name: "shell", kind: widget.Region}
+	s := style.For(w).Part("badge", style.PushEnd()).Stylesheet().String()
+
+	if !strings.Contains(s, "margin-inline-start: auto;") {
+		t.Errorf("expected PushEnd to emit margin-inline-start: auto, got:\n%s", s)
+	}
+}
+
 func TestIconBoxStepsAreDistinct(t *testing.T) {
 	w := testWidget{name: "shell", kind: widget.Region}
 	seen := make(map[string]style.IconSize)

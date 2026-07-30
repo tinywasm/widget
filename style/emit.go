@@ -34,7 +34,7 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 	}
 	var sidebarInfos []sidebarInfo
 
-	var fillSel, growSel, scrollSel, keepSizeSel, edgeToEdgeSel, hideOverflowSel []string
+	var fillSel, growSel, pushEndSel, scrollSel, keepSizeSel, edgeToEdgeSel, hideOverflowSel []string
 
 	collect := func(r rule, sel string) {
 		if r.hasFlow {
@@ -66,6 +66,9 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 		}
 		if r.grow {
 			growSel = append(growSel, sel)
+		}
+		if r.pushEnd {
+			pushEndSel = append(pushEndSel, sel)
 		}
 		if r.scroll {
 			scrollSel = append(scrollSel, sel)
@@ -233,6 +236,9 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 	emitPrimitive(growSel, []string{
 		"flex-grow: 1;",
 		"min-width: 0;",
+	})
+	emitPrimitive(pushEndSel, []string{
+		"margin-inline-start: auto;",
 	})
 	emitPrimitive(scrollSel, []string{
 		"overflow-y: auto;",

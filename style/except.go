@@ -28,6 +28,17 @@ func Grow() Option {
 	}
 }
 
+// PushEnd sends the part to the trailing edge of its line. It is the companion
+// of Grow(): Grow() absorbs the free space so the items after it are pushed
+// out, PushEnd() moves the free space in front of a single item — the only way
+// to keep something right-aligned once flex-wrap has dropped it onto a line of
+// its own.
+func PushEnd() Option {
+	return func(r *rule) {
+		r.pushEnd = true
+	}
+}
+
 // KeepSize does NOT reflow: maintains its size under any width.
 func KeepSize() Option {
 	return func(r *rule) {

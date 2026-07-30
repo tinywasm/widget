@@ -17,6 +17,7 @@ The substitute for design judgement: you do not choose, you look up.
 | an image with a fixed proportion | `MediaBox(Aspect16x9)` |
 | an svg icon that keeps its box | `IconBox(IconLg)` |
 | the item in a row that pushes the rest aside | `Grow()` |
+| an item pinned to the trailing edge of its line | `PushEnd()` |
 | the frame of a whole application | `Cover()` |
 | a fixed nav rail beside the content | `Sidebar(SideEnd, RailNarrow, SpaceNone)` |
 | a panel that slides in from an edge | `Drawer(SideEnd, TwoThirds)` + `RevealedBy(widget.Open)` |

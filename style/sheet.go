@@ -46,6 +46,7 @@ type rule struct {
 
 	fill         bool
 	grow         bool
+	pushEnd      bool
 	scroll       bool
 	keepSize     bool
 	edgeToEdge   bool
