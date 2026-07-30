@@ -84,16 +84,19 @@ func elevationVar(e Elevation) string {
 	}
 }
 
+// splitRatioValue feeds flex-grow, which takes a unitless number. An fr unit
+// here is invalid at computed-value time, which silently resets flex-grow to
+// its initial 0 and leaves the first partition at its content width.
 func splitRatioValue(r SplitRatio) string {
 	switch r {
 	case SplitHalf:
-		return "1fr"
+		return "1"
 	case SplitTwoThirds:
-		return "2fr"
+		return "2"
 	case SplitThreeQuarters:
-		return "3fr"
+		return "3"
 	default:
-		return "1fr"
+		return "1"
 	}
 }
 

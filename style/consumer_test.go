@@ -475,6 +475,29 @@ func TestSplitCollapses(t *testing.T) {
 	}
 }
 
+func TestSplitRatioIsUnitlessForFlexGrow(t *testing.T) {
+	// --ratio feeds flex-grow. An fr unit is invalid at computed-value time:
+	// flex-grow silently resets to its initial 0 and the first partition
+	// collapses to its content width instead of taking the larger share.
+	wd := &testWidget{name: "w", kind: widget.Region}
+	for _, tc := range []struct {
+		ratio style.SplitRatio
+		want  string
+	}{
+		{style.SplitHalf, "--ratio: 1;"},
+		{style.SplitTwoThirds, "--ratio: 2;"},
+		{style.SplitThreeQuarters, "--ratio: 3;"},
+	} {
+		s := style.For(wd).Root(style.Split(tc.ratio, style.Space2)).Stylesheet().String()
+		if !strings.Contains(s, tc.want) {
+			t.Errorf("expected %q, got:\n%s", tc.want, s)
+		}
+		if strings.Contains(s, "--ratio: 1fr;") || strings.Contains(s, "--ratio: 2fr;") || strings.Contains(s, "--ratio: 3fr;") {
+			t.Errorf("--ratio must not carry an fr unit when it feeds flex-grow, got:\n%s", s)
+		}
+	}
+}
+
 func TestSurfaceCarriesNoPadding(t *testing.T) {
 	// As(Panel) emits border-radius but no padding (closes C-2)
 	wd := &testWidget{name: "w", kind: widget.Region}

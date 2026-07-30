@@ -125,7 +125,7 @@ of these.
 | `Motion` | `MotionNone, MotionFast, MotionBase, MotionSlow` | `none`, `--duration-*` + `--ease-in-out` |
 | `ColumnWidth` | `ColumnNarrow, ColumnMedium, ColumnWide` | `--column-narrow/medium/wide` |
 | `Size` | `Content, Readable, Third, Half, TwoThirds, Full` | `max-content`, `--max-w-readable`, `33.33%`, `50%`, `66.66%`, `100%` |
-| `SplitRatio` | `SplitHalf, SplitTwoThirds, SplitThreeQuarters` | `1fr`, `2fr`, `3fr` (against a trailing `1fr`) |
+| `SplitRatio` | `SplitHalf, SplitTwoThirds, SplitThreeQuarters` | `1`, `2`, `3` — unitless, they feed `flex-grow` against a trailing `1` |
 | `Aspect` | `AspectSquare, Aspect3x2, Aspect4x3, Aspect16x9` | `1/1`, `3/2`, `4/3`, `16/9` |
 | `Scope` | `Parent, Viewport` | `position: absolute` / `fixed` |
 | `Side` | `SideStart, SideEnd` | `inline-start`, `inline-end` |
