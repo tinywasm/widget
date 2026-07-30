@@ -117,10 +117,54 @@ func (r rule) Decls(layer widget.Layer) []string {
 		decls = append(decls, "z-index: "+layerVar(layer)+";")
 	}
 
+	if r.hasAnchor {
+		decls = append(decls, "position: relative;")
+	}
+
+	if r.hasFlyout {
+		decls = append(decls, "position: absolute;")
+		decls = append(decls, "inset-block-start: 100%;")
+		if r.flyoutSide == SideStart {
+			decls = append(decls, "inset-inline-start: 0;")
+		} else {
+			decls = append(decls, "inset-inline-end: 0;")
+		}
+		decls = append(decls, "z-index: "+layerVar(layer)+";")
+	}
+
 	if r.hidden {
 		decls = append(decls, "display: none;")
 	}
 
+	return decls
+}
+
+// primitiveDecls returns the declarations the boolean layout flags stand for.
+// The main emission path groups them across selectors; a device-scoped rule has
+// nothing to group with and emits them on its own selector.
+func primitiveDecls(r rule) []string {
+	var decls []string
+	if r.fill || r.scroll {
+		decls = append(decls, "height: 100%;", "min-height: 0;", "flex-grow: 1;")
+	}
+	if r.scroll {
+		decls = append(decls, "overflow-y: auto;")
+	}
+	if r.grow {
+		decls = append(decls, "flex-grow: 1;", "min-width: 0;")
+	}
+	if r.pushEnd {
+		decls = append(decls, "margin-inline-start: auto;")
+	}
+	if r.keepSize {
+		decls = append(decls, "flex-shrink: 0;", "flex-grow: 0;")
+	}
+	if r.edgeToEdge {
+		decls = append(decls, "margin: 0;", "border-radius: 0;")
+	}
+	if r.hideOverflow {
+		decls = append(decls, "overflow: hidden;")
+	}
 	return decls
 }
 

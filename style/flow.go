@@ -16,6 +16,7 @@ const (
 	flowMediaBox
 	flowCover
 	flowSidebar
+	flowMasterDetail
 )
 
 // Stack defines a vertical rhythm with children at full width.
@@ -109,6 +110,30 @@ func Cover() Option {
 	return func(r *rule) {
 		r.hasFlow = true
 		r.flowType = flowCover
+	}
+}
+
+// MasterDetail turns a two-panel container into a horizontal scroll-snap strip
+// for a narrow screen: the master list rests where the browser's default scroll
+// position already is, and the detail sits beside it at `detail` of the strip's
+// width, so a sliver of the list stays visible and the panel it came from is
+// obvious. Swiping is a native scroll; snapping to the detail is a plain
+// ScrollIntoView from the row handler.
+//
+// The FIRST TWO element children are the panels, in the same DOM order a desktop
+// Split uses: detail first, master second. Anything after them — a modal mount
+// point, a portal anchor — is left alone, which is why this addresses them by
+// position and not with :first-child/:last-child. The strip is laid out RTL so
+// the master — the second child, given order 1 — lands at the start edge, which
+// RTL puts on the right, exactly where scroll position 0 already rests. That is
+// what removes the need for a scroll nudge at mount time, which this framework's
+// component contract has no hook for. Each panel resets to LTR so only the
+// outer strip's flow is mirrored, never the content.
+func MasterDetail(detail Size) Option {
+	return func(r *rule) {
+		r.hasFlow = true
+		r.flowType = flowMasterDetail
+		r.flowDetail = detail
 	}
 }
 

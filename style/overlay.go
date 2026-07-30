@@ -38,6 +38,29 @@ func RevealedBy(st widget.State) Option {
 	}
 }
 
+// Anchor makes the element the positioning reference for a Flyout inside it.
+// It is the trigger's container — a menu, a combobox — and emits nothing but
+// position: relative.
+func Anchor() Option {
+	return func(r *rule) {
+		r.hasAnchor = true
+	}
+}
+
+// Flyout lifts the element out of the flow and hangs it under its Anchor, flush
+// with the given inline edge, at the widget kind's stacking layer. Use it for a
+// dropdown: left in the flow, an expanding menu pushes everything below it down
+// and the list jumps under the pointer that opened it.
+//
+// The nearest Anchor() ancestor is what it hangs from. Without one it falls
+// back to whatever ancestor happens to be positioned.
+func Flyout(side Side) Option {
+	return func(r *rule) {
+		r.hasFlyout = true
+		r.flyoutSide = side
+	}
+}
+
 // Drawer anchors the element to one inline edge of the viewport, full height,
 // at the widget kind's stacking layer. It is the slide-in panel of a mobile
 // navigation; pair it with RevealedBy(widget.Open) to control visibility and

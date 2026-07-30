@@ -140,6 +140,8 @@ func sizeValue(s Size) string {
 		return "50%"
 	case TwoThirds:
 		return "66.66%"
+	case Most:
+		return "90%"
 	case Full:
 		return "100%"
 	default:
@@ -207,7 +209,7 @@ func motionValue(m Motion) string {
 
 func displayFor(f flowType) string {
 	switch f {
-	case flowStack, flowRow, flowScrollRow, flowMediaBox, flowCover:
+	case flowStack, flowRow, flowScrollRow, flowMediaBox, flowCover, flowMasterDetail:
 		return "flex"
 	case flowSplit, flowGrid, flowFillCentered, flowSidebar:
 		return "grid"
@@ -243,6 +245,58 @@ func railVar(rw RailWidth) string {
 		return css.RailWide.Var()
 	default:
 		return css.RailNarrow.Var()
+	}
+}
+
+// masterDetailStripDecls lays the two panels out as a horizontal scroll-snap
+// strip. direction: rtl is load-bearing — it puts the start edge on the right,
+// which is where scroll position 0 already rests, so the master panel is what
+// shows on arrival with no scroll nudge at mount time.
+func masterDetailStripDecls() []string {
+	return []string{
+		"display: flex;",
+		"flex-direction: row;",
+		"flex-wrap: nowrap;",
+		"direction: rtl;",
+		"gap: 0;",
+		"overflow-x: auto;",
+		"overflow-y: hidden;",
+		"scroll-snap-type: x mandatory;",
+		"scroll-behavior: smooth;",
+	}
+}
+
+// masterDetailResetDecls clears whatever the wide-screen flow left on the
+// children. Split in particular gives every child a flex-basis of
+// calc((40rem - 100%) * 999), which below 40rem is a six-figure pixel value: any
+// child the two panel rules do not cover — a modal mount point, a portal anchor
+// — keeps it and blows the strip's scroll width apart.
+func masterDetailResetDecls() []string {
+	return []string{
+		"flex: 0 0 auto;",
+	}
+}
+
+// masterDetailDetailDecls sizes the detail panel. It is first in the DOM, the
+// order a desktop Split wants, and order: 2 moves it beside the master without
+// touching the markup. Its width is a share of the SCROLL CONTAINER, not of the
+// viewport: the host panel is not guaranteed to be viewport-wide, and a vw here
+// overflows the strip by the difference.
+func masterDetailDetailDecls(detail Size) []string {
+	return []string{
+		"direction: ltr;",
+		"flex: 0 0 " + sizeValue(detail) + ";",
+		"scroll-snap-align: end;",
+		"order: 2;",
+	}
+}
+
+func masterDetailMasterDecls() []string {
+	return []string{
+		"direction: ltr;",
+		"flex: 0 0 100%;",
+		"scroll-snap-align: start;",
+		"order: 1;",
 	}
 }
 

@@ -124,7 +124,7 @@ of these.
 | `Elevation` | `Flat, Raised, Floating, Popover` | `none`, `--shadow-sm/md/lg` |
 | `Motion` | `MotionNone, MotionFast, MotionBase, MotionSlow` | `none`, `--duration-*` + `--ease-in-out` |
 | `ColumnWidth` | `ColumnNarrow, ColumnMedium, ColumnWide` | `--column-narrow/medium/wide` |
-| `Size` | `Content, Readable, Third, Half, TwoThirds, Full` | `max-content`, `--max-w-readable`, `33.33%`, `50%`, `66.66%`, `100%` |
+| `Size` | `Content, Readable, Third, Half, TwoThirds, Most, Full` | `max-content`, `--max-w-readable`, `33.33%`, `50%`, `66.66%`, `90%`, `100%` |
 | `SplitRatio` | `SplitHalf, SplitTwoThirds, SplitThreeQuarters` | `1`, `2`, `3` — unitless, they feed `flex-grow` against a trailing `1` |
 | `Aspect` | `AspectSquare, Aspect3x2, Aspect4x3, Aspect16x9` | `1/1`, `3/2`, `4/3`, `16/9` |
 | `Scope` | `Parent, Viewport` | `position: absolute` / `fixed` |
@@ -201,7 +201,7 @@ family's interaction state.
 
 | Option | Emits |
 |---|---|---|
-| `Stack(gap)` | `display:flex; flex-direction:column; min-height:0`, and `> * + * { margin-block-start: var(--gap) }` |
+| `Stack(gap)` | `display:flex; flex-direction:column; gap:var(--gap); min-height:0` — the gap lives on the container, never on a `> * + *` rule that would resolve `var(--gap)` against the child |
 | `Row(gap)` | `display:flex; flex-wrap:wrap; gap:var(--gap); align-items:center` |
 | `Split(r, gap)` | `display:flex; flex-wrap:wrap; gap:var(--gap)`, and `> * { flex-grow:1; flex-basis:calc((40rem - 100%) * 999) }` plus `> :first-child { flex-grow:var(--ratio) }` — stacks below ~40rem of **its own** width, no query and no wrapper element |
 | `Grid(min, gap)` | `display:grid; gap:var(--gap); grid-template-columns:repeat(auto-fit, minmax(min(var(--column),100%),1fr))` |
@@ -210,6 +210,7 @@ family's interaction state.
 | `ScrollRow(gap)` | `display:flex; gap:var(--gap); overflow-x:auto; scroll-snap-type:x mandatory`, and `> * { scroll-snap-align:start; flex:0 0 auto }` |
 | `MediaBox(a)` | `aspect-ratio:var(--ratio); overflow:hidden; display:flex; justify-content:center; align-items:center`, and `> img, > video { width:100%; height:100%; object-fit:cover }` |
 | `Cover()` | `display:flex; flex-direction:column; height:100dvh` |
+| `MasterDetail(detail)` | `display:flex; flex-direction:row; flex-wrap:nowrap; direction:rtl; gap:0; overflow-x:auto; overflow-y:hidden; scroll-snap-type:x mandatory; scroll-behavior:smooth`, and `> * { flex:0 0 auto }` plus `> :nth-child(1) { direction:ltr; flex:0 0 <detail>; scroll-snap-align:end; order:2 }` plus `> :nth-child(2) { direction:ltr; flex:0 0 100%; scroll-snap-align:start; order:1 }` |
 | `Sidebar(side, width, gap)` | `display:flex; flex-wrap:wrap; gap:var(--gap)`, and `> :first-child` / `> :last-child` rail/content split based on `side` |
 
 No emitted selector may begin with `.fl-` or `.exc-`.
@@ -271,6 +272,8 @@ func Animate(Motion) Option
 func Fill() Option
 func Grow() Option
 func PushEnd() Option
+func Anchor() Option
+func Flyout(side Side) Option
 func Scroll() Option
 func KeepSize() Option
 func EdgeToEdge() Option
@@ -279,6 +282,7 @@ func Backdrop(Scope) Option
 func Veil() Option
 func Cover() Option
 func Sidebar(side Side, width RailWidth, gap Space) Option
+func MasterDetail(detail Size) Option
 func Drawer(side Side, size Size) Option
 ```
 
@@ -295,6 +299,8 @@ func Drawer(side Side, size Size) Option
 | `Backdrop(Parent)` | `position:absolute; inset:0; z-index:var(<Kind layer>)` |
 | `Backdrop(Viewport)` | `position:fixed; inset:0; z-index:var(<Kind layer>)` |
 | `Veil()` | `background-color: color-mix(in srgb, var(--color-surface,<fallback>) 60%, transparent)` |
+| `Anchor()` | `position:relative` — the positioning reference a `Flyout` hangs from |
+| `Flyout(side)` | `position:absolute; inset-block-start:100%; inset-inline-{start\|end}:0; z-index:var(<Kind layer>)` |
 | `Drawer(side, size)` | `position:fixed; inset-block:0; inset-inline-{start|end}:0; width:var(<size>); z-index:var(<Kind layer>)` |
 | `Animate(m)` | `transition: all var(--duration-*) var(--ease-in-out)` |
 

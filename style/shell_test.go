@@ -68,6 +68,96 @@ func TestGrowClaimsWidthWithoutHeight(t *testing.T) {
 	}
 }
 
+func TestStackGapSurvivesAFlowChild(t *testing.T) {
+	// The separation must live on the container. A `> * + *` rule reading
+	// var(--gap) resolves it against the CHILD, so a child that is itself a
+	// flow container declares its own --gap and silently replaces the parent's
+	// spacing — with SpaceNone it collapses it to nothing.
+	w := testWidget{name: "shell", kind: widget.Region}
+	s := style.For(w).
+		Part("aside", style.Stack(style.Space1)).
+		Part("aside-content", style.Stack(style.SpaceNone)).
+		Stylesheet().String()
+
+	if !strings.Contains(s, "gap: var(--gap);") {
+		t.Errorf("expected Stack to put the gap on the container, got:\n%s", s)
+	}
+	if strings.Contains(s, "> * + *") {
+		t.Errorf("Stack must not space its children with a child-resolved var(--gap), got:\n%s", s)
+	}
+}
+
+func TestFlyoutHangsUnderItsAnchor(t *testing.T) {
+	// A dropdown left in the flow pushes everything below it down, so the list
+	// jumps under the pointer that opened it.
+	w := testWidget{name: "shell", kind: widget.Menu}
+	s := style.For(w).
+		Part("menu", style.Anchor()).
+		Part("options", style.Flyout(style.SideEnd)).
+		Stylesheet().String()
+
+	for _, want := range []string{
+		"position: relative;",
+		"position: absolute;",
+		"inset-block-start: 100%;",
+		"inset-inline-end: 0;",
+		"z-index: var(--z-dropdown,100);",
+	} {
+		if !strings.Contains(s, want) {
+			t.Errorf("expected Anchor/Flyout to emit %q, got:\n%s", want, s)
+		}
+	}
+}
+
+func TestDeviceRuleKeepsItsPrimitives(t *testing.T) {
+	// The layout flags are grouped into shared selectors on the main path. A
+	// device rule has nothing to group with, so they have to be emitted on its
+	// own selector or an option passed to On()/OnlyOn() vanishes.
+	w := testWidget{name: "shell", kind: widget.Region}
+	s := style.For(w).
+		OnlyOn(css.Mobile, "trigger", style.Row(style.Space1), style.PushEnd(), style.KeepSize()).
+		Stylesheet().String()
+
+	for _, want := range []string{"margin-inline-start: auto;", "flex-shrink: 0;"} {
+		if !strings.Contains(s, want) {
+			t.Errorf("expected the device rule to keep %q, got:\n%s", want, s)
+		}
+	}
+}
+
+func TestMasterDetailRestsOnTheMaster(t *testing.T) {
+	// The master has to be what shows on arrival, and it has to get there
+	// without a scroll nudge: the component contract has no mount hook. RTL puts
+	// the strip's start edge on the right, which is where scroll position 0
+	// already is, and order:1 sends the master — second in the DOM — there.
+	w := testWidget{name: "cv", kind: widget.Region}
+	s := style.For(w).
+		On(css.Mobile, "", style.MasterDetail(style.Most)).
+		Stylesheet().String()
+
+	for _, want := range []string{
+		"direction: rtl;",
+		"flex-wrap: nowrap;",
+		"flex: 0 0 auto;",
+		"scroll-snap-type: x mandatory;",
+		".cv > :nth-child(2)",
+		"order: 1;",
+		"scroll-snap-align: start;",
+		".cv > :nth-child(1)",
+		"order: 2;",
+		"scroll-snap-align: end;",
+		"flex: 0 0 90%;",
+		"direction: ltr;",
+	} {
+		if !strings.Contains(s, want) {
+			t.Errorf("expected MasterDetail to emit %q, got:\n%s", want, s)
+		}
+	}
+	if !strings.Contains(s, "@media") {
+		t.Errorf("expected the rule to stay inside its device query, got:\n%s", s)
+	}
+}
+
 func TestPushEndMovesFreeSpaceInFront(t *testing.T) {
 	// Once flex-wrap drops an item onto a line of its own, nothing else on that
 	// line can push it: the free space has to go in front of it.

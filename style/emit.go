@@ -34,6 +34,12 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 	}
 	var sidebarInfos []sidebarInfo
 
+	type masterDetailInfo struct {
+		sel    string
+		detail Size
+	}
+	var masterDetailInfos []masterDetailInfo
+
 	var fillSel, growSel, pushEndSel, scrollSel, keepSizeSel, edgeToEdgeSel, hideOverflowSel []string
 
 	collect := func(r rule, sel string) {
@@ -59,6 +65,8 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 				coverSels = append(coverSels, sel)
 			case flowSidebar:
 				sidebarInfos = append(sidebarInfos, sidebarInfo{sel: sel, side: r.flowSide})
+			case flowMasterDetail:
+				masterDetailInfos = append(masterDetailInfos, masterDetailInfo{sel: sel, detail: r.flowDetail})
 			}
 		}
 		if r.fill {
@@ -107,20 +115,18 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 		}
 	}
 
+	// gap on the container, not margin-block-start on the children: a child rule
+	// reading var(--gap) resolves it against the CHILD, so any child that is
+	// itself a flow container declares its own --gap and silently replaces the
+	// separation its parent asked for. A child whose gap is SpaceNone collapses
+	// the parent's spacing to zero. On the container the variable resolves where
+	// it was declared.
 	emitPrimitive(stackSel, []string{
 		"display: flex;",
 		"flex-direction: column;",
+		"gap: var(--gap);",
 		"min-height: 0;",
 	})
-	if len(stackSel) > 0 {
-		var stackKids []string
-		for _, sel := range stackSel {
-			stackKids = append(stackKids, sel+" > * + *")
-		}
-		emitPrimitive(stackKids, []string{
-			"margin-block-start: var(--gap);",
-		})
-	}
 
 	emitPrimitive(rowSel, []string{
 		"display: flex;",
@@ -226,6 +232,13 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 			"flex-grow: 999;",
 			"min-width: 50%;",
 		})
+	}
+
+	for _, mi := range masterDetailInfos {
+		emitPrimitive([]string{mi.sel}, masterDetailStripDecls())
+		emitPrimitive([]string{mi.sel + " > *"}, masterDetailResetDecls())
+		emitPrimitive([]string{mi.sel + " > :nth-child(1)"}, masterDetailDetailDecls(mi.detail))
+		emitPrimitive([]string{mi.sel + " > :nth-child(2)"}, masterDetailMasterDecls())
 	}
 
 	emitPrimitive(fillSel, []string{
@@ -420,8 +433,7 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 			if r.hasFlow {
 				switch r.flowType {
 				case flowStack:
-					devWidSB.WriteString(formatRule([]string{sel}, []string{"display: flex;", "flex-direction: column;", "min-height: 0;"}))
-					devWidSB.WriteString(formatRule([]string{sel + " > * + *"}, []string{"margin-block-start: var(--gap);"}))
+					devWidSB.WriteString(formatRule([]string{sel}, []string{"display: flex;", "flex-direction: column;", "gap: var(--gap);", "min-height: 0;"}))
 				case flowRow:
 					devWidSB.WriteString(formatRule([]string{sel}, []string{"display: flex;", "flex-wrap: wrap;", "gap: var(--gap);", "align-items: center;"}))
 				case flowSplit:
@@ -442,11 +454,24 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 					devWidSB.WriteString(formatRule([]string{sel + " > img", sel + " > video"}, []string{"width: 100%;", "height: 100%;", "object-fit: cover;"}))
 				case flowCover:
 					devWidSB.WriteString(formatRule([]string{sel}, []string{"height: 100dvh;", "display: flex;", "flex-direction: column;"}))
+				case flowMasterDetail:
+					devWidSB.WriteString(formatRule([]string{sel}, masterDetailStripDecls()))
+					devWidSB.WriteString(formatRule([]string{sel + " > *"}, masterDetailResetDecls()))
+					devWidSB.WriteString(formatRule([]string{sel + " > :nth-child(1)"}, masterDetailDetailDecls(r.flowDetail)))
+					devWidSB.WriteString(formatRule([]string{sel + " > :nth-child(2)"}, masterDetailMasterDecls()))
 				case flowSidebar:
 					devWidSB.WriteString(formatRule([]string{sel}, []string{"display: flex;", "flex-wrap: wrap;", "gap: var(--gap);"}))
 					devWidSB.WriteString(formatRule([]string{sidebarRailSel(sel, r.flowSide)}, []string{"flex-basis: var(--rail);", "flex-grow: 1;"}))
 					devWidSB.WriteString(formatRule([]string{sidebarContentSel(sel, r.flowSide)}, []string{"flex-basis: 0;", "flex-grow: 999;", "min-width: 50%;"}))
 				}
+			}
+
+			// The primitive flags are grouped into shared selectors on the main
+			// path; inside a device rule there is nothing to group with, so they
+			// are emitted here. Without this an option like PushEnd() or Grow()
+			// passed to On()/OnlyOn() is silently dropped.
+			if p := primitiveDecls(r); len(p) > 0 {
+				devWidSB.WriteString(formatRule([]string{sel}, p))
 			}
 
 			wd := r.Decls(s.widget.WidgetKind().Layer())

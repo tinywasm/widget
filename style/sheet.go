@@ -20,10 +20,15 @@ type rule struct {
 	flowWidth  ColumnWidth
 	flowSide   Side
 	flowRail   RailWidth
+	flowDetail Size
 
 	hasDrawer   bool
 	drawerSide  Side
 	drawerSize  Size
+
+	hasAnchor  bool
+	hasFlyout  bool
+	flyoutSide Side
 
 	hasSurface  bool
 	surface     Surface

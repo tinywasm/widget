@@ -122,6 +122,7 @@ const (
 	Third
 	Half
 	TwoThirds
+	Most // 90% — leaves a sliver of what sits behind it
 	Full // 100% of the container
 )
 

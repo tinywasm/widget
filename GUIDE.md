@@ -19,7 +19,9 @@ The substitute for design judgement: you do not choose, you look up.
 | the item in a row that pushes the rest aside | `Grow()` |
 | an item pinned to the trailing edge of its line | `PushEnd()` |
 | the frame of a whole application | `Cover()` |
+| list and detail swiped on a phone | `On(css.Mobile, "", MasterDetail(Most))` |
 | a fixed nav rail beside the content | `Sidebar(SideEnd, RailNarrow, SpaceNone)` |
+| a dropdown that does not push the page | `Anchor()` on the trigger + `Flyout(SideEnd)` on the list |
 | a panel that slides in from an edge | `Drawer(SideEnd, TwoThirds)` + `RevealedBy(widget.Open)` |
 | a different arrangement on phones | `On(css.Mobile, "part", …)` |
 | an element that exists only on phones | `OnlyOn(css.Mobile, "part", …)` |
