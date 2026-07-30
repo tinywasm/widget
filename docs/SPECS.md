@@ -209,7 +209,7 @@ family's interaction state.
 | `FillCentered()` | `display:grid; place-items:center; min-height:100%; width:100%` |
 | `ScrollRow(gap)` | `display:flex; gap:var(--gap); overflow-x:auto; scroll-snap-type:x mandatory`, and `> * { scroll-snap-align:start; flex:0 0 auto }` |
 | `MediaBox(a)` | `aspect-ratio:var(--ratio); overflow:hidden; display:flex; justify-content:center; align-items:center`, and `> img, > video { width:100%; height:100%; object-fit:cover }` |
-| `Cover()` | `display:flex; flex-direction:column; min-height:100dvh` |
+| `Cover()` | `display:flex; flex-direction:column; height:100dvh` |
 | `Sidebar(side, width, gap)` | `display:flex; flex-wrap:wrap; gap:var(--gap)`, and `> :first-child` / `> :last-child` rail/content split based on `side` |
 
 No emitted selector may begin with `.fl-` or `.exc-`.
@@ -264,6 +264,7 @@ func Pad(Space) Option
 func Round(Radius) Option
 func Raise(Elevation) Option
 func Width(Size) Option
+func IconBox(IconSize) Option
 func FontSize(TextSize) Option
 func FontWeight(Weight) Option
 func Animate(Motion) Option
@@ -286,6 +287,7 @@ func Drawer(side Side, size Size) Option
 | `KeepSize()` | `flex-shrink:0; flex-grow:0` |
 | `EdgeToEdge()` | `margin:0; border-radius:0` |
 | `HideOverflow()` | `overflow:hidden` |
+| `IconBox(s)` | `width:<1em\|1.5em\|2.5em>; height:<same>; flex-shrink:0` |
 | `Backdrop(Parent)` | `position:absolute; inset:0; z-index:var(<Kind layer>)` |
 | `Backdrop(Viewport)` | `position:fixed; inset:0; z-index:var(<Kind layer>)` |
 | `Veil()` | `background-color: color-mix(in srgb, var(--color-surface,<fallback>) 60%, transparent)` |

@@ -96,10 +96,15 @@ func MediaBox(a Aspect) Option {
 	}
 }
 
-// Cover fills the viewport height and stacks its children vertically.
-// It is the outermost frame of an application shell: use KeepSize() on the
-// children that must not shrink (a header) and Fill() on the one that takes
-// the remaining height. Do not nest one Cover inside another.
+// Cover locks the frame to the viewport height and stacks its children
+// vertically. It is the outermost frame of an application shell: use KeepSize()
+// on the children that must not shrink (a header) and Fill() on the one that
+// takes the remaining height. Do not nest one Cover inside another.
+//
+// The height is definite, not a floor, so a Fill() descendant resolves against
+// it and a HideOverflow() or Scroll() descendant actually clips. A shell whose
+// content can exceed the viewport must therefore give that descendant Scroll();
+// otherwise the overflow is unreachable.
 func Cover() Option {
 	return func(r *rule) {
 		r.hasFlow = true

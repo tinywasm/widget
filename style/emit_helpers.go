@@ -144,6 +144,17 @@ func sizeValue(s Size) string {
 	}
 }
 
+func iconSizeValue(s IconSize) string {
+	switch s {
+	case IconSm:
+		return "1em"
+	case IconLg:
+		return "2.5em"
+	default:
+		return "1.5em"
+	}
+}
+
 func textSizeVar(ts TextSize) string {
 	switch ts {
 	case TextXs:

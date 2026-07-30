@@ -288,6 +288,9 @@ func TestNoInventedValues(t *testing.T) {
 		Part("item10", style.Cover()).
 		Part("item11", style.Sidebar(style.SideEnd, style.RailNarrow, style.SpaceNone)).
 		Part("item12", style.Drawer(style.SideEnd, style.TwoThirds), style.RevealedBy(widget.Open)).
+		Part("item13", style.IconBox(style.IconSm)).
+		Part("item14", style.IconBox(style.IconMd)).
+		Part("item15", style.IconBox(style.IconLg)).
 		On(css.Mobile, "item10", style.Stack(style.Space1))
 
 	cssStr := sheet.Stylesheet().String()

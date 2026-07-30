@@ -41,6 +41,9 @@ type rule struct {
 	hasSize bool
 	size    Size
 
+	hasIcon bool
+	icon    IconSize
+
 	fill         bool
 	scroll       bool
 	keepSize     bool

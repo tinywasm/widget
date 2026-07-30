@@ -391,9 +391,15 @@ already breaking; not worth a release of its own.
 
 ## 14. Why `100dvh` is allowed in `Cover` alone
 
-**Decision.** The `Cover` primitive emits `min-height: 100dvh`, which is a viewport
+**Decision.** The `Cover` primitive emits `height: 100dvh`, which is a viewport
 unit and therefore the only literal the drift guard permits outside geometry
 (`Size` percentages and `Aspect` fractions).
+
+The height is **definite, not a floor**. `min-height` leaves the frame auto-sized,
+so `Fill()` (`height: 100%`) resolves against nothing and `HideOverflow()` has no
+box to clip — a tall child expands the shell and the whole application scrolls,
+rail and header included. A shell whose content can exceed the viewport gives that
+child `Scroll()`; the frame itself never moves.
 
 An application shell is by definition sized against the viewport — there is no
 container to be relative to, because it *is* the outermost container. `dvh` (not

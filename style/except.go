@@ -72,6 +72,17 @@ func Width(s Size) Option {
 	}
 }
 
+// IconBox sizes a part as a square that never shrinks — the shape an icon needs.
+// A bare <svg> with no width or height falls back to the replaced-element default
+// of 300x150 and blows the layout apart, so every part that renders one must
+// declare its box here.
+func IconBox(s IconSize) Option {
+	return func(r *rule) {
+		r.hasIcon = true
+		r.icon = s
+	}
+}
+
 // As sets the surface decision (background, text, border, and radius default).
 func As(s Surface) Option {
 	return func(r *rule) {

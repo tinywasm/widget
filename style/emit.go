@@ -200,7 +200,7 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 	}
 
 	emitPrimitive(coverSels, []string{
-		"min-height: 100dvh;",
+		"height: 100dvh;",
 		"display: flex;",
 		"flex-direction: column;",
 	})
@@ -428,7 +428,7 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 					devWidSB.WriteString(formatRule([]string{sel}, []string{"aspect-ratio: var(--ratio);", "overflow: hidden;", "display: flex;", "justify-content: center;", "align-items: center;"}))
 					devWidSB.WriteString(formatRule([]string{sel + " > img", sel + " > video"}, []string{"width: 100%;", "height: 100%;", "object-fit: cover;"}))
 				case flowCover:
-					devWidSB.WriteString(formatRule([]string{sel}, []string{"min-height: 100dvh;", "display: flex;", "flex-direction: column;"}))
+					devWidSB.WriteString(formatRule([]string{sel}, []string{"height: 100dvh;", "display: flex;", "flex-direction: column;"}))
 				case flowSidebar:
 					devWidSB.WriteString(formatRule([]string{sel}, []string{"display: flex;", "flex-wrap: wrap;", "gap: var(--gap);"}))
 					devWidSB.WriteString(formatRule([]string{sidebarRailSel(sel, r.flowSide)}, []string{"flex-basis: var(--rail);", "flex-grow: 1;"}))

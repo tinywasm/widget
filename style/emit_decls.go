@@ -71,6 +71,12 @@ func (r rule) Decls(layer widget.Layer) []string {
 			decls = append(decls, "width: "+sizeValue(r.size)+";")
 		}
 	}
+	if r.hasIcon {
+		v := iconSizeValue(r.icon)
+		decls = append(decls, "width: "+v+";")
+		decls = append(decls, "height: "+v+";")
+		decls = append(decls, "flex-shrink: 0;")
+	}
 	if r.hasTextSize {
 		decls = append(decls, "font-size: "+textSizeVar(r.textSize)+";")
 	}
@@ -122,7 +128,7 @@ func (r rule) emitsNothing(layer widget.Layer) bool {
 	if len(r.Decls(layer)) > 0 {
 		return false
 	}
-	return !r.hasFlow && !r.fill && !r.scroll && !r.keepSize && !r.edgeToEdge && !r.hideOverflow
+	return !r.hasFlow && !r.fill && !r.scroll && !r.keepSize && !r.edgeToEdge && !r.hideOverflow && !r.hasIcon
 }
 
 func formatRule(selectors []string, decls []string) string {

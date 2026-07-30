@@ -48,6 +48,16 @@ const (
 	WeightBold
 )
 
+// IconSize is the square size scale for icon-sized parts. The steps are
+// relative to the inherited font size, so an icon tracks the text it sits with.
+type IconSize uint8
+
+const (
+	IconSm IconSize = iota // inline with a line of text
+	IconMd                 // a control's icon: button, field affix
+	IconLg                 // a navigation rail or toolbar icon
+)
+
 // Elevation is the shadow elevation scale.
 type Elevation uint8
 

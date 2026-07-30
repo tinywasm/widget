@@ -15,14 +15,51 @@ func TestCoverEmitsViewportFrame(t *testing.T) {
 	w := testWidget{name: "shell", kind: widget.Region}
 	s := style.For(w).Root(style.Cover()).Stylesheet().String()
 
-	if !strings.Contains(s, "min-height: 100dvh;") {
-		t.Errorf("expected Cover to emit min-height: 100dvh, got:\n%s", s)
+	// A definite height, not a floor: a min-height leaves the frame auto-sized,
+	// so a Fill() descendant resolves to nothing and HideOverflow() never clips.
+	if !strings.Contains(s, "height: 100dvh;") {
+		t.Errorf("expected Cover to emit height: 100dvh, got:\n%s", s)
+	}
+	if strings.Contains(s, "min-height: 100dvh;") {
+		t.Errorf("Cover must not fall back to min-height, got:\n%s", s)
 	}
 	if strings.Contains(s, "100vh") {
 		t.Errorf("100vh (without d) must not appear in Cover output:\n%s", s)
 	}
 	if !strings.Contains(s, "@layer primitives") {
 		t.Errorf("expected Cover to emit in @layer primitives:\n%s", s)
+	}
+}
+
+func TestIconBoxEmitsSquareThatCannotShrink(t *testing.T) {
+	w := testWidget{name: "shell", kind: widget.Region}
+	s := style.For(w).
+		Part("icon-sm", style.IconBox(style.IconSm)).
+		Part("icon-md", style.IconBox(style.IconMd)).
+		Part("icon-lg", style.IconBox(style.IconLg)).
+		Stylesheet().String()
+
+	for _, want := range []string{
+		"width: 1em;", "height: 1em;",
+		"width: 1.5em;", "height: 1.5em;",
+		"width: 2.5em;", "height: 2.5em;",
+		"flex-shrink: 0;",
+	} {
+		if !strings.Contains(s, want) {
+			t.Errorf("expected IconBox to emit %q, got:\n%s", want, s)
+		}
+	}
+}
+
+func TestIconBoxStepsAreDistinct(t *testing.T) {
+	w := testWidget{name: "shell", kind: widget.Region}
+	seen := make(map[string]style.IconSize)
+	for _, sz := range []style.IconSize{style.IconSm, style.IconMd, style.IconLg} {
+		s := style.For(w).Part("icon", style.IconBox(sz)).Stylesheet().String()
+		if prev, dup := seen[s]; dup {
+			t.Errorf("IconSize %d and %d resolve to the same box", prev, sz)
+		}
+		seen[s] = sz
 	}
 }
 
