@@ -66,9 +66,17 @@ enforced by test, not by convention.
   public constructor**: the only way to obtain one is to derive it. This is what
   makes markup and stylesheet agree by construction rather than by discipline.
 - **`State`** is a state the **widget owns**: written by Go, read by the sheet. It
-  maps to a data attribute (`data-selected="true"`).
+  maps to a data attribute (`data-selected="true"`). A state is written **only**
+  through `dom.BindState`/`BindStateFunc`/`SetState` — `State.Attr()` returns a
+  `StateAttr` whose `Key()`/`Value()` exist for `dom` and `widget/style` and for
+  nobody else. The accessors exist because the two halves have to meet somewhere,
+  but the type is deliberately not an `fmt.KeyValue`: a string pair fits every
+  attribute method `dom` exposes, including the ones that write the wrong value
+  (`BindAttrBool("data-x", …)` landed as `data-x=""` while the sheet selects
+  `data-x="true"` — a silent no-op that shipped once and is now a compile error).
 - **`Cue`** is a state the **browser owns**. It can only be styled, never written
-  from Go — which is why it is a separate type with no attribute method.
+  from Go — which is why it is a separate type with no attribute method and no
+  writer of any kind.
 
 `State` and `Cue` are distinct types because confusing them is the most common way
 to produce a stylesheet that cannot be driven from the application.

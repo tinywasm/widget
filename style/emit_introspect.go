@@ -26,10 +26,10 @@ func (s *Sheet) StateAttrs() []fmt.KeyValue {
 
 	collect := func(st widget.State) {
 		kv := st.Attr()
-		key := kv.Key + "=" + kv.Value
+		key := kv.Key() + "=" + kv.Value()
 		if !seen[key] {
 			seen[key] = true
-			result = append(result, kv)
+			result = append(result, fmt.KeyValue{Key: kv.Key(), Value: kv.Value()})
 		}
 	}
 

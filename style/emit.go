@@ -350,7 +350,7 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 
 	for _, ss := range sortedStates {
 		attr := ss.key.state.Attr()
-		sel := fmt.Sprintf("%s[%s=\"%s\"]", selectorOf(s.widget.WidgetName(), ss.key.part), attr.Key, attr.Value)
+		sel := fmt.Sprintf("%s[%s=\"%s\"]", selectorOf(s.widget.WidgetName(), ss.key.part), attr.Key(), attr.Value())
 		statesSB.WriteString(formatRule([]string{sel}, ss.decls))
 	}
 
@@ -539,7 +539,7 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 			if r.hasRevealed {
 				sk := stateKey{state: r.revealedBy, part: dk.part}
 				attr := sk.state.Attr()
-				stateSel := fmt.Sprintf("%s[%s=\"%s\"]", sel, attr.Key, attr.Value)
+				stateSel := fmt.Sprintf("%s[%s=\"%s\"]", sel, attr.Key(), attr.Value())
 				devSB.WriteString(formatRule([]string{stateSel}, []string{"display: " + displayFor(r.flowType) + ";"}))
 			}
 		}
@@ -565,7 +565,7 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 	for k, sr := range s.stateRules {
 		if sr.hasMotion {
 			attr := k.state.Attr()
-			sel := fmt.Sprintf("%s[%s=\"%s\"]", selectorOf(s.widget.WidgetName(), k.part), attr.Key, attr.Value)
+			sel := fmt.Sprintf("%s[%s=\"%s\"]", selectorOf(s.widget.WidgetName(), k.part), attr.Key(), attr.Value())
 			motionSel = append(motionSel, sel)
 		}
 	}

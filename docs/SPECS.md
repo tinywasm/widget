@@ -35,7 +35,15 @@ const (LayerBase, LayerDropdown, LayerSticky, LayerModal, LayerToast, LayerToolt
 
 type State uint8
 const (Selected, Disabled, Locked, Invalid, Busy, Open, Current)
-func (s State) Attr() fmt.KeyValue
+
+// StateAttr is the DOM projection of a State. Unexported fields; the only
+// source is State.Attr(). Key()/Value() exist for dom and widget/style.
+type StateAttr struct{ /* key, value */ }
+func (a StateAttr) Key() string
+func (a StateAttr) Value() string
+func (s State) Attr() StateAttr
+func (s State) Key() string   // = Attr().Key() — lets a State itself be passed to dom.BindState
+func (s State) Value() string // = Attr().Value()
 
 type Cue uint8
 const (Hover, Focus, Press, Target)

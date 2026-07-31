@@ -222,11 +222,42 @@ style.For(m).
 
 ---
 
-## 8. Upgrading to v0.5.0 — application-shell primitives
+## 8. Upgrading to v0.5.0 — one typed way to write a state
 
-v0.5.0 is purely additive. No existing identifier is renamed or removed.
+v0.5.0 is breaking in exactly one place: `State.Attr()` stopped returning an
+`fmt.KeyValue` and returns a `StateAttr` instead, and `tinywasm/dom` gained the
+only sanctioned writers. Everything else is additive. Requirement: upgrade to the
+matching `dom` release (`BindState`/`BindStateFunc`/`SetState`) **before** this
+release — nothing here compiles against an older `dom`.
 
-### New primitives
+### The mapping
+
+Every hand-wired state write collapses to one typed call. The six-line idiom is
+gone; `attr.Key`/`attr.Value` no longer exist because there is no pair to pull
+apart.
+
+| Before | After |
+|---|---|
+| `attr := widget.Open.Attr()`<br/>`el.BindAttrFunc(attr.Key, func() string {`<br/>&nbsp;&nbsp;`if on { return attr.Value }`<br/>&nbsp;&nbsp;`return ""`<br/>`})` | `el.BindStateFunc(widget.Open, func() bool { return on })` |
+| `el.BindAttrFunc(st.Attr().Key, func() string { … })` | `el.BindStateFunc(st, func() bool { … })` |
+| `el.BindAttrBool("data-selected", sig)` | `el.BindState(widget.Selected, sig)` — **this is the bug fix** |
+| `el.Attr(st.Attr().Key, st.Attr().Value)` | `el.SetState(st)` (or `BindState`, if reactive) |
+| `form`'s package-level `attrInvalid`/`attrLocked` vars (`states.go`, deleted) | `BindStateFunc(widget.Invalid, …)`, `BindStateFunc(widget.Locked, …)` |
+
+### What still compiles is now wrong on purpose
+
+`Key()`/`Value()` exist so `dom` (writing) and `widget/style` (selecting) can meet.
+Any other call site that reads them to hand-wire a state is now the wrong path and
+it costs more to write than the right one. Reviews should `grep -rn 'BindAttrBool("data-'`
+and find nothing.
+
+### The overlap that stays
+
+`widget.Disabled` is `data-disabled="true"`; the HTML `disabled` attribute is
+written by `BindAttrBool("disabled", …)` and is a different thing. They are not
+confusable anymore: one accepts a `StateAttr`, the other a bare string.
+
+### New primitives (additive)
 
 | What | API |
 |---|---|

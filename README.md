@@ -42,5 +42,5 @@ func main() {
 - [docs/SPECS.md](docs/SPECS.md) — exact public surface, scale-to-token mappings, emission tables, and validation conditions.
 - [docs/DESIGN.md](docs/DESIGN.md) — the reasoning behind each decision and the alternatives rejected.
 - [docs/TRADEOFFS.md](docs/TRADEOFFS.md) — what the architecture buys, what it costs, and the limitations it accepts.
-- [docs/MIGRATION.md](docs/MIGRATION.md) — moving a consumer to the closed API.
+- [docs/MIGRATION.md](docs/MIGRATION.md) — moving a consumer to the closed API; includes the v0.5.0 mapping for the one typed state writer (`dom.BindState`).
 - [docs/diagrams/BOUNDARIES.md](docs/diagrams/BOUNDARIES.md) — how `css`, `widget` and `ssr` divide the problem, and the WASM boundary.

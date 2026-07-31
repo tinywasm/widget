@@ -1,8 +1,38 @@
 package widget
 
-import "github.com/tinywasm/fmt"
+// StateAttr is the DOM projection of a State: the attribute the markup writes and
+// the stylesheet selects on, as one value.
+//
+// It is a distinct type on purpose. It used to be an fmt.KeyValue, which is a bare
+// string pair — and a string pair fits every attribute method dom exposes, including
+// the ones that write the wrong value. A state written with BindAttrBool lands as
+// `data-x=""`, the sheet selects `data-x="true"`, and nothing reports the mismatch.
+// The type is what makes that call not compile.
+type StateAttr struct {
+	key   string
+	value string
+}
+
+// Key and Value are for the two libraries that have to reach the strings:
+// tinywasm/dom, which writes the attribute, and widget/style, which emits the
+// selector. Reading them to hand-wire a state is the mistake this type exists to
+// prevent — use dom's BindState/SetState instead.
+func (a StateAttr) Key() string   { return a.key }
+func (a StateAttr) Value() string { return a.value }
+
+// Key and Value let a State itself be passed to dom's BindState/BindStateFunc/
+// SetState: the projection is derived inside dom, so the value written is always
+// the one the sheet selects on.
+func (s State) Key() string   { return s.Attr().Key() }
+func (s State) Value() string { return s.Attr().Value() }
 
 // State is a state that the widget POSSESSES: written by Go, read by the stylesheet.
+//
+// Open is the expanded/visible state a SHEET selects on. Do not use BindState
+// with it on a <details> element: the browser writes the native `open`
+// attribute onto the element itself, and usermenu/targetlist mirror that into a
+// signal precisely because the element owns the attribute. A data-open state
+// written alongside is a separate thing that happens to share a name.
 type State uint8
 
 const (
@@ -38,24 +68,24 @@ func (s State) String() string {
 
 // Attr returns the attribute that the DOM writes and upon which the stylesheet selects.
 // Markup and CSS match by construction, not by convention.
-func (s State) Attr() fmt.KeyValue {
+func (s State) Attr() StateAttr {
 	switch s {
 	case Selected:
-		return fmt.KeyValue{Key: "data-selected", Value: "true"}
+		return StateAttr{key: "data-selected", value: "true"}
 	case Disabled:
-		return fmt.KeyValue{Key: "data-disabled", Value: "true"}
+		return StateAttr{key: "data-disabled", value: "true"}
 	case Locked:
-		return fmt.KeyValue{Key: "data-locked", Value: "true"}
+		return StateAttr{key: "data-locked", value: "true"}
 	case Invalid:
-		return fmt.KeyValue{Key: "data-invalid", Value: "true"}
+		return StateAttr{key: "data-invalid", value: "true"}
 	case Busy:
-		return fmt.KeyValue{Key: "data-busy", Value: "true"}
+		return StateAttr{key: "data-busy", value: "true"}
 	case Open:
-		return fmt.KeyValue{Key: "data-open", Value: "true"}
+		return StateAttr{key: "data-open", value: "true"}
 	case Current:
-		return fmt.KeyValue{Key: "data-current", Value: "true"}
+		return StateAttr{key: "data-current", value: "true"}
 	default:
-		return fmt.KeyValue{}
+		return StateAttr{}
 	}
 }
 
