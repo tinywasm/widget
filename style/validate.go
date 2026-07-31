@@ -83,7 +83,7 @@ func (s *Sheet) Validate() []error {
 		if !ok || !pr.hidden || dr.hidden {
 			continue
 		}
-		if !dr.hasFlow && !dr.centerContent && !dr.hasRevealed {
+		if !dr.hasFlow && !dr.centerContent && !dr.startContent && !dr.hasRevealed {
 			errs = append(errs, fmt.Errf("sheet %s: part %q is OnlyOn but its device rule declares no flow, so it can never show", string(s.widget.WidgetName()), string(k.part)))
 		}
 	}

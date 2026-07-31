@@ -80,6 +80,16 @@ func Hide() Option {
 	}
 }
 
+// StartContent packs what the element contains against its leading edge. It is
+// the counterpart of CenterContent, for the case where the same part is centred
+// in one state and aligned in another — an icon alone in a narrow rail, icon
+// and label once the rail expands.
+func StartContent() Option {
+	return func(r *rule) {
+		r.startContent = true
+	}
+}
+
 // ControlBox gives the element the shared control height, the rhythm every
 // interactive row in the app is measured against — a list row, a form field.
 // Pinning both to one token is what keeps them from drifting apart.

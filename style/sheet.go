@@ -27,6 +27,7 @@ type rule struct {
 	drawerSize Size
 
 	centerContent bool
+	startContent  bool
 	controlBox    bool
 	chipBox       bool
 

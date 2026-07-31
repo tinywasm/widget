@@ -157,6 +157,12 @@ func (r rule) Decls(layer widget.Layer) []string {
 		decls = append(decls, "justify-content: center;")
 	}
 
+	if r.startContent {
+		decls = append(decls, "display: flex;")
+		decls = append(decls, "align-items: center;")
+		decls = append(decls, "justify-content: flex-start;")
+	}
+
 	if r.hasAnchor {
 		decls = append(decls, "position: relative;")
 	}
@@ -270,7 +276,7 @@ func (r rule) emitsNothing(layer widget.Layer) bool {
 	if len(r.Decls(layer)) > 0 {
 		return false
 	}
-	return !r.hasFlow && !r.fill && !r.grow && !r.pushEnd && !r.scroll && !r.keepSize && !r.edgeToEdge && !r.hideOverflow && !r.hasIcon && !r.controlBox && !r.chipBox && !r.hasGlyph && !r.hasPadEdge
+	return !r.hasFlow && !r.fill && !r.grow && !r.pushEnd && !r.scroll && !r.keepSize && !r.edgeToEdge && !r.hideOverflow && !r.hasIcon && !r.controlBox && !r.chipBox && !r.hasGlyph && !r.hasPadEdge && !r.startContent
 }
 
 func formatRule(selectors []string, decls []string) string {
@@ -279,6 +285,19 @@ func formatRule(selectors []string, decls []string) string {
 	}
 	sort.Strings(selectors)
 	sort.Strings(decls)
+	// Options overlap: Row and StartContent both say display:flex, and both are
+	// legitimate on one rule. Sorting puts the identical strings adjacent, so
+	// dropping exact repeats is safe — two declarations of the same property
+	// with DIFFERENT values are not equal and both survive.
+	if len(decls) > 1 {
+		uniq := decls[:1]
+		for _, d := range decls[1:] {
+			if d != uniq[len(uniq)-1] {
+				uniq = append(uniq, d)
+			}
+		}
+		decls = uniq
+	}
 	sb := fmt.GetConv()
 	defer sb.PutConv()
 	sb.WriteString(fmt.JoinSlice(selectors, ", "))

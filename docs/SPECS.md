@@ -282,6 +282,7 @@ func ControlBox() Option
 func ChipBox() Option
 func Hide() Option
 func CenterContent() Option
+func StartContent() Option
 func Anchor() Option
 func Docked(scope Scope, edge Edge, side Side, gap Space) Option
 func OnEdge(edge Edge, side Side, block Space, inline Space) Option
@@ -318,6 +319,7 @@ func Drawer(side Side, size Size) Option
 | `ChipBox()` | `width:var(--chip-width); overflow:hidden` |
 | `Hide()` | `display:none` — for use inside `On()`, the inverse of `OnlyOn` |
 | `CenterContent()` | `display:flex; align-items:center; justify-content:center` |
+| `StartContent()` | `display:flex; align-items:center; justify-content:flex-start` |
 | `Docked(scope, edge, side, gap)` | `position:{absolute\|fixed}; margin:0; inset-block-{start\|end}:<gap>; inset-inline-{start\|end}:<gap>`; `z-index:var(<Kind layer>)` **only for `Viewport`** — a `Parent` dock is a control inside its own box, and on the overlay layer it would tie with every sibling doing the same |
 | `OnEdge(edge, side, block, inline)` | `position:absolute; margin:0; inset-block-{start\|end}:<block>; inset-inline-{start\|end}:<inline>; transform:translateY(∓50%)` — no `z-index`: a chip is content, and claiming the overlay layer makes it tie with real overlays |
 | `Anchor()` | `position:relative` — the positioning reference a `Flyout` hangs from |
