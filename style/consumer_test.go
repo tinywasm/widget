@@ -111,6 +111,29 @@ func TestConsumerMasterDetail(t *testing.T) {
 	}
 }
 
+func TestEdgeToEdgeBeatsSurfaceRadius(t *testing.T) {
+	// EdgeToEdge must square a part that also carries As(Panel): the surface's
+	// default radius used to win because the primitive's border-radius: 0 sits
+	// in @layer primitives and the widgets layer outranks it — the crudview
+	// root measured 4px despite already carrying EdgeToEdge.
+	wd := &testWidget{name: "w", kind: widget.Region}
+	s := style.For(wd).Root(style.As(style.Panel), style.EdgeToEdge()).Stylesheet().String()
+
+	if strings.Contains(s, "border-radius: var(--radius-md") {
+		t.Errorf("EdgeToEdge must suppress the surface's default radius, got:\n%s", s)
+	}
+	if !strings.Contains(s, "border-radius: 0;") {
+		t.Errorf("EdgeToEdge must still emit border-radius: 0, got:\n%s", s)
+	}
+
+	// An explicit Round() next to EdgeToEdge still wins: it is emitted in the
+	// widgets layer, which outranks the primitives-layer 0.
+	s2 := style.For(wd).Root(style.As(style.Panel), style.EdgeToEdge(), style.Round(style.RadiusMd)).Stylesheet().String()
+	if !strings.Contains(s2, "border-radius: var(--radius-md") {
+		t.Errorf("explicit Round must survive next to EdgeToEdge, got:\n%s", s2)
+	}
+}
+
 func TestRevealedByKeepsFlow(t *testing.T) {
 	// a Row with RevealedBy(Open) emits display:flex in the state rule; revert-layer appears nowhere (closes D-1)
 	wd := &testWidget{name: "w", kind: widget.Region}

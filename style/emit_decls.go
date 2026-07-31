@@ -46,7 +46,12 @@ func (r rule) Decls(layer widget.Layer) []string {
 		if t.bg != "" {
 			decls = append(decls, "background-color: "+t.bg+";")
 		}
-		if r.surface.defaultRadius() != RadiusNone && !r.hasRound {
+		// edgeToEdge's border-radius: 0 lives in the primitives layer, which the
+		// widgets layer outranks — a default radius emitted here would win over
+		// it and leave the box rounded against the frame (the crudview root
+		// measured 4px with EdgeToEdge already applied). An explicit Round()
+		// still wins: it is emitted in the widgets layer, same as the surface.
+		if r.surface.defaultRadius() != RadiusNone && !r.hasRound && !r.edgeToEdge {
 			decls = append(decls, "border-radius: "+radiusVar(r.surface.defaultRadius())+";")
 		}
 		if t.text != "" {
