@@ -136,6 +136,13 @@ func TestStackingFromKind(t *testing.T) {
 		t.Errorf("expected Dialog backdrop to emit var(--z-modal,300), got:\n%s", dialogCSS)
 	}
 
+	// A Parent backdrop stays out of the layer: it would outrank the panel it
+	// is supposed to sit behind.
+	parentCSS := style.For(dialog).Part("catcher", style.Backdrop(style.Parent)).Stylesheet().String()
+	if strings.Contains(parentCSS, "z-index") {
+		t.Errorf("Backdrop(Parent) must not claim a stacking level, got:\n%s", parentCSS)
+	}
+
 	menu := &testWidget{name: "mnu", kind: widget.Menu}
 	menuCSS := style.For(menu).Root(style.Backdrop(style.Viewport)).Stylesheet().String()
 	if !strings.Contains(menuCSS, "z-index: var(--z-dropdown,100);") {
@@ -319,6 +326,8 @@ func TestNoInventedValues(t *testing.T) {
 		css.MaxWReadable,
 		css.ColumnNarrow, css.ColumnMedium, css.ColumnWide,
 		css.RailNarrow, css.RailWide,
+		css.ControlHeight, css.ChipWidth, css.VeilBlur,
+		css.ColorAccent, css.ColorOnAccent,
 	}
 
 	tokenMap := make(map[string]css.Token)

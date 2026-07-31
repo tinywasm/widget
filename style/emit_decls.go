@@ -101,11 +101,24 @@ func (r rule) Decls(layer widget.Layer) []string {
 			decls = append(decls, "position: absolute;")
 		}
 		decls = append(decls, "inset: 0;")
-		decls = append(decls, "z-index: "+layerVar(layer)+";")
+		// Only a Viewport backdrop claims the widget's stacking level, for the
+		// same reason a Parent dock does not: a Parent backdrop covers the box
+		// it sits in, and being positioned already lifts it over that box's
+		// in-flow content. On the overlay layer it outranked its own siblings —
+		// a dialog's click-catcher painted over the dialog's panel, and the
+		// blur it carries blurred the very thing it was meant to isolate.
+		if r.backdropScope == Viewport {
+			decls = append(decls, "z-index: "+layerVar(layer)+";")
+		}
 	}
 
 	if r.hasVeil {
 		decls = append(decls, "background-color: color-mix(in srgb, "+css.ColorSurface.Var()+" 60%, transparent);")
+		// A wash alone still lets the page behind compete for attention.
+		// Softening it is what makes the thing on top read as the only thing in
+		// focus. -webkit- first: Safari has never unprefixed this.
+		decls = append(decls, "-webkit-backdrop-filter: blur("+css.VeilBlur.Var()+");")
+		decls = append(decls, "backdrop-filter: blur("+css.VeilBlur.Var()+");")
 	}
 
 	if r.hasRevealed {
@@ -155,17 +168,30 @@ func (r rule) Decls(layer widget.Layer) []string {
 			decls = append(decls, "position: absolute;")
 		}
 		decls = append(decls, "margin: 0;")
+		// All four insets, the unpinned pair explicitly auto. A corner pin owns
+		// the whole box: leaving the opposite edges unset lets whatever set them
+		// before survive, and an over-constrained absolute box collapses instead
+		// of moving. That is what happened when this overrode a Flyout on one
+		// device — top and bottom were both live and the panel became 8x2.
 		if r.dockedEdge == EdgeTop {
-			decls = append(decls, "inset-block-start: "+spaceVar(r.dockedGap)+";")
+			decls = append(decls, "inset-block-start: "+spaceVar(r.dockedGap)+";", "inset-block-end: auto;")
 		} else {
-			decls = append(decls, "inset-block-end: "+spaceVar(r.dockedGap)+";")
+			decls = append(decls, "inset-block-end: "+spaceVar(r.dockedGap)+";", "inset-block-start: auto;")
 		}
 		if r.dockedSide == SideStart {
-			decls = append(decls, "inset-inline-start: "+spaceVar(r.dockedGap)+";")
+			decls = append(decls, "inset-inline-start: "+spaceVar(r.dockedGap)+";", "inset-inline-end: auto;")
 		} else {
-			decls = append(decls, "inset-inline-end: "+spaceVar(r.dockedGap)+";")
+			decls = append(decls, "inset-inline-end: "+spaceVar(r.dockedGap)+";", "inset-inline-start: auto;")
 		}
-		decls = append(decls, "z-index: "+layerVar(layer)+";")
+		// Only a Viewport dock claims the widget's stacking level. A Parent dock
+		// is a control pinned inside its own box — a row's overflow button — and
+		// being positioned already lifts it over that box's in-flow content. On
+		// the overlay layer it would instead tie with every sibling doing the
+		// same, and the last one in the DOM would cover the dropdown the first
+		// one opened.
+		if r.dockedScope == Viewport {
+			decls = append(decls, "z-index: "+layerVar(layer)+";")
+		}
 	}
 
 	if r.hasOnEdge {
@@ -186,16 +212,20 @@ func (r rule) Decls(layer widget.Layer) []string {
 		} else {
 			decls = append(decls, "inset-inline-end: "+spaceVar(r.onEdgeInline)+";")
 		}
-		decls = append(decls, "z-index: "+layerVar(layer)+";")
+		// No z-index. A chip riding an edge is content, not chrome: being
+		// positioned already lifts it over its unpositioned siblings, and
+		// putting it on the widget's overlay layer made it tie with the real
+		// overlays there — a dropdown at the same level lost to it on DOM order
+		// alone and rendered underneath.
 	}
 
 	if r.hasFlyout {
 		decls = append(decls, "position: absolute;")
-		decls = append(decls, "inset-block-start: 100%;")
+		decls = append(decls, "inset-block-start: 100%;", "inset-block-end: auto;")
 		if r.flyoutSide == SideStart {
-			decls = append(decls, "inset-inline-start: 0;")
+			decls = append(decls, "inset-inline-start: 0;", "inset-inline-end: auto;")
 		} else {
-			decls = append(decls, "inset-inline-end: 0;")
+			decls = append(decls, "inset-inline-end: 0;", "inset-inline-start: auto;")
 		}
 		decls = append(decls, "z-index: "+layerVar(layer)+";")
 	}

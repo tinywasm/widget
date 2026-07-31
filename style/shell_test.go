@@ -148,6 +148,7 @@ func TestMasterDetailRestsOnTheMaster(t *testing.T) {
 		"scroll-snap-align: end;",
 		"flex: 0 0 90%;",
 		"direction: ltr;",
+		".cv > *",
 	} {
 		if !strings.Contains(s, want) {
 			t.Errorf("expected MasterDetail to emit %q, got:\n%s", want, s)
@@ -170,12 +171,33 @@ func TestDockedPinsToTheAnchorCorner(t *testing.T) {
 		"position: absolute;",
 		"inset-block-end: var(--space-4,1rem);",
 		"inset-inline-end: var(--space-4,1rem);",
-		"z-index: var(--z-dropdown,100);",
 		"justify-content: center;",
 	} {
 		if !strings.Contains(s, want) {
 			t.Errorf("expected Docked/CenterContent to emit %q, got:\n%s", want, s)
 		}
+	}
+
+	// A Parent dock stays out of the overlay layer: siblings doing the same
+	// would tie there, and the last in the DOM would cover the panel the first
+	// one opened.
+	if strings.Contains(s, "z-index") {
+		t.Errorf("Docked(Parent) must not claim a stacking level, got:\n%s", s)
+	}
+
+	// A corner pin owns all four insets: the unpinned pair has to be reset, or
+	// overriding another positioning option leaves the box over-constrained and
+	// it collapses instead of moving.
+	for _, want := range []string{"inset-block-start: auto;", "inset-inline-start: auto;"} {
+		if !strings.Contains(s, want) {
+			t.Errorf("expected Docked to reset the unpinned insets with %q, got:\n%s", want, s)
+		}
+	}
+
+	// A Viewport dock is a real overlay and does claim it.
+	v := style.For(w).Part("fab", style.Docked(style.Viewport, style.EdgeBottom, style.SideEnd, style.Space4)).Stylesheet().String()
+	if !strings.Contains(v, "z-index: var(--z-dropdown,100);") {
+		t.Errorf("expected Docked(Viewport) to claim the widget layer, got:\n%s", v)
 	}
 }
 
@@ -202,6 +224,12 @@ func TestOnEdgeStraddlesTheLine(t *testing.T) {
 		if !strings.Contains(s, want) {
 			t.Errorf("expected OnEdge to emit %q, got:\n%s", want, s)
 		}
+	}
+
+	// A chip is content. On the widget's overlay layer it ties with the real
+	// overlays and wins on DOM order, which puts it over a dropdown.
+	if strings.Contains(s, "z-index") {
+		t.Errorf("OnEdge must not claim a stacking level, got:\n%s", s)
 	}
 }
 
@@ -313,6 +341,20 @@ func TestRevealedSplitStaysFlex(t *testing.T) {
 
 	if !strings.Contains(s, ".w__panel[data-open=\"true\"] {\n  display: flex;\n}") {
 		t.Errorf("expected a revealed Split to stay flex, got:\n%s", s)
+	}
+}
+
+func TestVeilBlursWhatIsBehindIt(t *testing.T) {
+	w := testWidget{name: "dlg", kind: widget.Dialog}
+	s := style.For(w).Part("backdrop", style.Backdrop(style.Viewport), style.Veil()).Stylesheet().String()
+
+	for _, want := range []string{
+		"backdrop-filter: blur(" + css.VeilBlur.Var() + ");",
+		"-webkit-backdrop-filter: blur(" + css.VeilBlur.Var() + ");",
+	} {
+		if !strings.Contains(s, want) {
+			t.Errorf("expected Veil to blur with %q, got:\n%s", want, s)
+		}
 	}
 }
 

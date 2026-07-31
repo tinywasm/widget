@@ -337,6 +337,11 @@ func masterDetailStripDecls() []string {
 func masterDetailResetDecls() []string {
 	return []string{
 		"flex: 0 0 auto;",
+		// direction: ltr on EVERY child, not just the two panels. The strip is
+		// laid out rtl so the master lands at scroll position 0; a third child —
+		// a modal mount point, a portal anchor — would otherwise inherit it and
+		// render its text backwards.
+		"direction: ltr;",
 	}
 }
 
