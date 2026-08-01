@@ -61,6 +61,9 @@ type rule struct {
 	padEdge      Edge
 	padEdgeSpace Space
 
+	hasPadInline bool
+	padInline    Space
+
 	hasRound bool
 	round    Radius
 

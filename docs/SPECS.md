@@ -53,9 +53,10 @@ type Widget interface {
     WidgetKind() Kind
 }
 
-type Selectable  interface{ Select(id string) }
-type Dismissible interface{ Dismiss() }
-type Expandable  interface{ Expand(open bool) }
+type Selectable   interface{ Select(id string) }
+type Dismissible  interface{ Dismiss() }
+type Expandable   interface{ Expand(open bool) }
+type Filterable   interface{ OnFilterChange(func(term string)) }
 ```
 
 ### 1.1 Class derivation

@@ -72,6 +72,9 @@ func (r rule) Decls(layer widget.Layer) []string {
 			decls = append(decls, "padding-block-end: "+spaceVar(r.padEdgeSpace)+";")
 		}
 	}
+	if r.hasPadInline {
+		decls = append(decls, "padding-inline: "+spaceVar(r.padInline)+";")
+	}
 	if r.hasRound {
 		decls = append(decls, "border-radius: "+radiusVar(r.round)+";")
 	}
@@ -281,7 +284,7 @@ func (r rule) emitsNothing(layer widget.Layer) bool {
 	if len(r.Decls(layer)) > 0 {
 		return false
 	}
-	return !r.hasFlow && !r.fill && !r.grow && !r.pushEnd && !r.scroll && !r.keepSize && !r.edgeToEdge && !r.hideOverflow && !r.hasIcon && !r.controlBox && !r.chipBox && !r.hasGlyph && !r.hasPadEdge && !r.startContent
+	return !r.hasFlow && !r.fill && !r.grow && !r.pushEnd && !r.scroll && !r.keepSize && !r.edgeToEdge && !r.hideOverflow && !r.hasIcon && !r.controlBox && !r.chipBox && !r.hasGlyph && !r.hasPadEdge && !r.hasPadInline && !r.startContent
 }
 
 func formatRule(selectors []string, decls []string) string {

@@ -142,6 +142,18 @@ func PadEdge(e Edge, s Space) Option {
 	}
 }
 
+// PadInline pads the inline axis (start and end) and nothing else. A chip whose
+// height is contracted against another element — the fieldset legend matches
+// the list badge — cannot take vertical padding, but its text still needs air
+// at the sides; flush text against a filled chip edge reads as a bug, not as
+// density.
+func PadInline(s Space) Option {
+	return func(r *rule) {
+		r.hasPadInline = true
+		r.padInline = s
+	}
+}
+
 // Round applies border radius according to the radius scale.
 func Round(rad Radius) Option {
 	return func(r *rule) {
