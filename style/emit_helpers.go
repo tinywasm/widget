@@ -209,7 +209,7 @@ func motionValue(m Motion) string {
 
 func displayFor(f flowType) string {
 	switch f {
-	case flowStack, flowRow, flowScrollRow, flowMediaBox, flowCover, flowMasterDetail, flowDeck:
+	case flowStack, flowRow, flowScrollRow, flowMediaBox, flowCover, flowMasterDetail:
 		return "flex"
 	case flowGrid, flowFillCentered:
 		return "grid"
@@ -280,8 +280,8 @@ func flowSelfDecls(r rule) []string {
 		return []string{"height: 100dvh;", "display: flex;", "flex-direction: column;"}
 	case flowSidebar:
 		return []string{"display: flex;", "flex-wrap: wrap;", "gap: var(--gap);"}
-	case flowDeck:
-		return deckStripDecls()
+	case flowSlideDeck:
+		return slideDeckStripDecls()
 	case flowMasterDetail:
 		return masterDetailStripDecls()
 	default:
@@ -289,25 +289,52 @@ func flowSelfDecls(r rule) []string {
 	}
 }
 
-// deckStripDecls lays the children out as full-width snap pages. scroll-behavior
-// is the whole point: it is what turns a ScrollIntoView into a slide.
-func deckStripDecls() []string {
-	return []string{
-		"display: flex;",
-		"flex-direction: row;",
-		"flex-wrap: nowrap;",
-		"gap: var(--gap);",
-		"overflow-x: auto;",
-		"overflow-y: hidden;",
-		"scroll-snap-type: x mandatory;",
-		"scroll-behavior: smooth;",
+// motionDurationVar es solo la duración de un Motion, sin propiedad ni easing.
+func motionDurationVar(m Motion) string {
+	switch m {
+	case MotionFast:
+		return css.DurationFast.Var()
+	case MotionBase:
+		return css.DurationBase.Var()
+	case MotionSlow:
+		return css.DurationSlow.Var()
+	default:
+		return "0s"
 	}
 }
 
-func deckPageDecls() []string {
+// slideDeckStripDecls: el contenedor es el bloque contenedor de las capas y
+// recorta lo que queda aparcado afuera.
+func slideDeckStripDecls() []string {
 	return []string{
-		"flex: 0 0 100%;",
-		"scroll-snap-align: start;",
+		"position: relative;",
+		"overflow: hidden;",
+	}
+}
+
+// slideDeckPageDecls: cada hijo cubre el contenedor y espera aparcado en el borde
+// inline-start. visibility (no display) es lo que lo saca del orden de tabulación
+// sin impedir la transición: se apaga DESPUÉS de que el deslizamiento termina, por
+// eso el retardo en la segunda propiedad.
+func slideDeckPageDecls(m Motion) []string {
+	d := motionDurationVar(m)
+	return []string{
+		"position: absolute;",
+		"inset: 0;",
+		"transform: translateX(-100%);",
+		"visibility: hidden;",
+		"transition: transform " + d + " " + css.EaseInOut.Var() + ", visibility 0s linear " + d + ";",
+	}
+}
+
+// slideDeckCurrentDecls: el panel activo entra hasta su sitio y es visible desde
+// el primer fotograma, para que se le vea llegar.
+func slideDeckCurrentDecls(m Motion) []string {
+	d := motionDurationVar(m)
+	return []string{
+		"transform: translateX(0);",
+		"visibility: visible;",
+		"transition: transform " + d + " " + css.EaseInOut.Var() + ", visibility 0s;",
 	}
 }
 

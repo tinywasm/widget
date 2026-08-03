@@ -21,6 +21,7 @@ type rule struct {
 	flowSide   Side
 	flowRail   RailWidth
 	flowDetail Size
+	flowMotion Motion
 
 	hasDrawer  bool
 	drawerSide Side
@@ -53,6 +54,12 @@ type rule struct {
 	hasSurface  bool
 	surface     Surface
 	interactive bool
+
+	// overlay marca una regla de ESTADO (When/Cue/CueWithin). Un estado se pinta
+	// encima de la caja base: no puede cambiar su tamaño, porque el elemento
+	// crecería justo cuando el puntero está encima y perdería el propio hover que
+	// lo activó. Es lo que hace que As() emita outline en vez de border.
+	overlay bool
 
 	hasPad bool
 	pad    Space
@@ -174,6 +181,7 @@ func (s *Sheet) When(st widget.State, p widget.Part, opts ...Option) *Sheet {
 	for _, opt := range opts {
 		opt(&r)
 	}
+	r.overlay = true
 	s.stateRules[key] = r
 	return s
 }
@@ -185,6 +193,7 @@ func (s *Sheet) Cue(c widget.Cue, p widget.Part, opts ...Option) *Sheet {
 	for _, opt := range opts {
 		opt(&r)
 	}
+	r.overlay = true
 	s.cueRules[key] = r
 	return s
 }
@@ -199,6 +208,7 @@ func (s *Sheet) CueWithin(c widget.Cue, container, p widget.Part, opts ...Option
 	for _, opt := range opts {
 		opt(&r)
 	}
+	r.overlay = true
 	s.cueWithin[key] = r
 	return s
 }

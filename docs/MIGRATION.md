@@ -308,6 +308,46 @@ style.For(nav).
 
 ---
 
+## 9. Upgrading to v0.6.0 — `SlideDeck` and state borders
+
+v0.6.0 removes one flow primitive and changes one emission behaviour.
+
+### 9.1 `Deck(gap)` → `SlideDeck(m Motion)`
+
+`Deck` was a horizontal scroll-snap strip; a nested `MasterDetail` in the same
+shell chained the scroll and the application changed section on its own. The
+replacement stacks its children as absolute layers and shows the one carrying
+`widget.Current`; there is no scroller.
+
+| Before | After |
+|---|---|
+| `Part("stage", style.Deck(style.SpaceNone), …)` | `Part("stage", style.SlideDeck(style.MotionBase), …)` |
+
+The markup changes too, because the mechanism changed:
+
+| Before | After |
+|---|---|
+| `ScrollIntoView` on the target panel | write `widget.Current` on the panel that should be on screen (one `BindState(widget.Current, …)` per panel) |
+
+All panels stay mounted; nothing is unmounted on change. The `On()`/`OnlyOn()`
+device-scoped forms emit the same three rules inside their query.
+
+Reasoning: [DESIGN.md §19](DESIGN.md#19-why-deck-was-replaced-by-slidedeck).
+
+### 9.2 State rules draw governed borders with `outline`
+
+A state rule (`When`, `Cue`, `CueWithin`) that carries a bordered surface
+(`Panel`, `Inset`) emits `outline: 1px solid var(--color-outline,…); outline-offset: -1px`
+instead of `border: 1px solid …`. The box no longer grows by 2px when the pointer
+enters it. Base rules are unchanged.
+
+**If a state rule's border was load-bearing** — e.g. CSS that measured or aligned
+against the grown box — it stops growing, which is the intended correction.
+
+Reasoning: [DESIGN.md §18](DESIGN.md#18-why-a-state-never-changes-the-box-size).
+
+---
+
 ## Related documents
 
 - [SPECS.md](SPECS.md) — the target API in full.

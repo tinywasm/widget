@@ -442,6 +442,58 @@ compile-time identifiers; state attributes are runtime choices the component mak
 and the only mechanical check is `Kind.Allows()`, which says a state *may* be used,
 not that it *is*.
 
+## 18. Why a state never changes the box size
+
+**Decision.** A state rule (`When`, `Cue`, `CueWithin`) draws a bordered surface
+with `outline` plus `outline-offset: -1px` instead of `border`. The outline is
+drawn exactly where the border would be — a negative offset paints it inward, on
+the pixel the border would have occupied — but it takes no layout space.
+
+This is a correctness rule, not a pixel-pushing detail. On the nav rail of
+`platformd` the `+2px` border under `:hover` grew the item, pushed its siblings,
+the pointer ended up outside the item, the `:hover` dropped, the item shrank, the
+pointer entered again — a continuous flicker while the mouse sat still. The state
+rule is what makes the element grow, and the growth is what destroys the state:
+the two failure modes feed each other.
+
+**Rejected: box-shadow.** It also takes no layout space, but `Raise()` already
+owns that property, and two features colliding on one declaration is exactly the
+kind of coupling that makes a sheet impossible to reason about.
+
+**Consequence.** The base rule (`Root`, `Part`, `On`, `OnlyOn`) keeps `border:`
+— the base box owns the border and pays its layout cost once, at rest.
+
+## 19. Why `Deck` was replaced by `SlideDeck`
+
+**Decision.** `Deck` laid its children out as a horizontal scroll-snap strip and
+changed panel with `ScrollIntoView`. Its only consumer, `platformd`, nests it
+with `MasterDetail` — another horizontal snap scroller — and two snap scrollers
+on the same axis chain the scroll: when the inner strip reaches its end, the
+browser continues on the outer one and the application changes module on its own.
+`SlideDeck` keeps the slide but removes the scroller: the children are absolute
+layers, the one carrying `widget.Current` sits in the box, and the rest wait
+parked at the inline-start edge, entering left-to-right when activated.
+
+**Rejected: keeping both.** A second way to achieve the same thing is exactly
+what the closed API exists to remove. `Deck` had one consumer; the replacement
+ships in the same release with the mapping in
+[MIGRATION.md §9](MIGRATION.md#9-upgrading-to-v060---slidedeck-and-state-borders).
+
+**Why the selector derives from `widget.Current`.** The state is not an option
+because markup and CSS must agree by construction: the markup writes
+`data-current="true"` through the state writer, and the sheet selects on
+`Current.Attr()`. The same principle already sustains `RevealedBy`. A configurable
+state would reintroduce the drift the attribute type exists to prevent.
+
+**Why `visibility`, not `display`.** The parked pages are out of the tab order
+and invisible, yet still transitionable. `display` is discrete — the page would
+appear in its final position at the end of the transition, never arriving.
+`visibility` transitions after the movement finishes, so the page is visible
+while it slides in and removed from the tab order after it rests.
+
+**Consequence.** The only horizontal snap scroller left in a shell is the one a
+module owns itself, so the swipe gesture can never chain out of the content.
+
 ## Related documents
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) — the structure these decisions produce.

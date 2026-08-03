@@ -278,24 +278,93 @@ func TestCueWithinReachesADescendant(t *testing.T) {
 	}
 }
 
-func TestDeckPagesAreOneContainerWide(t *testing.T) {
-	// display is discrete, so a panel swap cannot transition. The movement has
-	// to come from a scroller, and smooth scrolling is what makes ScrollIntoView
-	// a slide rather than a jump.
-	w := testWidget{name: "pd", kind: widget.Region}
-	s := style.For(w).Part("stage", style.Deck(style.SpaceNone)).Stylesheet().String()
+func TestSlideDeckParksPagesOffCanvas(t *testing.T) {
+	// SlideDeck is not a scroller: each child is an absolute layer parked at the
+	// inline-start edge, and the current one is the only one in the box.
+	w := testWidget{name: "w", kind: widget.Region}
+	s := style.For(w).Part("x", style.SlideDeck(style.MotionBase)).Stylesheet().String()
 
 	for _, want := range []string{
-		"scroll-snap-type: x mandatory;",
-		"scroll-behavior: smooth;",
-		"flex-wrap: nowrap;",
-		".pd__stage > *",
-		"flex: 0 0 100%;",
-		"scroll-snap-align: start;",
+		".w__x > *",
+		"position: absolute;",
+		"inset: 0;",
+		"transform: translateX(-100%);",
 	} {
 		if !strings.Contains(s, want) {
-			t.Errorf("expected Deck to emit %q, got:\n%s", want, s)
+			t.Errorf("expected SlideDeck pages to emit %q, got:\n%s", want, s)
 		}
+	}
+
+	// Exactly three rules for the part: container, pages, current page.
+	if n := strings.Count(s, ".w__x "); n != 3 {
+		t.Errorf("expected exactly 3 rules for a SlideDeck part, got %d:\n%s", n, s)
+	}
+}
+
+func TestSlideDeckRevealsTheCurrentPage(t *testing.T) {
+	// The state is widget.Current, derived from its Attr(), so markup and CSS
+	// match by construction — the same principle that sustains RevealedBy.
+	w := testWidget{name: "w", kind: widget.Region}
+	s := style.For(w).Part("x", style.SlideDeck(style.MotionBase)).Stylesheet().String()
+
+	if !strings.Contains(s, `.w__x > *[data-current="true"]`) {
+		t.Errorf("expected the current-page selector, got:\n%s", s)
+	}
+	if !strings.Contains(s, "transform: translateX(0);") {
+		t.Errorf("expected the current page to sit in the box, got:\n%s", s)
+	}
+}
+
+func TestSlideDeckIsNotAScroller(t *testing.T) {
+	// The whole point: no scroller here, or the gesture inside a module chains
+	// with the stage's own snap strip and changes section alone.
+	w := testWidget{name: "w", kind: widget.Region}
+	s := style.For(w).Part("x", style.SlideDeck(style.MotionBase)).Stylesheet().String()
+
+	if strings.Contains(s, "scroll-snap-type") {
+		t.Errorf("SlideDeck must not emit scroll-snap-type, got:\n%s", s)
+	}
+	if strings.Contains(s, "overflow-x") {
+		t.Errorf("SlideDeck must not emit overflow-x, got:\n%s", s)
+	}
+}
+
+func TestStateSurfaceUsesOutlineNotBorder(t *testing.T) {
+	// A state is painted OVER the base box: a border here grows the element
+	// exactly when the pointer is on it, and the hover is what made it grow.
+	w := testWidget{name: "w", kind: widget.Region}
+	s := style.For(w).
+		Part("x", style.As(style.Page)).
+		Cue(widget.Hover, "x", style.As(style.Inset)).
+		Stylesheet().String()
+
+	idx := strings.Index(s, ".w__x:hover")
+	if idx < 0 {
+		t.Fatalf("expected a :hover rule, got:\n%s", s)
+	}
+	hoverRule := s[idx : idx+strings.Index(s[idx:], "}")]
+
+	if !strings.Contains(hoverRule, "outline: 1px solid") {
+		t.Errorf("expected the state rule to draw the border with outline, got:\n%s", hoverRule)
+	}
+	if !strings.Contains(hoverRule, "outline-offset: -1px;") {
+		t.Errorf("expected outline-offset: -1px to paint inside the box, got:\n%s", hoverRule)
+	}
+	if strings.Contains(hoverRule, "border:") {
+		t.Errorf("a state rule must not emit border:, got:\n%s", hoverRule)
+	}
+}
+
+func TestBaseSurfaceKeepsBorder(t *testing.T) {
+	// Only STATE rules switch to outline; the base box still owns its border.
+	w := testWidget{name: "w", kind: widget.Region}
+	s := style.For(w).Part("x", style.As(style.Inset)).Stylesheet().String()
+
+	if !strings.Contains(s, "border: 1px solid") {
+		t.Errorf("expected the base rule to emit border:, got:\n%s", s)
+	}
+	if strings.Contains(s, "outline:") {
+		t.Errorf("a base rule must not emit outline, got:\n%s", s)
 	}
 }
 

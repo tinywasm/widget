@@ -17,7 +17,7 @@ const (
 	flowCover
 	flowSidebar
 	flowMasterDetail
-	flowDeck
+	flowSlideDeck
 )
 
 // Stack defines a vertical rhythm with children at full width.
@@ -114,19 +114,28 @@ func Cover() Option {
 	}
 }
 
-// Deck lays its children out as a horizontal scroll-snap strip in which every
-// child is exactly one container wide, and scrolls smoothly between them. It is
-// how a shell changes panel with a slide instead of a jump: RevealedBy toggles
-// `display`, which is a discrete property and cannot transition, so the movement
-// has to come from the scroller. Move between children with ScrollIntoView.
+// SlideDeck apila a sus hijos en capas que ocupan el contenedor entero y muestra
+// solo aquel que lleva el estado widget.Current; los demás quedan aparcados en el
+// borde inline-start y entran deslizándose de izquierda a derecha cuando les toca.
 //
-// Every child stays in the DOM. That is the trade: the panels are all mounted,
-// and the strip decides which one is on screen.
-func Deck(gap Space) Option {
+// Es la forma de cambiar de panel en un shell SIN crear un scroller: un contenedor
+// de scroll-snap horizontal aquí encadena con el scroll-snap horizontal que un
+// módulo pueda tener adentro, y el gesto de deslizar dentro del contenido termina
+// cambiando de sección sola.
+//
+// Todos los hijos siguen montados en el DOM. Ese es el trato: el estado decide
+// cuál está en pantalla, nadie desmonta nada. El contenedor es el bloque contenedor
+// de sus hijos, así que un Docked(Parent) dentro de un panel se resuelve contra SU
+// panel — no hace falta Anchor() en el hijo, y ponerlo lo ROMPE: el position:
+// relative de @layer widgets gana sobre el position: absolute que este flujo emite
+// en @layer primitives.
+//
+// m gobierna la duración del deslizamiento. MotionNone conmuta sin animación.
+func SlideDeck(m Motion) Option {
 	return func(r *rule) {
 		r.hasFlow = true
-		r.flowType = flowDeck
-		r.flowGap = gap
+		r.flowType = flowSlideDeck
+		r.flowMotion = m
 	}
 }
 

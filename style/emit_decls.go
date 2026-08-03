@@ -58,7 +58,13 @@ func (r rule) Decls(layer widget.Layer) []string {
 			decls = append(decls, "color: "+t.text+";")
 		}
 		if t.border != "" {
-			decls = append(decls, "border: "+t.border+";")
+			if r.overlay {
+				// outline-offset negativo: se pinta hacia adentro, ocupando el
+				// mismo píxel que el borde habría ocupado, sin correr nada.
+				decls = append(decls, "outline: "+t.border+";", "outline-offset: -1px;")
+			} else {
+				decls = append(decls, "border: "+t.border+";")
+			}
 		}
 	}
 

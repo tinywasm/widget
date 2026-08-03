@@ -26,7 +26,7 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 	sb.WriteString("@layer tokens, primitives, widgets, states;\n\n")
 
 	var stackSel, rowSel, splitSel, gridSel, centerSel, fillCenteredSel, scrollRowSel, mediaBoxSel []string
-	var coverSels, deckSels []string
+	var coverSels []string
 
 	type sidebarInfo struct {
 		sel  string
@@ -39,6 +39,12 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 		detail Size
 	}
 	var masterDetailInfos []masterDetailInfo
+
+	type slideDeckInfo struct {
+		sel    string
+		motion Motion
+	}
+	var slideDeckInfos []slideDeckInfo
 
 	var fillSel, growSel, pushEndSel, scrollSel, keepSizeSel, edgeToEdgeSel, hideOverflowSel []string
 
@@ -65,8 +71,8 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 				coverSels = append(coverSels, sel)
 			case flowSidebar:
 				sidebarInfos = append(sidebarInfos, sidebarInfo{sel: sel, side: r.flowSide})
-			case flowDeck:
-				deckSels = append(deckSels, sel)
+			case flowSlideDeck:
+				slideDeckInfos = append(slideDeckInfos, slideDeckInfo{sel: sel, motion: r.flowMotion})
 			case flowMasterDetail:
 				masterDetailInfos = append(masterDetailInfos, masterDetailInfo{sel: sel, detail: r.flowDetail})
 			}
@@ -236,13 +242,13 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 		})
 	}
 
-	if len(deckSels) > 0 {
-		emitPrimitive(deckSels, deckStripDecls())
-		var deckKids []string
-		for _, sel := range deckSels {
-			deckKids = append(deckKids, sel+" > *")
-		}
-		emitPrimitive(deckKids, deckPageDecls())
+	for _, sd := range slideDeckInfos {
+		emitPrimitive([]string{sd.sel}, slideDeckStripDecls())
+		emitPrimitive([]string{sd.sel + " > *"}, slideDeckPageDecls(sd.motion))
+		cur := widget.Current.Attr()
+		emitPrimitive(
+			[]string{sd.sel + ` > *[` + cur.Key() + `="` + cur.Value() + `"]`},
+			slideDeckCurrentDecls(sd.motion))
 	}
 
 	for _, mi := range masterDetailInfos {
@@ -500,9 +506,13 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 					devWidSB.WriteString(formatRule([]string{sel + " > img", sel + " > video"}, []string{"width: 100%;", "height: 100%;", "object-fit: cover;"}))
 				case flowCover:
 					devWidSB.WriteString(formatRule([]string{sel}, []string{"height: 100dvh;", "display: flex;", "flex-direction: column;"}))
-				case flowDeck:
-					devWidSB.WriteString(formatRule([]string{sel}, deckStripDecls()))
-					devWidSB.WriteString(formatRule([]string{sel + " > *"}, deckPageDecls()))
+				case flowSlideDeck:
+					devWidSB.WriteString(formatRule([]string{sel}, slideDeckStripDecls()))
+					devWidSB.WriteString(formatRule([]string{sel + " > *"}, slideDeckPageDecls(r.flowMotion)))
+					cur := widget.Current.Attr()
+					devWidSB.WriteString(formatRule(
+						[]string{sel + ` > *[` + cur.Key() + `="` + cur.Value() + `"]`},
+						slideDeckCurrentDecls(r.flowMotion)))
 				case flowMasterDetail:
 					devWidSB.WriteString(formatRule([]string{sel}, masterDetailStripDecls()))
 					devWidSB.WriteString(formatRule([]string{sel + " > *"}, masterDetailResetDecls()))

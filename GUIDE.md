@@ -27,7 +27,7 @@ The substitute for design judgement: you do not choose, you look up.
 | a chip riding a box's border, legend-style | `Anchor()` on the box + `OnEdge(EdgeTop, SideStart, …)` |
 | a dropdown that does not push the page | `Anchor()` on the trigger + `Flyout(SideEnd)` on the list |
 | a panel that slides in from an edge | `Drawer(SideEnd, TwoThirds)` + `RevealedBy(widget.Open)` |
-| panels that slide instead of jumping | `Deck(SpaceNone)` + `ScrollIntoView` |
+| panels that slide instead of jumping | `SlideDeck(MotionBase)` — the panel on screen carries `widget.Current` |
 | a container that reveals its children on hover | `CueWithin(Hover, "menu", "link-text", …)` |
 | a part that exists everywhere but a phone | `On(css.Mobile, "header", Hide())` |
 | a different arrangement on phones | `On(css.Mobile, "part", …)` |

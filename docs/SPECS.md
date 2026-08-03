@@ -180,6 +180,12 @@ A surface resolves background, text, border and **radius** together. It does
 Explicit `Round()` or `Raise()` on the same rule overrides the surface default.
 `Pad()` is always explicit — there is no default to override.
 
+**A state never changes the box size.** A state rule (`When`, `Cue`, `CueWithin`)
+draws a bordered surface with `outline: <border>; outline-offset: -1px` instead of
+`border:`. The outline paints exactly where the border would be, but takes no
+layout space, so the element does not grow under the pointer that entered it. Base
+rules (`Root`, `Part`, `On`, `OnlyOn`) keep `border:`.
+
 ### 3.1 Interaction families
 
 `Interactive(s)` emits the base surface plus three state rules. The interactive states
@@ -223,7 +229,7 @@ family's interaction state.
 | `MediaBox(a)` | `aspect-ratio:var(--ratio); overflow:hidden; display:flex; justify-content:center; align-items:center`, and `> img, > video { width:100%; height:100%; object-fit:cover }` |
 | `Cover()` | `display:flex; flex-direction:column; height:100dvh` |
 | `MasterDetail(detail)` | `display:flex; flex-direction:row; flex-wrap:nowrap; direction:rtl; gap:0; overflow-x:auto; overflow-y:hidden; scroll-snap-type:x mandatory; scroll-behavior:smooth`, and `> * { flex:0 0 auto }` plus `> :nth-child(1) { direction:ltr; flex:0 0 <detail>; scroll-snap-align:end; order:2 }` plus `> :nth-child(2) { direction:ltr; flex:0 0 100%; scroll-snap-align:start; order:1 }` |
-| `Deck(gap)` | `display:flex; flex-direction:row; flex-wrap:nowrap; gap:var(--gap); overflow-x:auto; overflow-y:hidden; scroll-snap-type:x mandatory; scroll-behavior:smooth`, and `> * { flex:0 0 100%; scroll-snap-align:start }` |
+| `SlideDeck(m)` | `position:relative; overflow:hidden`, and `> * { position:absolute; inset:0; transform:translateX(-100%); visibility:hidden; transition:transform <dur> var(--ease-in-out), visibility 0s linear <dur> }` plus `> *[data-current="true"] { transform:translateX(0); visibility:visible; transition:transform <dur> var(--ease-in-out), visibility 0s }` — `<dur>` is the `Motion`'s duration token; `MotionNone` switches without animation |
 | `Sidebar(side, width, gap)` | `display:flex; flex-wrap:wrap; gap:var(--gap)`, and `> :first-child` / `> :last-child` rail/content split based on `side` |
 
 No emitted selector may begin with `.fl-` or `.exc-`.
@@ -304,7 +310,7 @@ func Backdrop(Scope) Option
 func Veil() Option
 func Cover() Option
 func Sidebar(side Side, width RailWidth, gap Space) Option
-func Deck(gap Space) Option
+func SlideDeck(m Motion) Option
 func MasterDetail(detail Size) Option
 func Drawer(side Side, size Size) Option
 ```
@@ -346,7 +352,7 @@ Base rule emits `display:none`. The state rule emits:
 
 | Flow declared on the same part | `display` |
 |---|---|
-| `Stack`, `Row`, `Split`, `Sidebar`, `ScrollRow`, `MediaBox`, `Cover`, `MasterDetail`, `Deck` | `flex` |
+| `Stack`, `Row`, `Split`, `Sidebar`, `ScrollRow`, `MediaBox`, `Cover`, `MasterDetail` | `flex` |
 | `Grid`, `FillCentered` | `grid` |
 | `Center`, or no flow | `block` |
 
