@@ -4,4 +4,6 @@ go 1.25.2
 
 require github.com/tinywasm/fmt v0.25.5
 
-require github.com/tinywasm/css v0.4.3
+require github.com/tinywasm/css v0.4.4
+
+require github.com/tinywasm/font v0.0.3 // indirect
