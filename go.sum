@@ -4,5 +4,5 @@ github.com/tinywasm/css v0.4.4 h1:ocffiSvbY8b+n9jOowB4N7B7GgC1Iwok/St0wyXUH30=
 github.com/tinywasm/css v0.4.4/go.mod h1:8xPc+UWWV9RVOtHemByF6A2T5EKN6dV2M/SLO/NTmNc=
 github.com/tinywasm/fmt v0.25.5 h1:2nBU5H1lszhkGIusm7m4S+rGM2rPiIJkhvQqwqN17qo=
 github.com/tinywasm/fmt v0.25.5/go.mod h1:2Y4hlsQxqVsZ5z9vQL5XQbEzLQtQOr1Bhp44nPGfydA=
-github.com/tinywasm/font v0.0.3 h1:15t1vo5avuw5z1OiVl6lE8E2EHGAR6e4islcAL+CJQc=
-github.com/tinywasm/font v0.0.3/go.mod h1:mc8y0jI0VWgsSNEk5f0G3x61Xah4xyfOf9/ds3YaLD8=
+github.com/tinywasm/font v0.0.4 h1:dugQHev1xk2YzA01xpqV4WLCHxEmk6JEu2GkDbPxlfE=
+github.com/tinywasm/font v0.0.4/go.mod h1:mc8y0jI0VWgsSNEk5f0G3x61Xah4xyfOf9/ds3YaLD8=

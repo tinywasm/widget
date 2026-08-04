@@ -6,4 +6,4 @@ require github.com/tinywasm/fmt v0.25.5
 
 require github.com/tinywasm/css v0.4.4
 
-require github.com/tinywasm/font v0.0.3 // indirect
+require github.com/tinywasm/font v0.0.4 // indirect
