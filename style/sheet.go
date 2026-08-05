@@ -138,21 +138,23 @@ type Sheet struct {
 	widget      widget.Widget
 	rootRule    rule
 	partRules   map[widget.Part]rule
-	stateRules  map[stateKey]rule
-	cueRules    map[cueKey]rule
-	cueWithin   map[cueWithinKey]rule
-	deviceRules map[deviceKey]rule
+	stateRules   map[stateKey]rule
+	cueRules     map[cueKey]rule
+	cueWithin    map[cueWithinKey]rule
+	cueWithinHover map[cueWithinKey]rule
+	deviceRules  map[deviceKey]rule
 }
 
 // For opens the styling block for a widget.
 func For(w widget.Widget) *Sheet {
 	return &Sheet{
-		widget:      w,
-		partRules:   make(map[widget.Part]rule),
-		stateRules:  make(map[stateKey]rule),
-		cueRules:    make(map[cueKey]rule),
-		cueWithin:   make(map[cueWithinKey]rule),
-		deviceRules: make(map[deviceKey]rule),
+		widget:         w,
+		partRules:      make(map[widget.Part]rule),
+		stateRules:     make(map[stateKey]rule),
+		cueRules:       make(map[cueKey]rule),
+		cueWithin:      make(map[cueWithinKey]rule),
+		cueWithinHover: make(map[cueWithinKey]rule),
+		deviceRules:    make(map[deviceKey]rule),
 	}
 }
 
@@ -210,6 +212,21 @@ func (s *Sheet) CueWithin(c widget.Cue, container, p widget.Part, opts ...Option
 	}
 	r.overlay = true
 	s.cueWithin[key] = r
+	return s
+}
+
+// CueWithinHover is CueWithin gated on the fine-pointer capability: the same
+// descendant selector, emitted inside `@media (hover: hover)`. A touch tap
+// fires `:hover` and synthetic mouse events, so a hover reveal that is not
+// scoped this way misfires on a phone — the exact reason this variant exists.
+func (s *Sheet) CueWithinHover(c widget.Cue, container, p widget.Part, opts ...Option) *Sheet {
+	key := cueWithinKey{cue: c, container: container, part: p}
+	r := s.cueWithinHover[key]
+	for _, opt := range opts {
+		opt(&r)
+	}
+	r.overlay = true
+	s.cueWithinHover[key] = r
 	return s
 }
 

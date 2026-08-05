@@ -369,6 +369,8 @@ func (s *Sheet) Root(opts ...Option) *Sheet
 func (s *Sheet) Part(p widget.Part, opts ...Option) *Sheet
 func (s *Sheet) When(st widget.State, p widget.Part, opts ...Option) *Sheet
 func (s *Sheet) Cue(c widget.Cue, p widget.Part, opts ...Option) *Sheet
+func (s *Sheet) CueWithin(c widget.Cue, container, p widget.Part, opts ...Option) *Sheet
+func (s *Sheet) CueWithinHover(c widget.Cue, container, p widget.Part, opts ...Option) *Sheet
 func (s *Sheet) On(d css.Device, p widget.Part, opts ...Option) *Sheet
 func (s *Sheet) OnlyOn(d css.Device, p widget.Part, opts ...Option) *Sheet
 func (s *Sheet) Parts() []widget.Part   // declared parts, sorted — for component tests
@@ -415,6 +417,10 @@ Exact order of the emitted document:
 @layer widgets    { … }    omitted entirely when empty
 @layer states     { … }    omitted entirely when empty
 
+@media (hover: hover) {              only when some rule carries CueWithinHover
+  @layer states { … }
+}
+
 @media (max-width: 639.98px) {     one block per device that has rules
   @layer widgets { … }
   @layer states  { … }
@@ -427,8 +433,14 @@ Exact order of the emitted document:
 
 Within each layer: root rule first, then parts in ascending name order; state
 rules ordered by state value then part name; cue rules ordered by cue value then
-part name. Declarations within a rule are sorted; selectors within a rule are
-sorted.
+part name; cue-within rules (both `CueWithin` and `CueWithinHover`) ordered by
+cue, container, then part name. Declarations within a rule are sorted; selectors
+within a rule are sorted.
+
+`CueWithinHover` emits the same descendant selector as `CueWithin`, but inside
+`@media (hover: hover)`: the rule only applies when the primary pointer can
+actually hover. Reach for it whenever a hover reveal would misfire on touch —
+a tap fires `:hover` and synthetic mouse events, but not the hover capability.
 
 Device blocks appear after `@layer states` and before `prefers-reduced-motion`,
 ordered by device ascending (Mobile, Tablet, Desktop), parts ascending within

@@ -62,17 +62,23 @@ func (s *Sheet) Validate() []error {
 		}
 	}
 	// Both ends of a descendant rule have to exist, or it silently styles
-	// nothing.
-	for k := range s.cueWithin {
+	// nothing. CueWithinHover carries the same obligation.
+	checkCueWithin := func(method string, k cueWithinKey) {
 		if _, ok := s.partRules[k.container]; !ok && k.container != "" {
-			errs = append(errs, fmt.Errf("sheet %s: CueWithin container %q is not a declared part", string(s.widget.WidgetName()), string(k.container)))
+			errs = append(errs, fmt.Errf("sheet %s: %s container %q is not a declared part", string(s.widget.WidgetName()), method, string(k.container)))
 		}
 		if _, ok := s.partRules[k.part]; !ok && k.part != "" {
-			errs = append(errs, fmt.Errf("sheet %s: CueWithin part %q is not a declared part", string(s.widget.WidgetName()), string(k.part)))
+			errs = append(errs, fmt.Errf("sheet %s: %s part %q is not a declared part", string(s.widget.WidgetName()), method, string(k.part)))
 		}
 		if k.container == k.part {
-			errs = append(errs, fmt.Errf("sheet %s: CueWithin container and part are both %q; use Cue()", string(s.widget.WidgetName()), string(k.part)))
+			errs = append(errs, fmt.Errf("sheet %s: %s container and part are both %q; use Cue()", string(s.widget.WidgetName()), method, string(k.part)))
 		}
+	}
+	for k := range s.cueWithin {
+		checkCueWithin("CueWithin", k)
+	}
+	for k := range s.cueWithinHover {
+		checkCueWithin("CueWithinHover", k)
 	}
 
 	// A device rule that only paints is invisible: OnlyOn hides the part by

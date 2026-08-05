@@ -278,6 +278,49 @@ func TestCueWithinReachesADescendant(t *testing.T) {
 	}
 }
 
+func TestCueWithinHoverScopesToFinePointer(t *testing.T) {
+	// CueWithinHover is the same descendant selector as CueWithin, gated on
+	// the fine-pointer capability: a touch tap fires :hover but never
+	// (hover: hover), so a hover reveal scoped here cannot misfire on a phone.
+	w := testWidget{name: "pd", kind: widget.Menu}
+	s := style.For(w).
+		Part("menu", style.Stack(style.Space1)).
+		Part("drawer-panel", style.Raise(style.Floating)).
+		CueWithinHover(widget.Hover, "menu", "drawer-panel", style.Row(style.SpaceNone)).
+		Stylesheet().String()
+
+	mediaIdx := strings.Index(s, "@media (hover: hover)")
+	if mediaIdx < 0 {
+		t.Fatalf("expected the fine-pointer gate, got:\n%s", s)
+	}
+	block := s[mediaIdx:]
+	if !strings.Contains(block, ".pd__menu:hover .pd__drawer-panel") {
+		t.Errorf("expected the descendant selector inside the hover media query, got:\n%s", s)
+	}
+	if !strings.Contains(block, "@layer states") {
+		t.Errorf("expected the rule in @layer states (so it outranks @layer widgets device rules), got:\n%s", block)
+	}
+	plain := s[:mediaIdx]
+	if strings.Contains(plain, ".pd__menu:hover .pd__drawer-panel") {
+		t.Errorf("the selector must not escape into the plain states layer, got:\n%s", plain)
+	}
+}
+
+func TestValidateCueWithinHoverContainerUndeclared(t *testing.T) {
+	w := testWidget{name: "w", kind: widget.Menu}
+	sheet := style.For(w).
+		Part("link-text", style.FontSize(style.TextBase)).
+		CueWithinHover(widget.Hover, "menu", "link-text", style.Row(style.SpaceNone))
+
+	errs := sheet.Validate()
+	if len(errs) == 0 {
+		t.Fatal("expected Validate to reject an undeclared CueWithinHover container")
+	}
+	if !strings.Contains(errs[0].Error(), `CueWithinHover container "menu" is not a declared part`) {
+		t.Errorf("unexpected error message: %v", errs[0])
+	}
+}
+
 func TestSlideDeckParksPagesOffCanvas(t *testing.T) {
 	// SlideDeck is not a scroller: each child is an absolute layer parked at the
 	// inline-start edge, and the current one is the only one in the box.
