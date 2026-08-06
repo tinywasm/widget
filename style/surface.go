@@ -15,6 +15,9 @@ const (
 	Secondary
 	Highlight
 	Accent
+	AccentWash
+	AccentInverse
+	AccentHover
 	Success
 	Danger
 	Subtle
@@ -37,6 +40,12 @@ func (s Surface) String() string {
 		return "Highlight"
 	case Accent:
 		return "Accent"
+	case AccentWash:
+		return "AccentWash"
+	case AccentInverse:
+		return "AccentInverse"
+	case AccentHover:
+		return "AccentHover"
 	case Success:
 		return "Success"
 	case Danger:
@@ -102,6 +111,35 @@ func (s Surface) resolve() triplet {
 		return triplet{
 			bg: css.ColorAccent.EnhancedVar(), text: css.ColorOnAccent.EnhancedVar(),
 			bgStatic: css.ColorAccent.LightValue(), textStatic: css.ColorOnAccent.LightValue(),
+		}
+	case AccentWash:
+		return triplet{
+			bg: css.ColorAccentWash.EnhancedVar(), text: css.ColorOnSurface.EnhancedVar(),
+			bgStatic: css.ColorAccentWash.LightValue(), textStatic: css.ColorOnSurface.LightValue(),
+		}
+	// AccentInverse is Accent's own amber background paired with
+	// ColorOnPrimary (white) instead of ColorOnAccent (near-black): the
+	// dark-on-amber pairing Accent normally carries is for a large filled
+	// area (a selected row) where AA text contrast matters; a small filled
+	// control icon — the "add" button gone amber while its panel is open —
+	// is asked here to match the white-on-color language every other
+	// control surface (Primary, Success, Danger) already uses, a deliberate
+	// caller choice made in spite of AccentInverse's lower contrast.
+	case AccentInverse:
+		return triplet{
+			bg: css.ColorAccent.EnhancedVar(), text: css.ColorOnPrimary.EnhancedVar(),
+			bgStatic: css.ColorAccent.LightValue(), textStatic: css.ColorOnPrimary.LightValue(),
+		}
+	// AccentHover pairs ColorAccentHover (Accent faded only 30%, not
+	// AccentWash's 85%) with the same white ColorOnPrimary AccentInverse
+	// uses: a hover preview that must stay readable in white can only fade
+	// so far before the white itself loses contrast, so this is the
+	// hover/hover-adjacent counterpart to AccentInverse — visibly softer
+	// than the fully committed fill, never as pale as AccentWash.
+	case AccentHover:
+		return triplet{
+			bg: css.ColorAccentHover.EnhancedVar(), text: css.ColorOnPrimary.EnhancedVar(),
+			bgStatic: css.ColorAccentHover.LightValue(), textStatic: css.ColorOnPrimary.LightValue(),
 		}
 	case Success:
 		return triplet{

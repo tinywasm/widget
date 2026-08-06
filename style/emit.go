@@ -365,27 +365,40 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 		cueDecls[k] = cr.Decls(s.widget.WidgetKind().Layer())
 	}
 
+	// An explicit Cue() call for the same (cue, part) already populated
+	// cueDecls above, from s.cueRules — that hand-written rule is a deliberate
+	// override (e.g. a hover tint that must read as the widget's own accent
+	// instead of the generic Interactive() mix) and wins over the derived
+	// one instead of being appended alongside it, which would just add a
+	// second, later background-color declaration that silently wins by
+	// source order regardless of which one the author meant to show.
 	addInteractive := func(p widget.Part, r rule) {
 		if r.interactive {
 			base := familyBase(r.surface)
 			if base.Name != "" {
 				kHover := cueKey{cue: widget.Hover, part: p}
-				cueDecls[kHover] = append(cueDecls[kHover],
-					"background-color: "+css.HoverStatic(base)+";",
-					"background-color: "+css.Hover(base)+";",
-				)
+				if len(cueDecls[kHover]) == 0 {
+					cueDecls[kHover] = append(cueDecls[kHover],
+						"background-color: "+css.HoverStatic(base)+";",
+						"background-color: "+css.Hover(base)+";",
+					)
+				}
 
 				kFocus := cueKey{cue: widget.Focus, part: p}
-				cueDecls[kFocus] = append(cueDecls[kFocus],
-					"background-color: "+css.FocusStatic(base)+";",
-					"background-color: "+css.Focus(base)+";",
-				)
+				if len(cueDecls[kFocus]) == 0 {
+					cueDecls[kFocus] = append(cueDecls[kFocus],
+						"background-color: "+css.FocusStatic(base)+";",
+						"background-color: "+css.Focus(base)+";",
+					)
+				}
 
 				kPress := cueKey{cue: widget.Press, part: p}
-				cueDecls[kPress] = append(cueDecls[kPress],
-					"background-color: "+css.PressStatic(base)+";",
-					"background-color: "+css.Press(base)+";",
-				)
+				if len(cueDecls[kPress]) == 0 {
+					cueDecls[kPress] = append(cueDecls[kPress],
+						"background-color: "+css.PressStatic(base)+";",
+						"background-color: "+css.Press(base)+";",
+					)
+				}
 			}
 		}
 	}
@@ -399,17 +412,33 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 		key   cueKey
 		decls []string
 	}
+	// Hover is split out and emitted later, inside the same fine-pointer
+	// media query as cueWithinHover: a touch tap fires :hover and leaves it
+	// stuck, which would otherwise beat a State rule of equal specificity —
+	// e.g. a selected row painted grey by its own stuck hover instead of its
+	// selected color, on a device that can never actually hover. Focus and
+	// Press stay here: :focus-visible never fires from touch and :active
+	// clears on release, so neither has that failure mode.
 	var sortedCues []sortedCue
+	var sortedHoverCues []sortedCue
 	for k, decls := range cueDecls {
-		if len(decls) > 0 {
-			sortedCues = append(sortedCues, sortedCue{key: k, decls: decls})
+		if len(decls) == 0 {
+			continue
 		}
+		if k.cue == widget.Hover {
+			sortedHoverCues = append(sortedHoverCues, sortedCue{key: k, decls: decls})
+			continue
+		}
+		sortedCues = append(sortedCues, sortedCue{key: k, decls: decls})
 	}
 	sort.Slice(sortedCues, func(i, j int) bool {
 		if sortedCues[i].key.cue != sortedCues[j].key.cue {
 			return sortedCues[i].key.cue < sortedCues[j].key.cue
 		}
 		return sortedCues[i].key.part < sortedCues[j].key.part
+	})
+	sort.Slice(sortedHoverCues, func(i, j int) bool {
+		return sortedHoverCues[i].key.part < sortedHoverCues[j].key.part
 	})
 
 	for _, sc := range sortedCues {
@@ -490,8 +519,12 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 		return a.part < b.part
 	})
 
-	if len(sortedCueWithinHover) > 0 {
+	if len(sortedHoverCues) > 0 || len(sortedCueWithinHover) > 0 {
 		hoverSB := fmt.GetConv()
+		for _, sc := range sortedHoverCues {
+			sel := selectorOf(s.widget.WidgetName(), sc.key.part) + cuePseudo(sc.key.cue)
+			hoverSB.WriteString(formatRule([]string{sel}, sc.decls))
+		}
 		for _, sc := range sortedCueWithinHover {
 			sel := selectorOf(s.widget.WidgetName(), sc.key.container) + cuePseudo(sc.key.cue) +
 				" " + selectorOf(s.widget.WidgetName(), sc.key.part)

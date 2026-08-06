@@ -84,6 +84,16 @@ func (r rule) Decls(layer widget.Layer) []string {
 		}
 	}
 
+	// Interactive() is the DSL's own declaration that this part answers to
+	// hover/focus/press — i.e. it is clickable by construction, not by a
+	// per-widget styling choice. cursor: pointer is the mechanical consequence
+	// of that flag, so it belongs here once instead of being repeated (and
+	// inevitably forgotten somewhere) in every component that calls
+	// Interactive().
+	if r.interactive {
+		decls = append(decls, "cursor: pointer;")
+	}
+
 	if r.hasPad {
 		decls = append(decls, "padding: "+spaceVar(r.pad)+";")
 	}
