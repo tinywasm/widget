@@ -370,13 +370,22 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 			base := familyBase(r.surface)
 			if base.Name != "" {
 				kHover := cueKey{cue: widget.Hover, part: p}
-				cueDecls[kHover] = append(cueDecls[kHover], "background-color: "+css.Hover(base)+";")
+				cueDecls[kHover] = append(cueDecls[kHover],
+					"background-color: "+css.HoverStatic(base)+";",
+					"background-color: "+css.Hover(base)+";",
+				)
 
 				kFocus := cueKey{cue: widget.Focus, part: p}
-				cueDecls[kFocus] = append(cueDecls[kFocus], "background-color: "+css.Focus(base)+";")
+				cueDecls[kFocus] = append(cueDecls[kFocus],
+					"background-color: "+css.FocusStatic(base)+";",
+					"background-color: "+css.Focus(base)+";",
+				)
 
 				kPress := cueKey{cue: widget.Press, part: p}
-				cueDecls[kPress] = append(cueDecls[kPress], "background-color: "+css.Press(base)+";")
+				cueDecls[kPress] = append(cueDecls[kPress],
+					"background-color: "+css.PressStatic(base)+";",
+					"background-color: "+css.Press(base)+";",
+				)
 			}
 		}
 	}

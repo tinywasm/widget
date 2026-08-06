@@ -44,6 +44,13 @@ func (r rule) Decls(layer widget.Layer) []string {
 	if r.hasSurface {
 		t := r.surface.resolve()
 		if t.bg != "" {
+			// Static first, enhanced second: a browser without light-dark()/
+			// color-mix() support drops the second (invalid at parse time) and
+			// keeps the first — permanently the light theme. A supporting
+			// browser applies the second, which wins by being later.
+			if t.bgStatic != "" {
+				decls = append(decls, "background-color: "+t.bgStatic+";")
+			}
 			decls = append(decls, "background-color: "+t.bg+";")
 		}
 		// edgeToEdge's border-radius: 0 lives in the primitives layer, which the
@@ -55,14 +62,23 @@ func (r rule) Decls(layer widget.Layer) []string {
 			decls = append(decls, "border-radius: "+radiusVar(r.surface.defaultRadius())+";")
 		}
 		if t.text != "" {
+			if t.textStatic != "" {
+				decls = append(decls, "color: "+t.textStatic+";")
+			}
 			decls = append(decls, "color: "+t.text+";")
 		}
 		if t.border != "" {
 			if r.overlay {
 				// outline-offset negativo: se pinta hacia adentro, ocupando el
 				// mismo píxel que el borde habría ocupado, sin correr nada.
+				if t.borderStatic != "" {
+					decls = append(decls, "outline: "+t.borderStatic+";")
+				}
 				decls = append(decls, "outline: "+t.border+";", "outline-offset: -1px;")
 			} else {
+				if t.borderStatic != "" {
+					decls = append(decls, "border: "+t.borderStatic+";")
+				}
 				decls = append(decls, "border: "+t.border+";")
 			}
 		}
@@ -127,7 +143,8 @@ func (r rule) Decls(layer widget.Layer) []string {
 	}
 
 	if r.hasVeil {
-		decls = append(decls, "background-color: color-mix(in srgb, "+css.ColorSurface.Var()+" 60%, transparent);")
+		decls = append(decls, "background-color: "+css.FadeStatic(css.ColorSurface, 0.4)+";")
+		decls = append(decls, "background-color: color-mix(in srgb, "+css.ColorSurface.NestedEnhanced()+" 60%, transparent);")
 		// A wash alone still lets the page behind compete for attention.
 		// Softening it is what makes the thing on top read as the only thing in
 		// focus. -webkit- first: Safari has never unprefixed this.
@@ -152,7 +169,8 @@ func (r rule) Decls(layer widget.Layer) []string {
 	}
 
 	if r.hasGlyph {
-		decls = append(decls, "color: "+familyBase(r.glyph).Var()+";")
+		decls = append(decls, "color: "+familyBase(r.glyph).LightValue()+";")
+		decls = append(decls, "color: "+familyBase(r.glyph).EnhancedVar()+";")
 		decls = append(decls, "fill: currentColor;")
 	}
 

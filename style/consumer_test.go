@@ -366,10 +366,67 @@ func TestNoInventedValues(t *testing.T) {
 		"--rail":      true,
 		"--max-width": true,
 	}
+	// Every theme pair's plain light/dark half properties (see
+	// css.Token.EnhancedVar, css declareSplit) — a different kind of
+	// variable than the ones above, not derived through Token.Var()'s
+	// formula, so skipped the same way rather than checked against it.
+	for _, tok := range []css.Token{
+		css.ColorBackground, css.ColorOnBackground, css.ColorSurface,
+		css.ColorOnSurface, css.ColorOutline, css.ColorMuted,
+	} {
+		layoutVariables[tok.LightVarName()] = true
+		layoutVariables[tok.DarkVarName()] = true
+	}
 
 	// Check there are no hardcoded hexadecimal colors or rgba except in fallbacks of var()
+	// or in a Safari-legacy static fallback (see below).
 	varVarRegex := regexp.MustCompile(`var\([^)]+\)`)
 	cleanCSS := varVarRegex.ReplaceAllString(cssStr, "")
+
+	// ACCEPTED EXCEPTION — Safari-legacy static fallback (double declaration):
+	// every themed color is now emitted twice, static-literal first and
+	// light-dark()/color-mix()-enhanced second (see css.Token.LightValue,
+	// css.HoverStatic/FocusStatic/PressStatic/FadeStatic, and their call
+	// sites in emit.go/emit_decls.go/surface.go). A browser without
+	// light-dark()/color-mix() support drops the second declaration
+	// (invalid at parse time) and keeps the static first one — permanently
+	// the light theme. That first declaration is a bare literal outside
+	// var() BY DESIGN, so this drift guard must not flag it. It is still
+	// bounded: only literals that exactly match a value this package itself
+	// derives from the catalog (never an arbitrary hardcoded color) are
+	// allowed.
+	knownStaticFallbacks := map[string]bool{}
+	// Only literals that are themselves hex colors go in the allowlist — a
+	// non-color token's LightValue ("0.75rem", "15%", "0") would otherwise
+	// strip that substring out of unrelated hex codes elsewhere in the sheet
+	// (e.g. stripping "0" mangles "#ba2c0d" into "#ba2cd").
+	addIfHex := func(s string) {
+		if strings.HasPrefix(s, "#") {
+			knownStaticFallbacks[s] = true
+		}
+	}
+	addIfHex(css.FadeStatic(css.ColorSurface, 0.4)) // Veil() backdrop wash
+	for _, tok := range cssTokens {
+		addIfHex(tok.LightValue())
+		addIfHex(css.HoverStatic(tok))
+		addIfHex(css.FocusStatic(tok))
+		addIfHex(css.PressStatic(tok))
+		// EnhancedVar()/NestedEnhanced() bake BOTH halves of a theme token
+		// as literals (e.g. light-dark(#F2F2F7,#161B22)) — see their doc
+		// comments in tinywasm/css for why a var() reference can't be used
+		// here instead. addIfHex only ever matches a value that IS a bare
+		// hex, so this is harmless for tok.Light/tok.Dark that are actually
+		// live expressions (e.g. "15%", "0.75rem", or a color-mix() string).
+		addIfHex(tok.Light)
+		addIfHex(tok.Dark)
+	}
+	stripKnownStatic := func(s string) string {
+		for lit := range knownStaticFallbacks {
+			s = strings.ReplaceAll(s, lit, "")
+		}
+		return s
+	}
+	cleanCSS = stripKnownStatic(cleanCSS)
 
 	hexColorRegex := regexp.MustCompile(`#[0-9a-fA-F]{3,8}`)
 	if hexColorRegex.MatchString(cleanCSS) {
@@ -418,6 +475,89 @@ func TestNoInventedValues(t *testing.T) {
 		if fullMatch != expectedVarCall && fullMatch != "var("+varName+")" {
 			t.Errorf("Visual drift detected for %q.\nIn stylesheet: %q\nExpected: %q",
 				varName, fullMatch, expectedVarCall)
+		}
+	}
+}
+
+// TestDoubleDeclarationsAreParseTimeSafe is the regression test for the
+// iPhone-7-all-blue investigation. Every themed color in this package is
+// emitted TWICE per property: a static hex literal first, a
+// light-dark()/color-mix() "enhanced" value second — a browser without
+// those functions is supposed to drop the second declaration (unrecognized
+// function name, invalid AT PARSE TIME) and keep the first.
+//
+// That only works if the SECOND declaration contains no var() ANYWHERE.
+// This is not obvious and was the actual bug: per the CSS Custom Properties
+// cascade, a declaration containing var() — even a var() to a property that
+// would always itself resolve fine — is a "variable-valued" declaration,
+// and validity for the WHOLE thing is deferred to computed-value time
+// instead of checked at parse time. It still wins the cascade over the
+// earlier static declaration (cascade doesn't know yet that it will turn
+// out invalid), and when it then fails to compute, the property falls to
+// its INITIAL value (transparent, for a color) — not to the earlier static
+// sibling. The static declaration is silently discarded, and the page goes
+// solid blue with white text: the demo's own Primary-colored ancestor
+// showing through every unpainted surface.
+//
+// Confirmed empirically, not just by spec reading, before this test
+// existed: a minimal repro using an unrecognized function whose arguments
+// were LITERALS correctly fell back to the static declaration; the
+// identical repro with var() references as those arguments did not — see
+// css.Token.NestedEnhanced's doc comment for the full mechanism and
+// css.Token.EnhancedVar for the standalone-declaration counterpart.
+//
+// This walks every rule this package can generate — Interactive() (which
+// exercises Hover/Focus/Press), every As(Surface), and Veil() — and, for
+// every property declared more than once within a single rule, asserts
+// every declaration after the first contains no var() anywhere.
+func TestDoubleDeclarationsAreParseTimeSafe(t *testing.T) {
+	wd := &testWidget{name: "w", kind: widget.Dialog}
+	sheet := style.For(wd).
+		Root(style.As(style.Page), style.Backdrop(style.Parent), style.Veil()).
+		Part("item1", style.Row(style.Space1), style.Interactive(style.Primary)).
+		Part("item2", style.As(style.Panel)).
+		Part("item3", style.As(style.Inset)).
+		Part("item4", style.As(style.Secondary)).
+		Part("item5", style.As(style.Highlight)).
+		Part("item6", style.As(style.Accent)).
+		Part("item7", style.As(style.Success)).
+		Part("item8", style.As(style.Danger)).
+		Part("item9", style.Interactive(style.Subtle)).
+		Part("item10", style.Interactive(style.Inset))
+
+	cssStr := sheet.Stylesheet().String()
+
+	// Each {...} match is one rule's declaration body — [^{}]* can't cross
+	// into a nested block, so this naturally lands on the innermost
+	// (non-@layer-wrapper) blocks, exactly the plain declaration lists this
+	// test needs to inspect.
+	blockRe := regexp.MustCompile(`\{[^{}]*\}`)
+	for _, block := range blockRe.FindAllString(cssStr, -1) {
+		body := strings.TrimSuffix(strings.TrimPrefix(block, "{"), "}")
+		seen := map[string]int{}
+		for _, rawDecl := range strings.Split(body, ";") {
+			decl := strings.TrimSpace(rawDecl)
+			if decl == "" {
+				continue
+			}
+			parts := strings.SplitN(decl, ":", 2)
+			if len(parts) != 2 {
+				continue
+			}
+			prop := strings.TrimSpace(parts[0])
+			val := strings.TrimSpace(parts[1])
+			seen[prop]++
+			// Only the combination is broken: a plain var() with nothing
+			// risky in it (e.g. "var(--color-primary,#1b5d8c)", where
+			// --color-primary is never wrapped in light-dark()/color-mix())
+			// is completely safe on any browser — var() itself needs no
+			// protecting. light-dark()/color-mix() WITH a nested var() is
+			// the failure mode this whole test exists to catch.
+			risky := strings.Contains(val, "light-dark(") || strings.Contains(val, "color-mix(")
+			if seen[prop] > 1 && risky && strings.Contains(val, "var(") {
+				t.Errorf("declaration #%d of %q mixes a light-dark()/color-mix() call with var() — a browser that can't parse the outer function defers the WHOLE declaration to computed-value time and falls to the initial value instead of the earlier static declaration, discarding the Safari-legacy fallback: %q (rule: %q)",
+					seen[prop], prop, val, block)
+			}
 		}
 	}
 }

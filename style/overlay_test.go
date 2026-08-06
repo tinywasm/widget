@@ -50,8 +50,13 @@ func TestBackdrop(t *testing.T) {
 	if !strings.Contains(s4, "color-mix(") {
 		t.Errorf("expected s4 to contain 'color-mix(', got:\n%s", s4)
 	}
-	if !strings.Contains(s4, "var(--color-surface") {
-		t.Errorf("expected s4 to contain 'var(--color-surface', got:\n%s", s4)
+	// Not var(--color-surface: the color-mix() argument is
+	// css.ColorSurface.NestedEnhanced(), a literal light-dark(...) with no
+	// var() anywhere — a var() here, even to an always-safe property, would
+	// defer this whole declaration's validity to computed-value time and
+	// break the legacy-Safari fallback (see css.Token.NestedEnhanced).
+	if !strings.Contains(s4, "light-dark(") {
+		t.Errorf("expected s4 to contain 'light-dark(', got:\n%s", s4)
 	}
 
 	// 4. RevealedBy case
