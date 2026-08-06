@@ -31,6 +31,7 @@ type rule struct {
 	startContent  bool
 	controlBox    bool
 	chipBox       bool
+	capitalize    bool
 
 	hasGlyph bool
 	glyph    Surface
@@ -128,6 +129,17 @@ type cueWithinKey struct {
 	part      widget.Part
 }
 
+// stateWithinKey addresses a part through an ancestor's STATE — the written
+// counterpart of cueWithinKey. It exists because a state is written onto the
+// element that owns it, which is not always the element it should repaint: a
+// field's read-only gate belongs to the field, but what has to look read-only
+// is the control inside it.
+type stateWithinKey struct {
+	state     widget.State
+	container widget.Part
+	part      widget.Part
+}
+
 type deviceKey struct {
 	device css.Device
 	part   widget.Part
@@ -135,14 +147,15 @@ type deviceKey struct {
 
 // Sheet represents a scoped stylesheet for a widget.
 type Sheet struct {
-	widget      widget.Widget
-	rootRule    rule
-	partRules   map[widget.Part]rule
-	stateRules   map[stateKey]rule
-	cueRules     map[cueKey]rule
-	cueWithin    map[cueWithinKey]rule
+	widget         widget.Widget
+	rootRule       rule
+	partRules      map[widget.Part]rule
+	stateRules     map[stateKey]rule
+	stateWithin    map[stateWithinKey]rule
+	cueRules       map[cueKey]rule
+	cueWithin      map[cueWithinKey]rule
 	cueWithinHover map[cueWithinKey]rule
-	deviceRules  map[deviceKey]rule
+	deviceRules    map[deviceKey]rule
 }
 
 // For opens the styling block for a widget.
@@ -151,6 +164,7 @@ func For(w widget.Widget) *Sheet {
 		widget:         w,
 		partRules:      make(map[widget.Part]rule),
 		stateRules:     make(map[stateKey]rule),
+		stateWithin:    make(map[stateWithinKey]rule),
 		cueRules:       make(map[cueKey]rule),
 		cueWithin:      make(map[cueWithinKey]rule),
 		cueWithinHover: make(map[cueWithinKey]rule),
@@ -185,6 +199,28 @@ func (s *Sheet) When(st widget.State, p widget.Part, opts ...Option) *Sheet {
 	}
 	r.overlay = true
 	s.stateRules[key] = r
+	return s
+}
+
+// WhenWithin styles a part while an ANCESTOR part carries a written state —
+// `.n__container[data-x="true"] .n__part`. It is the State counterpart of
+// CueWithin, and like CueWithin it is the exception, not the habit: reach for
+// When() first.
+//
+// It exists because dom writes a state onto the element that OWNS it, which is
+// not always the element that should change. A form field's read-only gate is
+// written on the field, but what must stop looking editable is the control
+// inside it — When(Locked, PartInput) would emit
+// `.n__input[data-locked="true"]` and match nothing, since the attribute is on
+// the wrapper. Pass "" as container to hang the rule off the widget root.
+func (s *Sheet) WhenWithin(st widget.State, container, p widget.Part, opts ...Option) *Sheet {
+	key := stateWithinKey{state: st, container: container, part: p}
+	r := s.stateWithin[key]
+	for _, opt := range opts {
+		opt(&r)
+	}
+	r.overlay = true
+	s.stateWithin[key] = r
 	return s
 }
 

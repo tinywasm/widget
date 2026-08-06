@@ -70,6 +70,17 @@ func ChipBox() Option {
 	}
 }
 
+// Capitalize uppercases the first letter of every word the element renders.
+// It is for text that arrives from a data source in whatever case the source
+// happens to store it — a model's field names becoming a form's labels — so
+// the presentation layer decides the casing instead of every caller having to
+// pre-format the string it passes in.
+func Capitalize() Option {
+	return func(r *rule) {
+		r.capitalize = true
+	}
+}
+
 // Hide removes the element. Its use is inside On(): a part that exists on wide
 // screens and not on a phone keeps its base styling and is switched off for the
 // one device, which OnlyOn cannot express — OnlyOn hides by default and reveals

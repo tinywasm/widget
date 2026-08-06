@@ -44,6 +44,13 @@ func (s *Sheet) StateAttrs() []fmt.KeyValue {
 	for k := range s.stateRules {
 		collect(k.state)
 	}
+	// A state reached through an ancestor (WhenWithin) still has to be written
+	// by the markup — the attribute simply lands on the container instead of
+	// on the part being repainted, which does not make it any less of a state
+	// this sheet depends on.
+	for k := range s.stateWithin {
+		collect(k.state)
+	}
 	for _, dr := range s.deviceRules {
 		if dr.hasRevealed {
 			collect(dr.revealedBy)

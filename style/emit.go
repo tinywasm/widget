@@ -360,6 +360,43 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 		statesSB.WriteString(formatRule([]string{sel}, ss.decls))
 	}
 
+	// WhenWithin: an ancestor part's written state reaching a part inside it —
+	// the State twin of the cueWithin block further down.
+	type stateWithinEntry struct {
+		key   stateWithinKey
+		decls []string
+	}
+	var sortedStateWithin []stateWithinEntry
+	for k, r := range s.stateWithin {
+		var d []string
+		if r.hasFlow {
+			d = append(d, flowSelfDecls(r)...)
+		}
+		d = append(d, r.Decls(s.widget.WidgetKind().Layer())...)
+		d = append(d, primitiveDecls(r)...)
+		if len(d) == 0 {
+			continue
+		}
+		sortedStateWithin = append(sortedStateWithin, stateWithinEntry{key: k, decls: d})
+	}
+	sort.Slice(sortedStateWithin, func(i, j int) bool {
+		a, b := sortedStateWithin[i].key, sortedStateWithin[j].key
+		if a.state != b.state {
+			return a.state < b.state
+		}
+		if a.container != b.container {
+			return a.container < b.container
+		}
+		return a.part < b.part
+	})
+	for _, sw := range sortedStateWithin {
+		attr := sw.key.state.Attr()
+		sel := fmt.Sprintf("%s[%s=\"%s\"] %s",
+			selectorOf(s.widget.WidgetName(), sw.key.container), attr.Key(), attr.Value(),
+			selectorOf(s.widget.WidgetName(), sw.key.part))
+		statesSB.WriteString(formatRule([]string{sel}, sw.decls))
+	}
+
 	cueDecls := make(map[cueKey][]string)
 	for k, cr := range s.cueRules {
 		cueDecls[k] = cr.Decls(s.widget.WidgetKind().Layer())

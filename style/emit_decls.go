@@ -66,6 +66,20 @@ func (r rule) Decls(layer widget.Layer) []string {
 				decls = append(decls, "color: "+t.textStatic+";")
 			}
 			decls = append(decls, "color: "+t.text+";")
+			// Safari paints a :disabled control's text with its own
+			// -webkit-text-fill-color, which WINS over color — a read-only
+			// field styled for legibility still came out washed grey on iOS
+			// while every other browser honoured the color above. Only state
+			// rules pay for the extra pair: disabled/locked is a state, and a
+			// surface's promise to resolve text together with its background
+			// is not kept on the one platform where the text half is silently
+			// overridden.
+			if r.overlay {
+				if t.textStatic != "" {
+					decls = append(decls, "-webkit-text-fill-color: "+t.textStatic+";")
+				}
+				decls = append(decls, "-webkit-text-fill-color: "+t.text+";")
+			}
 		}
 		if t.border != "" {
 			if r.overlay {
@@ -189,6 +203,10 @@ func (r rule) Decls(layer widget.Layer) []string {
 		decls = append(decls, "overflow: hidden;")
 	}
 
+	if r.capitalize {
+		decls = append(decls, "text-transform: capitalize;")
+	}
+
 	if r.controlBox {
 		decls = append(decls, "min-height: "+css.ControlHeight.Var()+";")
 	}
@@ -260,11 +278,19 @@ func (r rule) Decls(layer widget.Layer) []string {
 		} else {
 			decls = append(decls, "inset-inline-end: "+spaceVar(r.onEdgeInline)+";")
 		}
-		// No z-index. A chip riding an edge is content, not chrome: being
-		// positioned already lifts it over its unpositioned siblings, and
-		// putting it on the widget's overlay layer made it tie with the real
-		// overlays there — a dropdown at the same level lost to it on DOM order
-		// alone and rendered underneath.
+		// z-index: 1, and deliberately NOT layerVar(layer). The overlay layer
+		// (--z-dropdown and up, 100+) was tried and reverted: it put the chip
+		// level with the real overlays, so a dropdown lost to it on DOM order
+		// alone and rendered underneath. A plain 1 orders the chip against its
+		// own siblings and stays far below every overlay token, so both hold.
+		//
+		// It cannot be left to `auto`, which is what shipped: the spec does
+		// paint a positioned auto element above unpositioned siblings, but a
+		// sibling <input> is a UA-painted form control, and Safari composites
+		// one — a :disabled one above all — over an auto-z-index sibling. That
+		// is the read-only field whose legend came out buried on iOS while
+		// every other engine drew it on top.
+		decls = append(decls, "z-index: 1;")
 	}
 
 	if r.hasFlyout {

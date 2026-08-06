@@ -226,10 +226,16 @@ func TestOnEdgeStraddlesTheLine(t *testing.T) {
 		}
 	}
 
-	// A chip is content. On the widget's overlay layer it ties with the real
-	// overlays and wins on DOM order, which puts it over a dropdown.
-	if strings.Contains(s, "z-index") {
-		t.Errorf("OnEdge must not claim a stacking level, got:\n%s", s)
+	// A chip is content, so it must not reach the OVERLAY layer: level with the
+	// real overlays it wins on DOM order, which puts it over a dropdown. That —
+	// not "no z-index at all" — is the invariant. It does order itself against
+	// its own siblings with a local z-index: leaving it `auto` let Safari paint
+	// a sibling form control over the legend labelling it.
+	if !strings.Contains(s, "z-index: 1;") {
+		t.Errorf("expected OnEdge to order itself locally with z-index: 1, got:\n%s", s)
+	}
+	if strings.Contains(s, "z-index: var(--z-") {
+		t.Errorf("OnEdge must not claim an overlay stacking level, got:\n%s", s)
 	}
 }
 
