@@ -458,11 +458,11 @@ func TestFloatingChromeReservesScrollEndSpace(t *testing.T) {
 	// no reservation.
 	w := testWidget{name: "fab", kind: widget.Region}
 	s := style.For(w).
-		Part("host", style.FloatingChrome(style.EdgeBottom, style.Readable, style.Space4)).
+		Part("host", style.FloatingChrome(style.EdgeBottom, style.IconLg, style.Space4)).
 		Part("list", style.Scroll()).
 		Stylesheet().String()
 
-	want := "--floating-bottom: calc(" + css.MaxWReadable.Var() + " + 2 * " + css.Space4.Var() + ");"
+	want := "--floating-bottom: calc(2.5em + 2 * " + css.Space4.Var() + ");"
 	if !strings.Contains(s, want) {
 		t.Errorf("expected the host to declare its strip with %q, got:\n%s", want, s)
 	}
@@ -477,8 +477,8 @@ func TestFloatingChromeReservesScrollEndSpace(t *testing.T) {
 
 	// EdgeTop is the mirror: the strip declaration switches property, the
 	// Scroll() padding stays the same.
-	top := style.For(w).Part("host", style.FloatingChrome(style.EdgeTop, style.Readable, style.Space4)).Stylesheet().String()
-	if !strings.Contains(top, "--floating-top: calc("+css.MaxWReadable.Var()+" + 2 * "+css.Space4.Var()+");") {
+	top := style.For(w).Part("host", style.FloatingChrome(style.EdgeTop, style.IconLg, style.Space4)).Stylesheet().String()
+	if !strings.Contains(top, "--floating-top: calc(2.5em + 2 * "+css.Space4.Var()+");") {
 		t.Errorf("expected FloatingChrome(EdgeTop) to declare --floating-top, got:\n%s", top)
 	}
 

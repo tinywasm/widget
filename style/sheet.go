@@ -50,7 +50,7 @@ type rule struct {
 
 	hasFloatingChrome  bool
 	floatingChromeEdge Edge
-	floatingChromeSize Size
+	floatingChromeSize IconSize
 	floatingChromeGap  Space
 
 	hasAnchor  bool
@@ -162,6 +162,12 @@ type Sheet struct {
 	cueWithin      map[cueWithinKey]rule
 	cueWithinHover map[cueWithinKey]rule
 	deviceRules    map[deviceKey]rule
+
+	// within records the part tree: which part renders inside which. The
+	// sheet needs it to reason about positioning (who is whose containing
+	// block), because a Flyout's inset resolves against the nearest
+	// POSITIONED ancestor, which is not always the Anchor the author meant.
+	within map[widget.Part]widget.Part
 }
 
 // For opens the styling block for a widget.
@@ -175,6 +181,7 @@ func For(w widget.Widget) *Sheet {
 		cueWithin:      make(map[cueWithinKey]rule),
 		cueWithinHover: make(map[cueWithinKey]rule),
 		deviceRules:    make(map[deviceKey]rule),
+		within:         make(map[widget.Part]widget.Part),
 	}
 }
 
@@ -193,6 +200,26 @@ func (s *Sheet) Part(p widget.Part, opts ...Option) *Sheet {
 		opt(&r)
 	}
 	s.partRules[p] = r
+	return s
+}
+
+// Within declares that part renders INSIDE container, and applies the options
+// to part exactly as Part() would; what it adds is the containment relation,
+// which the sheet needs to reason about positioning — who is whose containing
+// block. It reads like the DOM: Within("menu", "options", Flyout(...)) is
+// "options, inside menu".
+//
+// Part() remains the normal declaration. Within() is only needed where
+// containment changes the result: a Flyout that hangs from an Anchor while a
+// positioned part sits between them. When it matters, the sheet rejects the
+// composition until the nesting is declared — see Validate().
+func (s *Sheet) Within(container, p widget.Part, opts ...Option) *Sheet {
+	r := s.partRules[p]
+	for _, opt := range opts {
+		opt(&r)
+	}
+	s.partRules[p] = r
+	s.within[p] = container
 	return s
 }
 

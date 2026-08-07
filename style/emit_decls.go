@@ -22,7 +22,7 @@ func (r rule) Decls(layer widget.Layer) []string {
 		if r.floatingChromeEdge == EdgeTop {
 			name = floatingTopVar
 		}
-		decls = append(decls, name+": calc("+sizeValue(r.floatingChromeSize)+" + 2 * "+spaceVar(r.floatingChromeGap)+");")
+		decls = append(decls, name+": calc("+iconSizeValue(r.floatingChromeSize)+" + 2 * "+spaceVar(r.floatingChromeGap)+");")
 	}
 
 	if r.hasFlow {

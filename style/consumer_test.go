@@ -326,7 +326,7 @@ func TestNoInventedValues(t *testing.T) {
 		Part("item13", style.IconBox(style.IconSm)).
 		Part("item14", style.IconBox(style.IconMd)).
 		Part("item15", style.IconBox(style.IconLg)).
-		Part("item16", style.Anchor(), style.FloatingChrome(style.EdgeBottom, style.Readable, style.Space4)).
+		Part("item16", style.Anchor(), style.FloatingChrome(style.EdgeBottom, style.IconLg, style.Space4)).
 		Part("item17", style.OnEdge(style.EdgeTop, style.SideStart, style.Space2, style.Space1)).
 		On(css.Mobile, "item10", style.Stack(style.Space1))
 

@@ -316,7 +316,7 @@ func StartContent() Option
 func Anchor() Option
 func Docked(scope Scope, edge Edge, side Side, gap Space) Option
 func OnEdge(edge Edge, side Side, block Space, inline Space) Option
-func FloatingChrome(edge Edge, size Size, gap Space) Option
+func FloatingChrome(edge Edge, size IconSize, gap Space) Option
 func Flyout(side Side) Option
 func Scroll() Option
 func KeepSize() Option
@@ -351,11 +351,11 @@ func Drawer(side Side, size Size) Option
 | `Hide()` | `display:none` — for use inside `On()`, the inverse of `OnlyOn` |
 | `CenterContent()` | `display:flex; align-items:center; justify-content:center` |
 | `StartContent()` | `display:flex; align-items:center; justify-content:flex-start` |
-| `Docked(scope, edge, side, gap)` | `position:{absolute\|fixed}; margin:0; inset-block-{start\|end}:<gap>; inset-inline-{start\|end}:<gap>`; `z-index:var(<Kind layer>)` for `Viewport`, `z-index:1` for `Parent` — a `Parent` dock is a control inside its own box: it declares its local level against its unpositioned siblings, but must not tie with real overlays |
-| `OnEdge(edge, side, block, inline)` | `position:absolute; margin:0; inset-block-{start\|end}:<block>; inset-inline-{start\|end}:<inline>; margin-block-{start\|end}:calc(-0.5 * var(--chip-height,1.25rem)); z-index:1` — the straddle is half the shared `--chip-height` token, never a `transform` (transforms are invisible to `scrollHeight` by spec, so no ancestor could reserve the space the chip really occupies, and they create an implicit stacking context); `z-index:1` orders the chip against its own siblings without claiming the overlay layer |
-| `FloatingChrome(edge, size, gap)` | declares the strip this element occupies along its edge as an inherited custom property — `--floating-{top\|bottom}:calc(<size> + 2 * <gap>)` — consumed by every `Scroll()` descendant via `var(--floating-{top\|bottom},0px)`. The seam between a floating action button and the scroll container behind it: the reservation crosses widget boundaries because the property is inherited, and no declaration without `FloatingChrome` (the `0px` default applies everywhere) |
-| `Anchor()` | `position:relative` — the positioning reference a `Flyout` hangs from |
-| `Flyout(side)` | `position:absolute; inset-block-start:100%; inset-inline-{start\|end}:0; z-index:var(<Kind layer>)` |
+| `Docked(scope, edge, side, gap)` | `position:{absolute\|fixed}; margin:0; inset-block-{start\|end}:<gap>; inset-inline-{start\|end}:<gap>`; `z-index:var(<Kind layer>)` for `Viewport`, `z-index:1` for `Parent` — a `Parent` dock pins the element to the corner of the nearest **positioned** ancestor (the `Anchor()` only if nothing positioned sits between) and is a control inside its own box: it declares its local level against its unpositioned siblings, but must not tie with real overlays. A `Parent` dock is itself a containing block: a `Flyout()` inside it hangs from THIS box, not from whatever `Anchor()` sits above — `Validate()` rejects that theft (see `Within()`) |
+| `OnEdge(edge, side, block, inline)` | `position:absolute; margin:0; inset-block-{start\|end}:<block>; inset-inline-{start\|end}:<inline>; margin-block-{start\|end}:calc(-0.5 * var(--chip-height,1.25rem)); z-index:1` — the straddle is half the shared `--chip-height` token, never a `transform` (transforms are invisible to `scrollHeight` by spec, so no ancestor could reserve the space the chip really occupies, and they create an implicit stacking context); `z-index:1` orders the chip against its own siblings without claiming the overlay layer. Like every positioned part, it is a containing block for a `Flyout()` descendant |
+| `FloatingChrome(edge, size, gap)` | declares the strip this element occupies along its edge as an inherited custom property — `--floating-{top\|bottom}:calc(<size> + 2 * <gap>)` — consumed by every `Scroll()` descendant via `var(--floating-{top\|bottom},0px)`. The seam between a floating action button and the scroll container behind it: the reservation crosses widget boundaries because the property is inherited, and no declaration without `FloatingChrome` (the `0px` default applies everywhere). `size` is an `IconSize`, not a `Size`: floating chrome pinned to a screen edge is by construction a small icon-only control (a FAB, a hamburger); a `Size`'s percentages would resolve against the scroll region's own inline size and `max-content` is not a `<length>` at all |
+| `Anchor()` | `position:relative` — makes the element a positioning reference. The containing block of a `Flyout()` is the nearest **positioned** ancestor, so this only becomes the reference if nothing positioned sits between the two; `Validate()` rejects the interposition (see `Within()`) |
+| `Flyout(side)` | `position:absolute; inset-block-start:100%; inset-inline-{start\|end}:0; z-index:var(<Kind layer>)` — the `100%` resolves against the nearest positioned ancestor; a positioned part between the element and its `Anchor()` steals the containing block, which the sheet detects through the declared part tree (`Within()`) |
 | `Drawer(side, size)` | `position:fixed; inset-block:0; inset-inline-{start|end}:0; width:var(<size>); z-index:var(<Kind layer>)` |
 | `Animate(m)` | `transition: all var(--duration-*) var(--ease-in-out)` |
 
@@ -384,6 +384,7 @@ Base rule emits `display:none`. The state rule emits:
 func For(w widget.Widget) *Sheet   // needs Kind, not just Name — see §1.3, §5, §6.1
 func (s *Sheet) Root(opts ...Option) *Sheet
 func (s *Sheet) Part(p widget.Part, opts ...Option) *Sheet
+func (s *Sheet) Within(container, p widget.Part, opts ...Option) *Sheet
 func (s *Sheet) When(st widget.State, p widget.Part, opts ...Option) *Sheet
 func (s *Sheet) Cue(c widget.Cue, p widget.Part, opts ...Option) *Sheet
 func (s *Sheet) CueWithin(c widget.Cue, container, p widget.Part, opts ...Option) *Sheet
@@ -398,6 +399,16 @@ func (s *Sheet) Stylesheet() *css.Stylesheet   // panics if Validate() is non-em
 
 `Rule`, `Triplet` and all `Sheet` fields are unexported. `FlowType` is an enum,
 not a string. An empty `Part` argument to `When`/`Cue` targets the root.
+
+`Within(container, p, opts…)` applies `opts` to `p` exactly as `Part()` would
+and additionally records that `p` renders **inside** `container` — the part
+tree, which the sheet walks to reason about positioning (who is whose
+containing block). It reads like the DOM: `Within("menu", "options",
+Flyout(SideStart))` is "options, inside menu". `Part()` remains the normal
+declaration; `Within()` is only needed where containment changes the result —
+a `Flyout()` hanging from an `Anchor()` while a positioned part sits between
+them — and in exactly those cases `Validate()` (§6.1) rejects the sheet until
+the nesting is declared.
 
 ### 6.1 Validation conditions
 
@@ -416,6 +427,11 @@ not a string. An empty `Part` argument to `When`/`Cue` targets the root.
 | `Drawer()` and `Width()` on the same rule | `sheet <name>: part "<part>": Drawer() already sets width; remove Width()` |
 | `Drawer()` without `RevealedBy()` in any rule for that part | `sheet <name>: part "<part>": Drawer() without RevealedBy(); the panel would be permanently visible` |
 | `OnlyOn` called twice for the same part with different devices | `sheet <name>: part "<part>" declared OnlyOn for both <device1> and <device2>` |
+| `Within()` names a container never declared with `Part()` | `sheet <name>: Within() container "<part>" is not a declared part` |
+| `Within()` declares a part inside itself | `sheet <name>: part "<part>": Within() declares the part inside itself` |
+| `Within()` containment is cyclic | `sheet <name>: part "<part>": Within() containment cycle` |
+| A `Flyout()` part is not nested inside anything while a containing-block part exists (`Docked(Parent, …)`, `OnEdge`, `Backdrop(Parent)`) | `sheet <name>: part "<flyout>" is a Flyout and part "<stealer>" is a containing block, but the sheet cannot know which contains which — declare the nesting with Within()` |
+| A positioned part sits between a `Flyout()` and its `Anchor()` in the declared chain | `sheet <name>: part "<flyout>": part "<thief>" is positioned between the Flyout and its Anchor and steals the containing block the Flyout hangs from; make it not positioned or re-anchor the Flyout` |
 
 Every message names the sheet and the part. The panic in `Stylesheet()` is the
 only signal the author gets, and it surfaces from inside `ssr`'s generated

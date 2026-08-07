@@ -1,238 +1,288 @@
 ---
-PLAN: "feat(style): apilamiento declarado, chip sin transform y contrato de cromo flotante"
-EXECUTOR: jules
+PLAN: "fix(style): el Flyout debe colgar de su Anchor, y el DSL debe decirlo cuando no puede"
+TAG: v0.6.0
+EXECUTOR: opencode
 REVIEWER: none
 ---
 
-> Este plan se despacha con el flujo CodeJob. Ver skill: agents-workflow.
+> **EJECUTADO en v0.6.0 (etapa 1: `Within()` + `Validate()` + firmas honestas).**
+> La etapa 2 (la construcción legal para `components`) se decide en el plan B.
 >
-> Es la **etapa 2 de 4**. Orden obligatorio: **css → widget → components →
-> layout**. Requiere el token `--chip-height` publicado en `tinywasm/css`
-> (ver su `docs/PLAN.md`). No empezar antes.
+> **Etapa A de un cambio en 2 repos.**
+>
+> | | Repo | Plan | Qué |
+> |---|---|---|---|
+> | **A** | **`widget`** | **este plan** | cierra el hueco: el sheet aprende el árbol de partes y `Validate()` deja de callarse |
+> | B | `components` | `components/docs/PLAN.md` | `targetlist` adopta la construcción legal; `usermenu` gana el test que nunca tuvo |
 
-# Plan — cerrar los agujeros del DSL de estilos que producen defectos silenciosos
+# Plan — `widget/style`: el contenedor de bloque del `Flyout`
 
-## 1. Diagnóstico: no es un problema de z-index, son tres problemas distintos
+## El bug, medido
 
-Una sesión de depuración sobre una vista CRUD en móvil produjo cuatro defectos
-visuales. Agruparlos correctamente es lo que decide qué se puede automatizar:
+En desktop (1440x900), el menú `⋮` de una fila de `targetlist` abre su desplegable
+**encima de su propia fila**, tapando la etiqueta que acababa de tocar.
 
-**Familia A — orden de pintado (z-index de verdad).**
-- **A1.** Una leyenda `OnEdge` quedó sepultada bajo el `<input>` hermano en iOS.
-  El DSL emitía `z-index: auto`, confiando en que la especificación pinta un
-  elemento posicionado por encima de uno que no lo está. Safari compone un control
-  de formulario (más aún si está `:disabled`) por encima de un hermano con
-  `z-index: auto`. Todos los demás motores lo pintaban bien: un defecto que solo
-  existe en un navegador es la firma de un valor **no declarado**.
-- **A2.** El `outline` del estado `Locked` pintaba **sobre** la leyenda. Los
-  outlines se pintan al final del *stacking context*, por encima de los
-  descendientes posicionados.
-
-**Familia B — espacio y geometría (esto NO es z-index).**
-- **B1.** El desplegable de una fila desbordaba la pantalla: está anclado a un
-  disparador que se mueve ~340px entre los dos estados de un *scroll-snap*, algo
-  que CSS no puede observar.
-- **B2.** El badge de la última fila se solapaba con un botón de acción flotante.
-  `OnEdge` posiciona con `transform`, y un `transform` es **invisible para
-  `scrollHeight`** por especificación: ningún padding calculado desde la caja del
-  badge podía reservar el hueco donde el badge realmente se pinta.
-
-**Familia C — fallo silencioso del propio DSL.**
-- **C1.** `formatRule` ordenaba las declaraciones **alfabéticamente** antes de
-  deduplicar. `padding-block-end:` ordena antes que `padding:` (`-` < `:` en
-  ASCII), así que `Pad()` seguido de `PadEdge()` — la forma de "valor general más
-  una excepción en un borde" — salía con el atajo AL FINAL, ganándole a la
-  propiedad específica que debía sobrescribirlo. Escribir la llamada correcta
-  producía CSS al revés, sin error ni aviso. **Ya corregido** (dedup que preserva
-  el orden), **sin test que lo fije**.
-
-### La respuesta a "¿esto lo elimina el harness?"
-
-**Parcialmente, y lo que no puede cerrar es exactamente lo que necesita un
-contrato tipado nuevo, no más automatización.**
-
-- **A1, A2 y C1 sí se cierran**, y deben cerrarse aquí: ocurren dentro de una
-  misma hoja, donde el DSL ya conoce todas las Parts y todas las primitivas que
-  escapan del flujo. Que hoy no lo haga es un agujero del harness, no una
-  limitación de CSS. Violan directamente el principio 6 (*nunca un fallo
-  silencioso*) y el 3 (*los estados ilegales no deben poder escribirse*).
-- **B2 no se cierra automatizando**, porque el botón flotante y el badge viven en
-  **widgets distintos, hojas distintas y repos distintos**. Ninguno sabe que el
-  otro existe, y ninguna cantidad de tipos dentro de una hoja puede saberlo. Esto
-  es literalmente el *missing contract at a seam* del harness: falta un tipo que
-  nombre lo que cruza entre las dos librerías. Hoy se resuelve porque un host
-  alcanza el padding de un hijo por coincidencia de cascada — un parche en la
-  hoja, el antipatrón que el propio documento señala. La solución es **añadir el
-  contrato** (etapa 5), no adivinar.
-- **B1 no se cierra en CSS.** CSS no ve la posición de un scroll-snap. Lo honesto
-  es que la elección (anclado al disparador vs. anclado al viewport) sea
-  **explícita y tipada**, no fingir que se puede derivar.
-
-## 2. Contexto del repo para un agente sin contexto previo
-
-- Módulo: `github.com/tinywasm/widget`. `docs/PLAN.md` va junto a `go.mod`.
-- El DSL vive en `style/`. Piezas relevantes:
-  - `sheet.go` — el struct `rule` (todos los flags) y los métodos del `Sheet`.
-  - `except.go`, `flow.go`, `overlay.go` — las `Option` que llenan `rule`.
-  - `emit_decls.go` — `rule.Decls()`, que traduce `rule` a declaraciones CSS,
-    y `formatRule`, que las serializa.
-  - `emit.go` — el recorrido que agrupa reglas por capa, estado, cue y device.
-  - `validate.go` — `Sheet.Validate()`, los diagnósticos que ya existen.
-- **No hay escotilla de CSS crudo y no se debe añadir una.** Todo sale de una
-  `Option` tipada.
-- Nada de librería estándar en paquetes WASM: `tinywasm/fmt`, nunca
-  `errors`/`strconv`/`strings`.
-- Empotrado por valor: `dom.Element` como valor, nunca `*dom.Element`.
-- Prohibidas las cadenas repetidas en la lógica: constante con nombre.
-- El emisor ya escribe **doble declaración** para el color (estática primero,
-  `light-dark()` después) — ver el comentario en `Decls`. Cualquier propiedad
-  nueva que use `color-mix`/`light-dark` sigue ese mismo patrón.
-
-## 3. Etapas
-
-### Etapa 1 — fijar el orden de emisión con un test (cierra C1)
-
-`formatRule` ya deduplica preservando el orden. Falta el test que impida que
-alguien "optimice" volviendo a ordenar.
-
-Añadir en `style/` un test que construya una hoja con `Pad(Space1)` **y**
-`PadEdge(EdgeBottom, Space12)` sobre la misma Part y verifique que en el bloque
-emitido el índice de `padding:` es **menor** que el de `padding-block-end:`.
-Comprobar índices, no `Contains`: el defecto era de orden, y un `Contains` pasaba
-igual cuando estaba mal.
-
-Añadir un segundo caso que verifique que la deduplicación sigue viva: dos
-`Option` que emitan `display: flex;` deben producir **una** sola línea.
-
-**Aceptación:** el test falla si se restaura `sort.Strings(decls)` en
-`formatRule`.
-
-### Etapa 2 — `OnEdge` sin `transform` (cierra B2 en origen)
-
-Hoy `OnEdge` emite `transform: translateY(±50%)`, elegido para ser agnóstico a la
-altura del chip. Con `--chip-height` publicado (plan de `css`) esa razón
-desaparece.
-
-Sustituir el `transform` por un margen negativo calculado:
+Medido en el navegador **antes** de escribir una sola línea de este plan:
 
 ```
-inset-block-start: <space>;
-margin-block-start: calc(-0.5 * var(--chip-height, 1.25rem));
+row      top 113.2   bottom 163.2   (alto 50)
+summary  top 118.0   bottom 142.0   (alto 24)
+options  top 142.0                  → 21.2px POR ENCIMA del fondo de su fila
+label    top 126.2   bottom 150.2   → el desplegable le come 8.2px de texto
+
+options.offsetParent === .targetlist__menu     ← la prueba
 ```
 
-(y el simétrico con `inset-block-end` / `margin-block-end` para `EdgeBottom`).
+`offsetParent` es el dato que cierra el caso: el contenedor de bloque del
+desplegable **no es la fila**, es el `<details>` de 24px.
 
-Efectos, todos deseados:
-- la caja del chip **existe** para `scrollHeight`, así que un ancestro puede
-  reservar su hueco;
-- desaparece el *stacking context* implícito que creaba el `transform`;
-- el fallback `1.25rem` mantiene el comportamiento si alguien usa el DSL con una
-  hoja de tokens antigua.
+## Por qué pasa
 
-**Aceptación:** ninguna regla emitida por `OnEdge` contiene `transform`;
-`grep -rn "translateY" style/` solo aparece, si acaso, en `SlideDeck`.
+Tres opciones del DSL, escritas exactamente como las documenta su firma:
 
-### Etapa 3 — el apilamiento se declara, nunca se hereda de `auto`
+```go
+Part(PartRow,     style.Anchor())                                        // position: relative
+Part(PartMenu,    style.Docked(style.Parent, EdgeTop, SideStart, Space1)) // position: absolute  ← roba
+Part(PartOptions, style.Flyout(style.SideStart))                          // position: absolute
+                                                                          // inset-block-start: 100%
+```
 
-Hoy el z-index sale de **tres sitios sin relación entre sí**: `layerVar(kind)`
-para los overlays reales, un `z-index: 1` puesto a mano en `OnEdge`, y `auto`
-para todo lo demás. `auto` significa "depende del orden del DOM y de cómo componga
-el navegador" — es decir, el fallo silencioso de A1.
+`Flyout` emite `inset-block-start: 100%`, y CSS resuelve ese `100%` contra el
+**ancestro posicionado más cercano**, no contra el que declaró `Anchor()`. El
+`<details>` intermedio también es `position: absolute`, así que se interpone: el
+`100%` vale 24px (el alto del disparador) en vez de 50px (el alto de la fila).
 
-1. Unificar en una única función, p. ej. `stackingFor(r rule) string`, que sea el
-   **único** sitio del paquete que produce un `z-index`.
-2. Toda primitiva que saque un elemento del flujo (`OnEdge`, `Flyout`, `Drawer`,
-   `Backdrop`, `Docked`) obtiene de ahí un valor **declarado**, nunca `auto`.
-3. Mantener los dos escalones que ya existen y nombrarlos:
-   - **local** (`1`): cromo que cabalga sobre el contenido de su propio widget —
-     `OnEdge`, `Docked(Parent, …)`. No debe alcanzar la capa de overlay: si lo
-     hiciera, empataría con un dropdown real y ganaría por orden de DOM (esto ya
-     ocurrió y está documentado en el comentario de `hasDocked`).
-   - **overlay** (`var(--z-dropdown)` y superiores, vía `Kind.Layer()`): overlays
-     de verdad — `Flyout`, `Drawer`, `Backdrop(Viewport)`, `Docked(Viewport, …)`.
-4. Añadir en `Validate()` un diagnóstico si una Part fuera de flujo acabara sin
-   posición de apilamiento resoluble.
+El `Anchor()` de la fila es **código muerto**. Nada cuelga nunca de él.
 
-**Aceptación:** `grep -rn "z-index" style/*.go` (sin tests) solo aparece dentro de
-`stackingFor`; los tests existentes de `Docked(Viewport)` siguen exigiendo
-`var(--z-dropdown,100)`.
+## Por qué esto es un defecto de `widget`, no de `components`
 
-### Etapa 4 — los bordes de estado se pintan con `box-shadow`, no con `outline`
+Tres cosas fallan a la vez, y las tres viven aquí.
 
-Una regla de estado (`When`/`Cue`) emite hoy su borde como
-`outline` + `outline-offset: -1px`, deliberadamente, para que un estado no pueda
-cambiar el tamaño de la caja que pinta. Eso resuelve el tamaño y **crea dos
-defectos**:
+### 1. Las firmas prometen algo que la emisión no cumple
 
-- **A2:** los outlines se pintan al final del stacking context, por encima de los
-  descendientes posicionados — por eso el borde del estado `Locked` cruzaba por
-  encima de la leyenda que monta sobre esa misma línea.
-- **Safari < 16.4 no aplica `border-radius` a un `outline`.** Un iPhone 7 se queda
-  en iOS 15: ahí **todos** los bordes de estado del sistema salen cuadrados, no
-  solo uno.
+En `overlay.go`, hoy:
 
-`box-shadow: 0 0 0 1px <color>` (o con `inset`) cumple la restricción original —
-no afecta al layout — y además respeta el `border-radius` en todos los motores y
-se pinta como parte del fondo del propio elemento, no por encima de sus
-descendientes.
+```go
+// Flyout … El ancestro Anchor() más cercano es de donde cuelga.
+// Docked … Parent lo fija a la esquina del Anchor más cercano.
+```
 
-**Punto de diseño a resolver en la revisión:** `Raise(Elevation)` ya usa
-`box-shadow`. Si una Part tiene elevación **y** borde de estado, las dos sombras
-deben **componerse en una sola declaración separada por comas**, no pisarse. Hay
-que decidir el orden (el anillo primero, la elevación después) y dejarlo en un
-único sitio del emisor.
+Las dos frases son **falsas** en cuanto algo intermedio esté posicionado, y el
+autor no tiene forma de verlo desde el punto de llamada. Es exactamente el
+"fallo silencioso" que el principio 6 del harness existe para eliminar: ni error
+de compilación, ni diagnóstico, sólo un desplegable en el sitio equivocado.
 
-**Aceptación:** un test que construya una Part con `Raise` y con un estado que
-lleve borde, y verifique que sale **una** declaración `box-shadow` con las dos
-capas; y que ninguna regla de estado emite `outline`.
+### 2. `Validate()` ya persigue este error, pero sólo la mitad fácil
 
-### Etapa 5 — el contrato que falta en la costura: cromo flotante ↔ región con scroll
+`validate.go` ya tiene `checkPosition`, con este comentario:
 
-Este es el que B2 necesita y ninguna hoja puede resolver sola.
+> *Anchor() junto a Docked()/Flyout() es el error fácil: los dos ya son
+> contenedores de bloque, así que el Anchor sobra además de ser destructivo.*
 
-El mecanismo debe cruzar la frontera entre widgets **sin que ninguno conozca al
-otro**. Las custom properties se heredan, así que sirven exactamente para eso:
+O sea: **el problema ya está identificado en el código**, pero `checkPosition`
+sólo mira *dentro de una regla*. La versión **entre partes** — la que sí se
+publicó rota — es estructuralmente invisible, porque `s.partRules` es un mapa
+plano: el sheet no sabe qué parte se renderiza dentro de cuál.
 
-1. `Scroll()` pasa a emitir además:
-   ```
-   padding-block-end: var(--floating-bottom, 0px);
-   ```
-   Es decir: *toda* región con scroll reserva por defecto lo que le digan que hay
-   flotando encima, y `0px` si nadie dice nada. Sin coste para quien no lo use.
+### 3. El consumidor ya carga la regla memorizada
 
-2. Una `Option` nueva en el host, del estilo
-   `FloatingChrome(edge Edge, size Size, gap Space)`, emite sobre **su propia
-   caja**:
-   ```
-   --floating-bottom: calc(<size> + 2 * <gap>);
-   ```
-   Como se hereda, cualquier `Scroll()` descendiente lo recoge — esté en el widget
-   que esté, venga del repo que venga.
+`targetlist/css.go` lleva escrito, a mano:
 
-Así el host declara *"ocupo esta franja de mi borde inferior"* y el componente
-hijo declara *"esta es mi región con scroll"*, y ninguno necesita saber el nombre
-de clase del otro. Es el tipo que faltaba en la costura.
+> *No `Anchor()` aquí — `Docked` ya lo hace contenedor de bloque, y los dos se
+> pelean por `position`.*
 
-**Aceptación:** un test con forma de consumidor **dentro de este repo** (regla del
-harness: una API no está publicada hasta que un test así la demuestra) que monte
-un host con `FloatingChrome` y un hijo con `Scroll()` y verifique que el hijo
-emite el `padding-block-end` que consume la variable.
+Un comentario así **es** el síntoma. La checklist del harness lo nombra:
+*"Cosas que hay que recordar. Cualquier paso obligatorio que el autor deba
+acordarse de hacer → eso es un agujero en el harness; se cierra con tipos o con
+un único camino, no con prosa."*
 
-| Etapa | Archivos | Puerta |
+## Los tests ya están escritos y en rojo
+
+Antes de este plan, y para que quede de resguardo permanente.
+
+**`widget/style/anchor_contract_test.go`** (nuevo, ya en el repo):
+
+| Test | Hoy | Qué fija |
 |---|---|---|
-| 1 | `style/emit_decls.go` (solo test), `style/*_test.go` | — |
-| 2 | `style/emit_decls.go` | tras publicar `css` |
-| 3 | `style/emit_decls.go`, `style/emit_helpers.go`, `style/validate.go` | tras 2 |
-| 4 | `style/emit_decls.go` | tras 3 |
-| 5 | `style/except.go`, `style/emit_decls.go`, `style/*_test.go` | tras 3 |
+| `TestAnchorAndFlyoutWithNothingBetween` | 🟢 **verde** | El caso de control: la forma de `usermenu` (`Anchor > Flyout`, nada en medio) es la que el DSL documenta y **debe seguir funcionando**. Cualquier diagnóstico que también dispare aquí se pasó de largo. |
+| `TestDockedPartBetweenAnchorAndFlyoutIsDiagnosed` | 🔴 **rojo** | Reproduce la composición de `targetlist` por la API pública, tal cual la escribe un consumidor, y exige que la librería **diga algo**. Hoy `Validate()` devuelve cero errores. |
 
-Ejecutar `go build ./... && go test ./... -count=1` en la raíz del módulo. Deben
-pasar **todos** los paquetes.
+El test rojo asserta sobre **el diagnóstico**, no sobre el CSS emitido, a
+propósito: sea cual sea la construcción que elija la etapa 2, lo que no puede
+volver a pasar es que un consumidor escriba esto y reciba silencio.
 
-## 4. Lo que este plan NO hace
+---
 
-- **No intenta resolver B1** (desplegable que desborda según el scroll-snap). CSS
-  no puede observar esa posición. La decisión seguirá siendo explícita en el
-  consumidor: anclado al disparador o anclado al viewport.
-- No toca `Interactive()` ni la derivación de hover/focus/press.
-- No cambia la escala de tokens `Z*`; solo unifica **quién** los usa.
+## Etapa 1 — que el sheet conozca el árbol de partes
+
+**Esta etapa es la que cierra el harness. Sin ella la etapa 2 es otro parche.**
+
+### 1.1 El precedente que ya existe
+
+No hay que inventar un concepto nuevo. `Sheet` **ya** tiene la relación
+contenedor→parte, sólo que limitada a los cues:
+
+```go
+CueWithin(container, part widget.Part, …)
+CueWithinHover(container, part widget.Part, …)
+```
+
+y `validate.go` **ya** valida los dos extremos (`checkCueWithin`: que ambos sean
+partes declaradas, y que no sean la misma). Lo que falta es promover esa relación
+de "detalle de un selector de cue" a **dato estructural del sheet**.
+
+### 1.2 La declaración
+
+```go
+// Within declara que part se renderiza DENTRO de container, y aplica las
+// opciones a part. Es la misma parte que Part() declararía; lo que añade es
+// la relación de contención, que el sheet necesita para razonar sobre
+// posicionamiento (quién es el contenedor de bloque de quién).
+func (s *Sheet) Within(container, part widget.Part, opts ...Option) *Sheet
+```
+
+Se lee como el DOM: `Within(PartMenu, PartOptions, style.Flyout(...))` es
+"options, dentro de menu".
+
+**No es una migración masiva.** `Part()` sigue existiendo y sigue siendo lo
+normal. `Within()` sólo hace falta donde la contención cambia el resultado —
+y la etapa 1.3 se encarga de que en esos casos no sea opcional.
+
+### 1.3 El diagnóstico, cerrado por defecto
+
+Regla nueva en `Validate()`:
+
+- Si el sheet declara **a la vez** una parte con `Flyout(...)` y una parte que
+  es contenedor de bloque (`Docked(Parent, …)`, `OnEdge`, `Backdrop(Parent)`),
+  y **no** ha declarado la contención entre ellas con `Within`:
+  → **error**: composición ambigua, declara la anidación.
+
+- Si **sí** la ha declarado, y en la cadena entre el `Flyout` y su `Anchor` hay
+  una parte posicionada:
+  → **error preciso**, nombrando las dos partes y qué está robando qué.
+
+Esto es el principio 8 (*cerrado por defecto*): el silencio se rechaza; abrir
+cuesta una línea explícita y greppable. El autor que no sabe nada de esto
+escribe el código, compila, y **el sheet le dice** — que es la definición de
+harness cerrado del propio documento.
+
+> ⚠️ El caso de control (`usermenu`: `Anchor > Flyout`, ningún `Docked` en el
+> sheet) **no debe disparar**. `TestAnchorAndFlyoutWithNothingBetween` es el
+> guardia de eso y ya está verde: si se pone rojo, el diagnóstico se pasó.
+
+### 1.4 Arreglar las firmas que mienten
+
+En `overlay.go`, reescribir los comentarios de `Anchor`, `Docked` y `Flyout`
+para que digan **lo que la emisión hace de verdad**: el contenedor de bloque es
+el ancestro posicionado más cercano, y `Anchor()` sólo gana si nada se
+interpone. Principio 7: *si usar la API exige leer un documento largo, la API
+está incompleta* — pero un comentario que afirma algo falso es peor que no tener
+comentario.
+
+---
+
+## Etapa 2 — una forma legal de escribirlo
+
+La etapa 1 convierte el fallo silencioso en un error. Falta que exista una
+llamada **correcta** que el autor pueda escribir en su lugar; si no, sólo
+habríamos cambiado un bug por un callejón sin salida.
+
+Tres candidatas. **La decisión se toma con medidas reales en la etapa B**, no
+aquí; este plan las ordena por coste creciente para `widget`.
+
+### 2a — El disparador vuelve al flujo *(recomendada: no añade API, la quita)*
+
+Preguntarse por qué el `<details>` está `Docked`. El comentario del consumidor
+dice: *"tanto el menú como el badge salen del flujo, así que la etiqueta es lo
+único que dimensiona la fila"*. Pero la fila ya tiene
+`min-height: var(--control-height)` = 50px, y el menú mide 24px: **un menú en
+flujo no dimensiona nada**. El que sí necesita salir del flujo es el badge, que
+envuelve.
+
+Si el disparador va en flujo como primer hijo flex de la fila:
+
+- se coloca solo en el borde de entrada, sin `Docked`;
+- el ancestro posicionado más cercano del `Flyout` pasa a ser **la fila**;
+- `Flyout` cumple su documentación **por construcción**, no por vigilancia;
+- sobra el `PadInline(Space8)` de la etiqueta, que existía sólo para esquivarlo.
+
+**Coste, y hay que medirlo, no suponerlo:** la fila tiene `Pad(Space3)` = 12px,
+así que en flujo el icono arranca a 12px en vez de los 4px del `Docked(Space1)`.
+En el *sliver* móvil de ~37.5px que deja `MasterDetail(Most)`, eso son 12+24=36px
+contra 4+24=28px. Entra, pero sin margen. **Verificar en dispositivo antes de
+cerrar esta opción** — es exactamente el presupuesto de píxeles que el
+comentario de `targetlist` dice que está ajustado.
+
+Para `widget` esta opción cuesta **cero API nueva**. Es la que prefiere la
+doctrina: *colapsar caminos redundantes, superficie mínima*.
+
+### 2b — `Docked` con modo "abarca el Anchor"
+
+Un `Docked` que se fija a **los dos** bordes de bloque en vez de a una esquina:
+
+```
+inset-block-start: <gap>;  inset-block-end: <gap>;
+```
+
+La caja del `<details>` pasa a medir lo que la fila, y el `100%` del `Flyout`
+llega abajo.
+
+**Costes, los dos reales:**
+1. El desplegable cuelga de `anchor.bottom − gap`, no de `anchor.bottom`: con
+   `Space1` se mete 4px dentro de la fila. Casi exacto, no exacto.
+2. La caja del `<details>` pasa a ser una franja de 24×42px que **intercepta
+   clics** destinados a la fila (que es seleccionable). Se mitiga con
+   `pointer-events: none` en el contenedor y `auto` en el `<summary>` y el
+   panel — pero eso es **otra primitiva más** que añadir aquí.
+
+### 2c — El panel deja de ser descendiente del disparador
+
+El `<div class="options">` pasa a ser hermano del `<details>` e hijo directo de
+la fila. El contenedor de bloque pasa a ser **exactamente** el `Anchor`.
+
+Exige una primitiva de estado por descendencia — `.row:has(.menu[open]) .options`
+— es decir un `RevealedByWithin(container, state)` en este repo. `:has()` está
+soportado en todos los navegadores modernos desde 2023.
+
+Es la más correcta estructuralmente y la más cara. Queda documentada como la
+salida si 2a no pasa la medida del *sliver* y 2b no convence.
+
+---
+
+## Orden de ejecución
+
+| # | Etapa | Entregable | Verde cuando |
+|---|---|---|---|
+| 1 | 1.1–1.3 | `Within()` + reglas nuevas en `Validate()` | `TestDockedPartBetweenAnchorAndFlyoutIsDiagnosed` pasa **y** `TestAnchorAndFlyoutWithNothingBetween` sigue pasando |
+| 2 | 1.4 | comentarios de `Anchor`/`Docked`/`Flyout` corregidos | revisión |
+| 3 | 2a/2b/2c | la construcción elegida | el test de `components` (etapa B) pasa |
+
+Las etapas 1 y 2 se pueden publicar sin la 3: dejan el bug **visible** aunque
+todavía no arreglado, que ya es mejor que hoy.
+
+---
+
+## Lo que este plan NO hace
+
+- **No toca `tinywasm/css`.** No hace falta ningún token nuevo. Verificado.
+- **No toca `tinywasm/layout`.** Se buscaron todas las llamadas a
+  `Anchor`/`Docked(Parent)`/`Flyout` en los cuatro repos: en `layout` hay
+  `Docked` (crudview, rightpanel, platformd) pero **ningún `Flyout`**, así que
+  la composición que rompe no existe ahí. No es un olvido, es una comprobación.
+- **No toca `components`.** Ese es el plan B, y depende de que esto se publique.
+- **No cambia `checkPosition`.** La regla dentro-de-una-regla que ya existe es
+  correcta; lo que se añade es la versión entre partes.
+- **No adopta CSS Anchor Positioning** (`anchor-name`/`position-anchor`).
+  Resolvería esto de raíz, pero el soporte no da para un sistema de diseño en
+  producción. Se descarta explícitamente para que nadie lo re-proponga sin datos
+  nuevos.
+
+## Hallazgos aparcados (no son de este plan)
+
+- **`usermenu` no tiene ni un fichero de test.** El caso que funciona es el que
+  nadie vigila. Se recoge en el plan de `components`.
+- **El solape residual de ~4.4px entre badge y botón flotante** en móvil sigue
+  abierto; es interno de `targetlist` y no tiene que ver con este contenedor de
+  bloque.
+- **El solape hamburguesa/searchbar en `platformd`** queda fuera del alcance de
+  `FloatingChrome` (la searchbar no es una región `Scroll()`).

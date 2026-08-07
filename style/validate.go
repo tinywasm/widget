@@ -80,6 +80,106 @@ func (s *Sheet) Validate() []error {
 		checkCueWithin("CueWithinHover", k)
 	}
 
+	// Within() declares the part tree — which part renders inside which —
+	// and the sheet reasons about positioning from it: a Flyout's
+	// inset-block-start:100% resolves against the nearest POSITIONED
+	// ancestor, which is not always the Anchor the author meant. These
+	// checks make the two failure shapes loud instead of silent.
+	for p, container := range s.within {
+		if container == p {
+			errs = append(errs, fmt.Errf("sheet %s: part %q: Within() declares the part inside itself", string(s.widget.WidgetName()), string(p)))
+		}
+		if container != "" {
+			if _, ok := s.partRules[container]; !ok {
+				errs = append(errs, fmt.Errf("sheet %s: Within() container %q is not a declared part", string(s.widget.WidgetName()), string(container)))
+			}
+		}
+	}
+
+	// Precise theft, containment declared: climb the declared chain from
+	// each Flyout part until the nearest Anchor() or the end of the chain.
+	// A positioned part found BEFORE the Anchor steals the containing block
+	// the 100% resolves against — name both parts. A chain that ends at a
+	// positioned part with no Anchor above it is the author's explicit
+	// choice of container (a docked trigger that spans its anchor) and is
+	// accepted; the theft only exists when an Anchor sits beyond the thief.
+	positioned := func(r rule) bool {
+		return r.hasDocked || r.hasOnEdge || r.hasBackdrop || r.hasFlyout || r.hasDrawer
+	}
+	for p, pr := range s.partRules {
+		if !pr.hasFlyout {
+			continue
+		}
+		container, ok := s.within[p]
+		if !ok {
+			continue
+		}
+		seen := map[widget.Part]bool{}
+		thief := "" // the first positioned part between the Flyout and the Anchor
+		found := false
+		for container != "" {
+			if seen[container] {
+				errs = append(errs, fmt.Errf("sheet %s: part %q: Within() containment cycle", string(s.widget.WidgetName()), string(p)))
+				break
+			}
+			seen[container] = true
+			cr, ok := s.partRules[container]
+			if !ok {
+				break // undeclared container already reported above
+			}
+			if cr.hasAnchor {
+				found = true
+				break
+			}
+			if thief == "" && positioned(cr) {
+				thief = string(container)
+			}
+			next, ok := s.within[container]
+			if !ok {
+				break
+			}
+			container = next
+		}
+		if found && thief != "" {
+			errs = append(errs, fmt.Errf("sheet %s: part %q: part %q is positioned between the Flyout and its Anchor and steals the containing block the Flyout hangs from; make it not positioned or re-anchor the Flyout", string(s.widget.WidgetName()), string(p), thief))
+		}
+	}
+
+	// Ambiguous composition, containment NOT declared: a Flyout the author
+	// has not nested inside anything, coexisting with a part that IS a
+	// containing block (Docked(Parent, …), OnEdge, Backdrop(Parent)), cannot
+	// be resolved — the docked part may sit between the Flyout and its
+	// Anchor and the sheet has no way to see it. Closed by default: the
+	// author declares the nesting with Within() or Validate() stays red.
+	var uncontainedFlyouts []widget.Part
+	for p, pr := range s.partRules {
+		if pr.hasFlyout {
+			if _, contained := s.within[p]; !contained {
+				uncontainedFlyouts = append(uncontainedFlyouts, p)
+			}
+		}
+	}
+	if len(uncontainedFlyouts) > 0 {
+		var stealers []widget.Part
+		for p, pr := range s.partRules {
+			if p == "" {
+				continue // the root can never sit BETWEEN a Flyout and anything
+			}
+			if (pr.hasDocked && pr.dockedScope == Parent) || pr.hasOnEdge ||
+				(pr.hasBackdrop && pr.backdropScope == Parent) {
+				stealers = append(stealers, p)
+			}
+		}
+		for _, f := range uncontainedFlyouts {
+			for _, st := range stealers {
+				if f == st {
+					continue
+				}
+				errs = append(errs, fmt.Errf("sheet %s: part %q is a Flyout and part %q is a containing block, but the sheet cannot know which contains which — declare the nesting with Within()", string(s.widget.WidgetName()), string(f), string(st)))
+			}
+		}
+	}
+
 	// A device rule that only paints is invisible: OnlyOn hides the part by
 	// default, and inside the query only a flow, CenterContent or the state rule
 	// RevealedBy generates puts a `display` back on it.

@@ -56,3 +56,141 @@ func TestPartWithoutOptionsEmitsNothing(t *testing.T) {
 		t.Errorf("unexpected message: %s", got)
 	}
 }
+
+// Within() declares the part tree; both ends must exist and must differ.
+func TestWithinChecksItsEnds(t *testing.T) {
+	w := testWidget{name: "w", kind: widget.Menu}
+
+	// A container that was never declared.
+	errs := style.For(w).
+		Part("panel", style.Flyout(style.SideEnd)).
+		Within("ghost", "panel", style.Flyout(style.SideEnd)).
+		Validate()
+	found := false
+	for _, e := range errs {
+		if strings.Contains(e.Error(), `Within() container "ghost" is not a declared part`) {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected the undeclared container to be diagnosed, got: %v", errs)
+	}
+
+	// A part declared inside itself.
+	errs = style.For(w).Within("panel", "panel", style.Flyout(style.SideEnd)).Validate()
+	found = false
+	for _, e := range errs {
+		if strings.Contains(e.Error(), "Within() declares the part inside itself") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected the reflexive declaration to be diagnosed, got: %v", errs)
+	}
+}
+
+// A containment cycle must not hang the chain walk.
+func TestWithinCycleIsDiagnosed(t *testing.T) {
+	w := testWidget{name: "w", kind: widget.Menu}
+
+	s := style.For(w).
+		Within("a", "b", style.Flyout(style.SideEnd)).
+		Within("b", "a", style.Row(style.Space1))
+
+	found := false
+	for _, e := range s.Validate() {
+		if strings.Contains(e.Error(), "containment cycle") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected the containment cycle to be diagnosed, got: %v", s.Validate())
+	}
+}
+
+// The full declaration of the broken shape — row(Anchor) > menu(Docked) >
+// options(Flyout), nesting declared with Within at every level — is rejected
+// with a precise error naming both the Flyout and the part that steals its
+// containing block.
+func TestDeclaredChainWithPositionedPartIsRejectedPrecisely(t *testing.T) {
+	w := testWidget{name: "w", kind: widget.Listbox}
+
+	s := style.For(w).
+		Within("menu", "options", style.Flyout(style.SideStart)).
+		Within("row", "menu", style.Docked(style.Parent, style.EdgeTop, style.SideStart, style.Space1)).
+		Part("row", style.Anchor(), style.Row(style.Space2)).
+		Part("button", style.Round(style.RadiusSm))
+
+	var joined string
+	for _, e := range s.Validate() {
+		joined += e.Error() + "\n"
+	}
+	for _, want := range []string{"options", "menu"} {
+		if !strings.Contains(joined, want) {
+			t.Errorf("the diagnostic must name the parts involved; %q missing from:\n%s", want, joined)
+		}
+	}
+	if !strings.Contains(joined, "positioned between the Flyout and its Anchor") {
+		t.Errorf("expected the theft to be named, got:\n%s", joined)
+	}
+}
+
+// A Flyout coexisting with a containing-block part, with NO Within declared,
+// is ambiguous by construction and must be declared — this is the shape that
+// shipped broken in targetlist.
+func TestUncontainedFlyoutAlongsideContainingBlockIsAmbiguous(t *testing.T) {
+	w := testWidget{name: "w", kind: widget.Listbox}
+
+	s := style.For(w).
+		Part("row", style.Anchor(), style.Row(style.Space2)).
+		Part("menu", style.Docked(style.Parent, style.EdgeTop, style.SideStart, style.Space1)).
+		Part("options", style.Flyout(style.SideStart))
+
+	var joined string
+	for _, e := range s.Validate() {
+		joined += e.Error() + "\n"
+	}
+	for _, want := range []string{"options", "menu", "Within()"} {
+		if !strings.Contains(joined, want) {
+			t.Errorf("expected the ambiguous composition to be diagnosed and the fix named; %q missing from:\n%s", want, joined)
+		}
+	}
+}
+
+// The resolutions the plan leaves open for the components stage must NOT
+// trip the new rules: declaring the nesting silences the ambiguous error,
+// and a chain that ends at the declared container without an Anchor above it
+// is the author's explicit choice.
+func TestDeclaredContainmentIsNotOverRejected(t *testing.T) {
+	w := testWidget{name: "w", kind: widget.Listbox}
+
+	// The trigger in flow: Anchor above, nothing positioned between — the
+	// documented shape, now with the nesting declared.
+	if errs := style.For(w).
+		Part("row", style.Anchor(), style.Row(style.Space2)).
+		Within("menu", "options", style.Flyout(style.SideStart)).
+		Part("menu", style.KeepSize()).
+		Validate(); len(errs) > 0 {
+		t.Errorf("Anchor > plain part > Flyout with declared nesting must stay valid, got: %v", errs)
+	}
+
+	// The docked trigger that spans its anchor: the declared container IS
+	// the positioned terminal, no Anchor above it in the chain.
+	if errs := style.For(w).
+		Part("row", style.Anchor(), style.Row(style.Space2)).
+		Within("menu", "options", style.Flyout(style.SideStart)).
+		Part("menu", style.Docked(style.Parent, style.EdgeTop, style.SideStart, style.Space1)).
+		Validate(); len(errs) > 0 {
+		t.Errorf("a declared docked trigger (the plan's 2b shape) must stay valid, got: %v", errs)
+	}
+
+	// A docked part that is NOT between the Flyout and its Anchor changes
+	// nothing: the sheet only reports what the declared chain shows.
+	if errs := style.For(w).
+		Part("row", style.Anchor(), style.Row(style.Space2)).
+		Within("row", "options", style.Flyout(style.SideStart)).
+		Part("fab", style.Docked(style.Parent, style.EdgeBottom, style.SideEnd, style.Space4)).
+		Validate(); len(errs) > 0 {
+		t.Errorf("an unrelated docked part must not trip the chain check, got: %v", errs)
+	}
+}

@@ -308,12 +308,14 @@ style.For(nav).
 
 ---
 
-## 9. Upgrading to v0.6.0 — `SlideDeck`, declared stacking, ring state borders, floating chrome
+## 9. Upgrading to v0.6.0 — `SlideDeck`, declared stacking, ring state borders, floating chrome, the part tree
 
 v0.6.0 removes one flow primitive and changes several emission behaviours: every
 out-of-flow element declares its stacking level, the `OnEdge` straddle stops
-using `transform`, state borders are painted as shadow rings, and a new
-`FloatingChrome` contract reserves the edge strip of a scroll container.
+using `transform`, state borders are painted as shadow rings, a new
+`FloatingChrome` contract reserves the edge strip of a scroll container, and
+the sheet learns the part tree so a `Flyout` hanging from the wrong containing
+block is diagnosed instead of shipped silently.
 
 ### 9.1 `Deck(gap)` → `SlideDeck(m Motion)`
 
@@ -384,6 +386,15 @@ with `padding-block-start/end: var(--floating-top|bottom, 0px)`. Without
 `Scroll()` padding is behaviourally invisible except where the new option is
 used.
 
+`size` is an `IconSize`, not a `Size`: floating chrome pinned to a screen edge
+is by construction a small icon-only control. A `Size`'s percentages would
+resolve against the scroll region's own inline size and `max-content` is not a
+`<length>`, so neither can compile into the calc. Pass the same `IconBox(...)`
+step the glyph already has — `FloatingChrome(EdgeBottom, IconLg, Space4)`
+emits `--floating-bottom: calc(2.5em + 2 * <gap>)`. **If a sheet passed a
+`Size` constant** (e.g. `Readable`), it no longer compiles: replace it with the
+control's `IconSize` step.
+
 **If a `Scroll()` region's last items were load-bearing** — e.g. a list whose
 final row was expected flush against the container's end — the new `0px`-default
 padding keeps the geometry identical.
@@ -393,6 +404,33 @@ padding keeps the geometry identical.
 `OnEdge`'s straddle consumes `--chip-height` from `tinywasm/css` (released as
 `css.ChipHeight` in `css` v0.4.10). The `css` dependency in `go.mod` must be at
 least that version.
+
+### 9.6 `Within(container, part, opts)` — the sheet learns the part tree
+
+A `Flyout` resolves its `inset-block-start:100%` against the nearest
+**positioned** ancestor, not against the `Anchor()` the author declared. A
+`Docked(Parent, …)` part between the two becomes the containing block, the
+`Anchor()` is dead code, and the dropdown hangs from the wrong box — the shape
+that shipped broken in `targetlist`. The library now refuses to stay silent
+about it:
+
+- A `Flyout` part with **no declared nesting**, coexisting with a
+  containing-block part (`Docked(Parent, …)`, `OnEdge`, `Backdrop(Parent)`), is
+  **ambiguous**: `Validate()` reports it and tells the author to declare the
+  nesting with `Within(container, part, opts)` — which applies `opts` to the
+  part exactly as `Part()` would and adds the containment relation.
+- With the nesting declared, a positioned part **between** the `Flyout` and its
+  `Anchor()` in the declared chain is rejected with a precise error naming both
+  parts. A chain that ends at the declared container with no `Anchor` above it
+  (a docked trigger that spans its anchor) is the author's explicit choice and
+  stays valid.
+
+**If a sheet combines `Anchor()` + `Docked(Parent, …)` + `Flyout()`** (the
+`targetlist` shape), `Validate()` now fails: declare the containment with
+`Within("menu", "options", style.Flyout(...))`, then resolve the theft by
+un-positioning the part in between, moving the `Flyout` out of the docked part,
+or making the docked trigger span its anchor. The resolution chosen for
+`tinywasm/components` ships in its own release.
 
 ---
 

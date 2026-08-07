@@ -166,6 +166,32 @@ part that does not exist, a modifier with no effect — is the failure mode this
 library most needs to prevent, because it is invisible in both the Go source and
 the rendered page.
 
+### 6.7 The part tree
+
+CSS resolves a `Flyout`'s `inset-block-start:100%` against the nearest
+**positioned** ancestor — which is not always the `Anchor()` the author meant.
+A `Docked(Parent, …)` trigger between the two becomes the containing block and
+the `Anchor()` is dead code, with nothing in the emitted CSS distinguishing the
+broken shape from the documented one. That is a silent failure only the sheet
+can see, because parts are held in a flat map with no record of nesting.
+
+`Within(container, part, opts…)` closes the gap: it declares that `part`
+renders inside `container` (applying `opts` exactly as `Part()` would) and the
+sheet walks the declared chain when validating. Two failure shapes are loud by
+default:
+
+- a `Flyout()` with no declared nesting, coexisting with a containing-block
+  part (`Docked(Parent, …)`, `OnEdge`, `Backdrop(Parent)`) — ambiguous by
+  construction, the author is told to declare the nesting; and
+- a positioned part on the declared chain *between* the `Flyout` and its
+  `Anchor` — the theft is named, both parts.
+
+A chain that ends at the declared container with no `Anchor` above it is the
+author's explicit choice (a docked trigger that spans its anchor) and is
+accepted. `Part()` remains the normal declaration; `Within()` only matters
+where containment changes the result — which is exactly where the sheet refuses
+to stay silent without it.
+
 ---
 
 ## 7. Emission guarantees
