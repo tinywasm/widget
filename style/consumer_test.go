@@ -160,10 +160,15 @@ func TestStackingFromKind(t *testing.T) {
 	}
 
 	// A Parent backdrop stays out of the layer: it would outrank the panel it
-	// is supposed to sit behind.
+	// is supposed to sit behind. It still declares its LOCAL level — level
+	// with its siblings, nothing more — and that is the only declaration it
+	// is allowed: any other level is a claim on a layer it does not own.
 	parentCSS := style.For(dialog).Part("catcher", style.Backdrop(style.Parent)).Stylesheet().String()
-	if strings.Contains(parentCSS, "z-index") {
-		t.Errorf("Backdrop(Parent) must not claim a stacking level, got:\n%s", parentCSS)
+	if !strings.Contains(parentCSS, "z-index: 1;") {
+		t.Errorf("Backdrop(Parent) must declare its local stacking level, got:\n%s", parentCSS)
+	}
+	if strings.Contains(parentCSS, "z-index: var(--z-") {
+		t.Errorf("Backdrop(Parent) must not claim an overlay stacking level, got:\n%s", parentCSS)
 	}
 
 	menu := &testWidget{name: "mnu", kind: widget.Menu}
@@ -321,6 +326,8 @@ func TestNoInventedValues(t *testing.T) {
 		Part("item13", style.IconBox(style.IconSm)).
 		Part("item14", style.IconBox(style.IconMd)).
 		Part("item15", style.IconBox(style.IconLg)).
+		Part("item16", style.Anchor(), style.FloatingChrome(style.EdgeBottom, style.Readable, style.Space4)).
+		Part("item17", style.OnEdge(style.EdgeTop, style.SideStart, style.Space2, style.Space1)).
 		On(css.Mobile, "item10", style.Stack(style.Space1))
 
 	cssStr := sheet.Stylesheet().String()
@@ -349,7 +356,7 @@ func TestNoInventedValues(t *testing.T) {
 		css.MaxWReadable,
 		css.ColumnNarrow, css.ColumnMedium, css.ColumnWide,
 		css.RailNarrow, css.RailWide,
-		css.ControlHeight, css.ChipWidth, css.VeilBlur,
+		css.ControlHeight, css.ChipWidth, css.ChipHeight, css.VeilBlur,
 		css.ColorAccent, css.ColorOnAccent,
 	}
 
@@ -360,11 +367,13 @@ func TestNoInventedValues(t *testing.T) {
 
 	// Layout variables allowed to not exist in tokenMap
 	layoutVariables := map[string]bool{
-		"--gap":       true,
-		"--ratio":     true,
-		"--track":     true,
-		"--rail":      true,
-		"--max-width": true,
+		"--gap":             true,
+		"--ratio":           true,
+		"--track":           true,
+		"--rail":            true,
+		"--max-width":       true,
+		"--floating-top":    true,
+		"--floating-bottom": true,
 	}
 	// Every theme pair's plain light/dark half properties (see
 	// css.Token.EnhancedVar, css declareSplit) — a different kind of
@@ -708,5 +717,44 @@ func TestZeroValueProvider(t *testing.T) {
 	ss := z.RenderCSS()
 	if ss == nil || !strings.Contains(ss.String(), ".zero") {
 		t.Error("RenderCSS failed on zero value of component")
+	}
+}
+
+func TestPadThenPadEdgeKeepsEmissionOrder(t *testing.T) {
+	// C1 regression: formatRule used to sort declarations alphabetically
+	// before deduplicating. "padding-block-end:" sorts before "padding:"
+	// (- < : in ASCII) no matter which Option actually ran second, so Pad()
+	// followed by PadEdge() — the "general value plus one edge exception"
+	// form — silently came out with the shorthand LAST, winning over the
+	// longhand it was supposed to lose to. Index check, not Contains: the
+	// defect was one of order, and a Contains passes just the same when the
+	// order is wrong.
+	wd := &testWidget{name: "w", kind: widget.Region}
+	s := style.For(wd).
+		Part("box", style.Pad(style.Space1), style.PadEdge(style.EdgeBottom, style.Space12)).
+		Stylesheet().String()
+
+	padIdx := strings.Index(s, "padding: ")
+	padEdgeIdx := strings.Index(s, "padding-block-end: ")
+	if padIdx == -1 || padEdgeIdx == -1 {
+		t.Fatalf("expected both padding: and padding-block-end: in the sheet, got:\n%s", s)
+	}
+	if padIdx > padEdgeIdx {
+		t.Errorf("padding: must be emitted BEFORE padding-block-end: so the longhand overrides the shorthand, got:\n%s", s)
+	}
+}
+
+func TestOverlappingFlexOptionsDedupToOneDeclaration(t *testing.T) {
+	// Two Options emitting the same declaration on one rule must collapse to
+	// one line. This keeps the set-based dedup in formatRule alive: the old
+	// sort-then-drop handled the same case, and a "simplification" that
+	// drops the dedup ships two identical declarations silently.
+	wd := &testWidget{name: "w", kind: widget.Region}
+	s := style.For(wd).
+		Part("box", style.CenterContent(), style.StartContent()).
+		Stylesheet().String()
+
+	if n := strings.Count(s, "display: flex;"); n != 1 {
+		t.Errorf("expected exactly one display: flex; declaration, got %d:\n%s", n, s)
 	}
 }

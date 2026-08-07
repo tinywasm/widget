@@ -308,9 +308,12 @@ style.For(nav).
 
 ---
 
-## 9. Upgrading to v0.6.0 — `SlideDeck` and state borders
+## 9. Upgrading to v0.6.0 — `SlideDeck`, declared stacking, ring state borders, floating chrome
 
-v0.6.0 removes one flow primitive and changes one emission behaviour.
+v0.6.0 removes one flow primitive and changes several emission behaviours: every
+out-of-flow element declares its stacking level, the `OnEdge` straddle stops
+using `transform`, state borders are painted as shadow rings, and a new
+`FloatingChrome` contract reserves the edge strip of a scroll container.
 
 ### 9.1 `Deck(gap)` → `SlideDeck(m Motion)`
 
@@ -334,17 +337,62 @@ device-scoped forms emit the same three rules inside their query.
 
 Reasoning: [DESIGN.md §19](DESIGN.md#19-why-deck-was-replaced-by-slidedeck).
 
-### 9.2 State rules draw governed borders with `outline`
+### 9.2 State rules repaint governed borders as a shadow ring
 
 A state rule (`When`, `Cue`, `CueWithin`) that carries a bordered surface
-(`Panel`, `Inset`) emits `outline: 1px solid var(--color-outline,…); outline-offset: -1px`
-instead of `border: 1px solid …`. The box no longer grows by 2px when the pointer
-enters it. Base rules are unchanged.
+(`Panel`, `Inset`) emits `box-shadow: 0 0 0 1px <color>` — static and enhanced
+halves as a double declaration, composed with `Raise()`'s elevation in one
+declaration (ring first) when the state rule also raises — instead of
+`border: 1px solid …`. The box no longer grows by 2px when the pointer enters
+it. Base rules are unchanged.
 
 **If a state rule's border was load-bearing** — e.g. CSS that measured or aligned
 against the grown box — it stops growing, which is the intended correction.
 
+The ring is not an `outline` (as 9.2 in earlier drafts specified): outlines
+paint at the end of the stacking context, over the element's positioned
+descendants, and Safari < 16.4 ignores `border-radius` on them.
+
 Reasoning: [DESIGN.md §18](DESIGN.md#18-why-a-state-never-changes-the-box-size).
+
+### 9.3 Out-of-flow elements declare their stacking level
+
+`Backdrop(Parent)` and `Docked(Parent)` now emit `z-index: 1` (previously no
+`z-index` at all). They declare the **local** level — enough to order the element
+against its unpositioned siblings — while still never claiming the overlay layer
+their `Kind` owns. CSS that relied on these two primitives being `z-index: auto`
+for `z-index: 0`-layering tricks must switch to explicit ordering.
+
+`OnEdge` also emits `z-index: 1` and drops its `transform: translateY(±50%)` in
+favour of `margin-block-{start|end}: calc(-0.5 * var(--chip-height,1.25rem))`:
+a transform is invisible to `scrollHeight` by spec, so no ancestor could reserve
+the space the chip really occupies, and it creates an implicit stacking context.
+The straddle is now exact because the chip's height is the shared `--chip-height`
+token. CSS that selected on the transform (e.g. `transform: translateY(-50%)`
+overrides) must target the margin instead.
+
+Reasoning: [SPECS.md §1.3](SPECS.md#13-kind--role-stacking-level-allowed-states).
+
+### 9.4 `FloatingChrome(edge, size, gap)` — the scroll reservation contract
+
+A floating element that occupies a strip along its edge (a FAB, a miniplayer)
+declares it with `FloatingChrome(EdgeBottom, size, gap)`; the emitted sheet sets
+`--floating-bottom: calc(<size> + 2 * <gap>)` on its box. Every `Scroll()` region
+— in this widget or a descendant one — now reserves that strip by padding itself
+with `padding-block-start/end: var(--floating-top|bottom, 0px)`. Without
+`FloatingChrome` the reservation is `0px` and nothing changes, so the new
+`Scroll()` padding is behaviourally invisible except where the new option is
+used.
+
+**If a `Scroll()` region's last items were load-bearing** — e.g. a list whose
+final row was expected flush against the container's end — the new `0px`-default
+padding keeps the geometry identical.
+
+### 9.5 The prerequisite `--chip-height` token
+
+`OnEdge`'s straddle consumes `--chip-height` from `tinywasm/css` (released as
+`css.ChipHeight` in `css` v0.4.10). The `css` dependency in `go.mod` must be at
+least that version.
 
 ---
 

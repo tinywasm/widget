@@ -45,11 +45,10 @@ func (s *Sheet) Validate() []error {
 		checkVeil(p, pr)
 	}
 
-	// Every one of these sets `position`, and the emitted declarations are
-	// sorted, so two of them on one rule means the alphabetically later keyword
-	// silently wins. Anchor() alongside Docked()/Flyout() is the easy mistake:
-	// both of those are already containing blocks, so the Anchor is redundant
-	// as well as destructive.
+	// Every one of these sets `position`, so two of them on one rule means
+	// the last-emitted keyword silently wins over the other. Anchor() alongside
+	// Docked()/Flyout() is the easy mistake: both of those are already
+	// containing blocks, so the Anchor is redundant as well as destructive.
 	checkPosition := func(p widget.Part, r rule) {
 		n := 0
 		for _, on := range []bool{r.hasAnchor, r.hasDocked, r.hasOnEdge, r.hasFlyout, r.hasBackdrop, r.hasDrawer} {
@@ -100,6 +99,25 @@ func (s *Sheet) Validate() []error {
 	}
 	for k, dr := range s.deviceRules {
 		checkPosition(k.part, dr)
+	}
+
+	// An element taken out of the flow must always end up with a DECLARED
+	// stacking level — never `auto`, which is the silent failure stackingFor
+	// exists to remove. Every out-of-flow primitive today resolves to one;
+	// this guard exists so a future positioning option cannot ship without
+	// its level.
+	checkStacking := func(p widget.Part, r rule) {
+		if (r.hasOnEdge || r.hasDocked || r.hasFlyout || r.hasBackdrop || r.hasDrawer) &&
+			stackingFor(r, s.widget.WidgetKind().Layer()) == "" {
+			errs = append(errs, fmt.Errf("sheet %s: part %q: out-of-flow element without a declared stacking level", string(s.widget.WidgetName()), string(p)))
+		}
+	}
+	checkStacking("", s.rootRule)
+	for p, pr := range s.partRules {
+		checkStacking(p, pr)
+	}
+	for k, dr := range s.deviceRules {
+		checkStacking(k.part, dr)
 	}
 	for k, sr := range s.stateRules {
 		if sr.hasVeil && !sr.hasBackdrop {

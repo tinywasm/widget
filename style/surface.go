@@ -59,11 +59,21 @@ func (s Surface) String() string {
 	}
 }
 
+// borderStyle is the shared border shape every bordered surface uses. It is a
+// named constant because the same prefix is stripped when the border is
+// repainted as a state shadow ring (see ringShadow).
+const borderStyle = "1px solid "
+
 // triplet represents the combination of background, text, and border.
 //
 // The Static fields are the browser-safe counterparts of bg/text/border —
 // see css.Token.LightValue(). emit_decls.go emits each one as the first of a
 // double declaration, immediately before its light-dark()-enhanced sibling.
+//
+// borderVar is the border in css.Token.Var() form — the live, override-able
+// reference — used only when a state border composes with an elevation into a
+// single box-shadow declaration, where the static/enhanced pair cannot be
+// used (see boxShadowDecls).
 type triplet struct {
 	bg     string
 	text   string
@@ -72,6 +82,8 @@ type triplet struct {
 	bgStatic     string
 	textStatic   string
 	borderStatic string
+
+	borderVar string
 }
 
 // resolve translates a Surface to its corresponding triplet of styles.
@@ -84,13 +96,15 @@ func (s Surface) resolve() triplet {
 		}
 	case Panel:
 		return triplet{
-			bg: css.ColorSurface.EnhancedVar(), text: css.ColorOnSurface.EnhancedVar(), border: "1px solid " + css.ColorOutline.EnhancedVar(),
-			bgStatic: css.ColorSurface.LightValue(), textStatic: css.ColorOnSurface.LightValue(), borderStatic: "1px solid " + css.ColorOutline.LightValue(),
+			bg: css.ColorSurface.EnhancedVar(), text: css.ColorOnSurface.EnhancedVar(), border: borderStyle + css.ColorOutline.EnhancedVar(),
+			bgStatic: css.ColorSurface.LightValue(), textStatic: css.ColorOnSurface.LightValue(), borderStatic: borderStyle + css.ColorOutline.LightValue(),
+			borderVar: borderStyle + css.ColorOutline.Var(),
 		}
 	case Inset:
 		return triplet{
-			bg: css.ColorSurfaceSunken.EnhancedVar(), text: css.ColorOnSurface.EnhancedVar(), border: "1px solid " + css.ColorOutline.EnhancedVar(),
-			bgStatic: css.ColorSurfaceSunken.LightValue(), textStatic: css.ColorOnSurface.LightValue(), borderStatic: "1px solid " + css.ColorOutline.LightValue(),
+			bg: css.ColorSurfaceSunken.EnhancedVar(), text: css.ColorOnSurface.EnhancedVar(), border: borderStyle + css.ColorOutline.EnhancedVar(),
+			bgStatic: css.ColorSurfaceSunken.LightValue(), textStatic: css.ColorOnSurface.LightValue(), borderStatic: borderStyle + css.ColorOutline.LightValue(),
+			borderVar: borderStyle + css.ColorOutline.Var(),
 		}
 	case Primary:
 		return triplet{

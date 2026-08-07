@@ -86,9 +86,8 @@ func Docked(scope Scope, edge Edge, side Side, gap Space) Option {
 // block is the distance from the Anchor's border to the line being ridden: pass
 // the Anchor's padding to ride the box that padding encloses, or SpaceNone to
 // ride the Anchor's own border. inline is how far the chip is indented along
-// that line. The straddle itself is exact at any font size or padding, because
-// the element is shifted by half of its OWN rendered height rather than by a
-// guessed length.
+// that line. The straddle is exact because the chip's height is the shared
+// --chip-height token, applied as half a chip-height of negative margin.
 func OnEdge(edge Edge, side Side, block Space, inline Space) Option {
 	return func(r *rule) {
 		r.hasOnEdge = true
@@ -96,6 +95,32 @@ func OnEdge(edge Edge, side Side, block Space, inline Space) Option {
 		r.onEdgeSide = side
 		r.onEdgeBlock = block
 		r.onEdgeInline = inline
+	}
+}
+
+// FloatingChrome declares that this element occupies a strip along its edge,
+// and every Scroll() region DESCENDANT of it must reserve that strip — the
+// contract between a floating action button and the scroll container behind
+// it. It emits, on its own box:
+//
+//	--floating-bottom: calc(<size> + 2 * <gap>);
+//
+// (and the --floating-top counterpart for EdgeTop). The custom property is
+// inherited, so the reservation crosses widget and repository boundaries:
+// the host says "I occupy this band of my edge" and a Scroll() descendant —
+// whatever widget it belongs to — pads itself by var(--floating-bottom, 0px)
+// without either knowing the other's class name. No FloatingChrome means no
+// declaration, and every scroller reserves nothing (the 0px default).
+//
+// This is the seam the badge-over-FAB overlap needed: the FAB's box is
+// invisible to the badge's scrollHeight, so no padding computed from the
+// badge's own box could reserve the space where the FAB really paints.
+func FloatingChrome(edge Edge, size Size, gap Space) Option {
+	return func(r *rule) {
+		r.hasFloatingChrome = true
+		r.floatingChromeEdge = edge
+		r.floatingChromeSize = size
+		r.floatingChromeGap = gap
 	}
 }
 

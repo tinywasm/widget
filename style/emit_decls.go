@@ -4,6 +4,7 @@ package style
 
 import (
 	"sort"
+	"strings"
 
 	"github.com/tinywasm/css"
 	"github.com/tinywasm/fmt"
@@ -12,6 +13,17 @@ import (
 
 func (r rule) Decls(layer widget.Layer) []string {
 	var decls []string
+
+	// FloatingChrome declares the strip this element occupies along its edge
+	// as an inherited custom property: any Scroll() descendant — in this
+	// widget or another — reserves it through var(--floating-bottom, 0px).
+	if r.hasFloatingChrome {
+		name := floatingBottomVar
+		if r.floatingChromeEdge == EdgeTop {
+			name = floatingTopVar
+		}
+		decls = append(decls, name+": calc("+sizeValue(r.floatingChromeSize)+" + 2 * "+spaceVar(r.floatingChromeGap)+");")
+	}
 
 	if r.hasFlow {
 		switch r.flowType {
@@ -41,8 +53,9 @@ func (r rule) Decls(layer widget.Layer) []string {
 		}
 	}
 
+	var t triplet
 	if r.hasSurface {
-		t := r.surface.resolve()
+		t = r.surface.resolve()
 		if t.bg != "" {
 			// Static first, enhanced second: a browser without light-dark()/
 			// color-mix() support drops the second (invalid at parse time) and
@@ -81,22 +94,21 @@ func (r rule) Decls(layer widget.Layer) []string {
 				decls = append(decls, "-webkit-text-fill-color: "+t.text+";")
 			}
 		}
-		if t.border != "" {
-			if r.overlay {
-				// outline-offset negativo: se pinta hacia adentro, ocupando el
-				// mismo píxel que el borde habría ocupado, sin correr nada.
-				if t.borderStatic != "" {
-					decls = append(decls, "outline: "+t.borderStatic+";")
-				}
-				decls = append(decls, "outline: "+t.border+";", "outline-offset: -1px;")
-			} else {
-				if t.borderStatic != "" {
-					decls = append(decls, "border: "+t.borderStatic+";")
-				}
-				decls = append(decls, "border: "+t.border+";")
+		if t.border != "" && !r.overlay {
+			// A state rule repaints its border as a shadow ring through
+			// boxShadowDecls below — never as a border, which would grow the
+			// box exactly when the pointer entered it.
+			if t.borderStatic != "" {
+				decls = append(decls, "border: "+t.borderStatic+";")
 			}
+			decls = append(decls, "border: "+t.border+";")
 		}
 	}
+
+	// The one box-shadow decision point: Raise() and a state border both paint
+	// through box-shadow, and the two compose here — ring first, elevation
+	// after — or the later declaration would silently stomp the earlier one.
+	decls = append(decls, boxShadowDecls(r, t)...)
 
 	// Interactive() is the DSL's own declaration that this part answers to
 	// hover/focus/press — i.e. it is clickable by construction, not by a
@@ -123,9 +135,6 @@ func (r rule) Decls(layer widget.Layer) []string {
 	}
 	if r.hasRound {
 		decls = append(decls, "border-radius: "+radiusVar(r.round)+";")
-	}
-	if r.hasRaise {
-		decls = append(decls, "box-shadow: "+elevationVar(r.raise)+";")
 	}
 	if r.hasSize {
 		if !r.hasFlow || r.flowType != flowCenter {
@@ -155,14 +164,10 @@ func (r rule) Decls(layer widget.Layer) []string {
 			decls = append(decls, "position: absolute;")
 		}
 		decls = append(decls, "inset: 0;")
-		// Only a Viewport backdrop claims the widget's stacking level, for the
-		// same reason a Parent dock does not: a Parent backdrop covers the box
-		// it sits in, and being positioned already lifts it over that box's
-		// in-flow content. On the overlay layer it outranked its own siblings —
-		// a dialog's click-catcher painted over the dialog's panel, and the
-		// blur it carries blurred the very thing it was meant to isolate.
-		if r.backdropScope == Viewport {
-			decls = append(decls, "z-index: "+layerVar(layer)+";")
+		// The stacking level is stackingFor's call — the single site that
+		// decides local chrome from real overlay.
+		if z := stackingFor(r, layer); z != "" {
+			decls = append(decls, z)
 		}
 	}
 
@@ -189,7 +194,9 @@ func (r rule) Decls(layer widget.Layer) []string {
 			decls = append(decls, "inset-inline-end: 0;")
 		}
 		decls = append(decls, "width: "+sizeValue(r.drawerSize)+";")
-		decls = append(decls, "z-index: "+layerVar(layer)+";")
+		if z := stackingFor(r, layer); z != "" {
+			decls = append(decls, z)
+		}
 	}
 
 	if r.hasGlyph {
@@ -249,48 +256,41 @@ func (r rule) Decls(layer widget.Layer) []string {
 		} else {
 			decls = append(decls, "inset-inline-end: "+spaceVar(r.dockedGap)+";", "inset-inline-start: auto;")
 		}
-		// Only a Viewport dock claims the widget's stacking level. A Parent dock
-		// is a control pinned inside its own box — a row's overflow button — and
-		// being positioned already lifts it over that box's in-flow content. On
-		// the overlay layer it would instead tie with every sibling doing the
-		// same, and the last one in the DOM would cover the dropdown the first
-		// one opened.
-		if r.dockedScope == Viewport {
-			decls = append(decls, "z-index: "+layerVar(layer)+";")
+		// Parent vs Viewport docking levels are stackingFor's call: a Parent
+		// dock is local chrome, a Viewport dock claims the widget's layer.
+		if z := stackingFor(r, layer); z != "" {
+			decls = append(decls, z)
 		}
 	}
 
 	if r.hasOnEdge {
 		decls = append(decls, "position: absolute;")
 		decls = append(decls, "margin: 0;")
-		// translate by half of the element's OWN height: the straddle stays
-		// exact whatever the chip's font size and padding turn out to be, which
-		// a fixed negative margin can only approximate.
+		// Half a chip-height of negative margin, not a transform: the box the
+		// chip straddles now EXISTS for scrollHeight, which a transform is
+		// invisible to by spec — an ancestor could never reserve the space the
+		// chip actually occupies. The straddle is exact because the chip's
+		// height is the shared --chip-height token (the margin was chosen to be
+		// height-agnostic only while the token did not exist); the fallback
+		// keeps the behavior against an older token sheet. The transform also
+		// created an implicit stacking context; the margin creates none.
 		if r.onEdgeEdge == EdgeTop {
 			decls = append(decls, "inset-block-start: "+spaceVar(r.onEdgeBlock)+";")
-			decls = append(decls, "transform: translateY(-50%);")
+			decls = append(decls, "margin-block-start: calc(-0.5 * "+css.ChipHeight.Var()+");")
 		} else {
 			decls = append(decls, "inset-block-end: "+spaceVar(r.onEdgeBlock)+";")
-			decls = append(decls, "transform: translateY(50%);")
+			decls = append(decls, "margin-block-end: calc(-0.5 * "+css.ChipHeight.Var()+");")
 		}
 		if r.onEdgeSide == SideStart {
 			decls = append(decls, "inset-inline-start: "+spaceVar(r.onEdgeInline)+";")
 		} else {
 			decls = append(decls, "inset-inline-end: "+spaceVar(r.onEdgeInline)+";")
 		}
-		// z-index: 1, and deliberately NOT layerVar(layer). The overlay layer
-		// (--z-dropdown and up, 100+) was tried and reverted: it put the chip
-		// level with the real overlays, so a dropdown lost to it on DOM order
-		// alone and rendered underneath. A plain 1 orders the chip against its
-		// own siblings and stays far below every overlay token, so both hold.
-		//
-		// It cannot be left to `auto`, which is what shipped: the spec does
-		// paint a positioned auto element above unpositioned siblings, but a
-		// sibling <input> is a UA-painted form control, and Safari composites
-		// one — a :disabled one above all — over an auto-z-index sibling. That
-		// is the read-only field whose legend came out buried on iOS while
-		// every other engine drew it on top.
-		decls = append(decls, "z-index: 1;")
+		// Local level, never the overlay layer — stackingFor is the single
+		// source of that decision.
+		if z := stackingFor(r, layer); z != "" {
+			decls = append(decls, z)
+		}
 	}
 
 	if r.hasFlyout {
@@ -301,7 +301,9 @@ func (r rule) Decls(layer widget.Layer) []string {
 		} else {
 			decls = append(decls, "inset-inline-end: 0;", "inset-inline-start: auto;")
 		}
-		decls = append(decls, "z-index: "+layerVar(layer)+";")
+		if z := stackingFor(r, layer); z != "" {
+			decls = append(decls, z)
+		}
 	}
 
 	if r.hidden {
@@ -314,6 +316,54 @@ func (r rule) Decls(layer widget.Layer) []string {
 // primitiveDecls returns the declarations the boolean layout flags stand for.
 // The main emission path groups them across selectors; a device-scoped rule has
 // nothing to group with and emits them on its own selector.
+// boxShadowDecls is the only place in the package that emits box-shadow,
+// composing Raise()'s elevation with a state border's ring when both land on
+// one rule — ring first, elevation after, in a single declaration, so neither
+// stomps the other.
+//
+// A state border is a shadow ring (0 0 0 1px <color>) because an outline was
+// a two-fold defect: outlines paint at the END of the stacking context, over
+// the element's positioned descendants (a Locked border crossed over the
+// legend riding the same line), and Safari < 16.4 ignores border-radius on
+// outlines — every state border in the system rendered square. The ring
+// paints with the element's own background, below its descendants, on a
+// radius every engine honors, and it keeps the original promise: no layout
+// space, so the element does not grow under the pointer that entered it.
+func boxShadowDecls(r rule, t triplet) []string {
+	if t.border != "" && r.overlay {
+		if r.hasRaise {
+			// One declaration, and the ring's color is the token's Var() form,
+			// not the static+enhanced pair: the elevation's var() inside the
+			// light-dark() half would defer the WHOLE declaration to
+			// computed-value time (the parse-time-safe rule), silently
+			// discarding the static half on a browser without light-dark().
+			// A bare var() with its hex fallback is safe on every engine: a
+			// legacy browser cannot compute --color-outline's light-dark()
+			// :root value, so the fallback applies.
+			return []string{"box-shadow: " + ringShadow(t.borderVar) + ", " + elevationVar(r.raise) + ";"}
+		}
+		if t.borderStatic != "" {
+			// Static ring first, enhanced ring second — the same double
+			// declaration every other themed color uses.
+			return []string{
+				"box-shadow: " + ringShadow(t.borderStatic) + ";",
+				"box-shadow: " + ringShadow(t.border) + ";",
+			}
+		}
+		return []string{"box-shadow: " + ringShadow(t.border) + ";"}
+	}
+	if r.hasRaise {
+		return []string{"box-shadow: " + elevationVar(r.raise) + ";"}
+	}
+	return nil
+}
+
+// ringShadow turns a border value ("1px solid <color>") into the shadow ring
+// a state border paints with: 0 0 0 1px <color>.
+func ringShadow(border string) string {
+	return "0 0 0 1px " + strings.TrimPrefix(border, borderStyle)
+}
+
 func primitiveDecls(r rule) []string {
 	var decls []string
 	if r.fill || r.scroll {
@@ -321,6 +371,9 @@ func primitiveDecls(r rule) []string {
 	}
 	if r.scroll {
 		decls = append(decls, "overflow-y: auto;")
+		// Every scroll region reserves the strip a FloatingChrome ancestor
+		// declares it occupies — 0px when nobody declares one.
+		decls = append(decls, floatingPadDecls()...)
 	}
 	if r.grow {
 		decls = append(decls, "flex-grow: 1;", "min-width: 0;")
@@ -352,15 +405,24 @@ func formatRule(selectors []string, decls []string) string {
 		return ""
 	}
 	sort.Strings(selectors)
-	sort.Strings(decls)
 	// Options overlap: Row and StartContent both say display:flex, and both are
-	// legitimate on one rule. Sorting puts the identical strings adjacent, so
-	// dropping exact repeats is safe — two declarations of the same property
-	// with DIFFERENT values are not equal and both survive.
+	// legitimate on one rule — exact repeats must drop. This used to sort decls
+	// first so identical strings landed adjacent, but alphabetical order is not
+	// emission order: "padding-block-end:" sorts before "padding:" (- < : in
+	// ASCII) regardless of which Option actually ran second, so Pad() followed
+	// by PadEdge() — meant to override one edge on top of the general value —
+	// silently came out with the shorthand LAST, winning over the longhand it
+	// was supposed to lose to. A set-based dedup catches the same exact-string
+	// repeats (now non-adjacent ones too, which the old approach missed)
+	// without reordering anything: the CSS engine breaks equal-specificity
+	// ties by source order, so the sequence Decls() appended in is the one
+	// property override intent actually depends on.
 	if len(decls) > 1 {
-		uniq := decls[:1]
-		for _, d := range decls[1:] {
-			if d != uniq[len(uniq)-1] {
+		seen := make(map[string]bool, len(decls))
+		uniq := decls[:0]
+		for _, d := range decls {
+			if !seen[d] {
+				seen[d] = true
 				uniq = append(uniq, d)
 			}
 		}

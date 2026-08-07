@@ -101,6 +101,14 @@ Universal set, allowed for every `Kind`: `Disabled`, `Locked`, `Busy`.
 `LayerModal`→`--z-modal`, `LayerToast`→`--z-toast`,
 `LayerTooltip`→`--z-tooltip`.
 
+**Two stacking levels, one rule.** An out-of-flow element either claims the
+overlay level its `Kind` owns (`Flyout`, `Drawer`, `Backdrop(Viewport)`,
+`Docked(Viewport)` → `z-index:var(<Kind layer>)`) or — when it stays inside its
+own box (`OnEdge`, `Backdrop(Parent)`, `Docked(Parent)`) — declares the local
+level `z-index:1`: enough to order it against unpositioned siblings (Safari
+otherwise paints a sibling form control over the legend), never a claim on a
+layer it does not own. `stackingFor` is the only source of a `z-index` value.
+
 ---
 
 ## 2. Package `widget/style` — scales
@@ -133,7 +141,7 @@ of these.
 | `Elevation` | `Flat, Raised, Floating, Popover` | `none`, `--shadow-sm/md/lg` |
 | `Motion` | `MotionNone, MotionFast, MotionBase, MotionSlow` | `none`, `--duration-*` + `--ease-in-out` |
 | `ColumnWidth` | `ColumnNarrow, ColumnMedium, ColumnWide` | `--column-narrow/medium/wide` |
-| shared boxes | `ControlBox()`, `ChipBox()` | `--control-height`, `--chip-width` |
+| shared boxes | `ControlBox()`, `ChipBox()` | `--control-height`, `--chip-width`, `--chip-height` |
 | `Size` | `Content, Readable, Third, Half, TwoThirds, Most, Full` | `max-content`, `--max-w-readable`, `33.33%`, `50%`, `66.66%`, `90%`, `100%` |
 | `SplitRatio` | `SplitHalf, SplitTwoThirds, SplitThreeQuarters` | `1`, `2`, `3` — unitless, they feed `flex-grow` against a trailing `1` |
 | `Aspect` | `AspectSquare, Aspect3x2, Aspect4x3, Aspect16x9` | `1/1`, `3/2`, `4/3`, `16/9` |
@@ -144,7 +152,9 @@ of these.
 
 `Size` percentages and `Aspect` fractions are geometry, not theme, and are the
 only literals the drift guard permits, **except** `100dvh` which is permitted
-exclusively in the `Cover` primitive. `ColumnWidth` requires `--column-*`, and `Readable` requires `--max-w-readable`
+exclusively in the `Cover` primitive, the `0px` defaults of the floating
+reservation (`--floating-top`/`--floating-bottom`) and the `-0.5` factor of the
+`OnEdge` straddle. `ColumnWidth` requires `--column-*`, and `Readable` requires `--max-w-readable`
 (today `--max-w-prose`); both are prerequisites of the release, because a scale
 step is named after the token it emits and the two must not drift apart.
 
@@ -181,10 +191,15 @@ Explicit `Round()` or `Raise()` on the same rule overrides the surface default.
 `Pad()` is always explicit — there is no default to override.
 
 **A state never changes the box size.** A state rule (`When`, `Cue`, `CueWithin`)
-draws a bordered surface with `outline: <border>; outline-offset: -1px` instead of
-`border:`. The outline paints exactly where the border would be, but takes no
-layout space, so the element does not grow under the pointer that entered it. Base
-rules (`Root`, `Part`, `On`, `OnlyOn`) keep `border:`.
+repaints a bordered surface as a shadow ring — `box-shadow: 0 0 0 1px <border color>`,
+the border's width a hair's breadth outside the box — instead of `border:`. The ring
+takes no layout space, so the element does not grow under the pointer that entered
+it. The static and enhanced halves are emitted as a double declaration, exactly like
+every other themed color; when the state rule also carries `Raise()`, the ring and
+the elevation compose into ONE declaration, ring first. The ring is not an
+`outline`: outlines paint at the END of the stacking context (a Locked border
+crossed over a legend riding the same line) and Safari < 16.4 ignores
+`border-radius` on them. Base rules (`Root`, `Part`, `On`, `OnlyOn`) keep `border:`.
 
 ### 3.1 Interaction families
 
@@ -301,6 +316,7 @@ func StartContent() Option
 func Anchor() Option
 func Docked(scope Scope, edge Edge, side Side, gap Space) Option
 func OnEdge(edge Edge, side Side, block Space, inline Space) Option
+func FloatingChrome(edge Edge, size Size, gap Space) Option
 func Flyout(side Side) Option
 func Scroll() Option
 func KeepSize() Option
@@ -320,13 +336,13 @@ func Drawer(side Side, size Size) Option
 | `Fill()` | `height:100%; min-height:0; flex-grow:1` |
 | `Grow()` | `flex-grow:1; min-width:0` — the Row counterpart of `Fill()`, no height claim |
 | `PushEnd()` | `margin-inline-start:auto` — sends the item to the trailing edge of its line |
-| `Scroll()` | `overflow-y:auto` plus everything `Fill()` emits |
+| `Scroll()` | `overflow-y:auto` plus everything `Fill()` emits, plus `padding-block-start:var(--floating-top,0px); padding-block-end:var(--floating-bottom,0px)` — reserves the strip declared by any `FloatingChrome()` ancestor |
 | `KeepSize()` | `flex-shrink:0; flex-grow:0` |
 | `EdgeToEdge()` | `margin:0; border-radius:0` |
 | `HideOverflow()` | `overflow:hidden` |
 | `PadEdge(e, s)` | `padding-block-{start\|end}:var(--space-N)` |
 | `IconBox(s)` | `width:<1em\|1.5em\|2.5em>; height:<same>; flex-shrink:0` |
-| `Backdrop(Parent)` | `position:absolute; inset:0; z-index:var(<Kind layer>)` |
+| `Backdrop(Parent)` | `position:absolute; inset:0; z-index:1` — the local level only: on the overlay layer it would tie with the panel it is supposed to sit behind |
 | `Backdrop(Viewport)` | `position:fixed; inset:0; z-index:var(<Kind layer>)` |
 | `Veil()` | `background-color: color-mix(in srgb, var(--color-surface,<fallback>) 60%, transparent)` |
 | `Glyph(s)` | `color:<surface base>; fill:currentColor` — tints the content, paints no background |
@@ -335,8 +351,9 @@ func Drawer(side Side, size Size) Option
 | `Hide()` | `display:none` — for use inside `On()`, the inverse of `OnlyOn` |
 | `CenterContent()` | `display:flex; align-items:center; justify-content:center` |
 | `StartContent()` | `display:flex; align-items:center; justify-content:flex-start` |
-| `Docked(scope, edge, side, gap)` | `position:{absolute\|fixed}; margin:0; inset-block-{start\|end}:<gap>; inset-inline-{start\|end}:<gap>`; `z-index:var(<Kind layer>)` **only for `Viewport`** — a `Parent` dock is a control inside its own box, and on the overlay layer it would tie with every sibling doing the same |
-| `OnEdge(edge, side, block, inline)` | `position:absolute; margin:0; inset-block-{start\|end}:<block>; inset-inline-{start\|end}:<inline>; transform:translateY(∓50%)` — no `z-index`: a chip is content, and claiming the overlay layer makes it tie with real overlays |
+| `Docked(scope, edge, side, gap)` | `position:{absolute\|fixed}; margin:0; inset-block-{start\|end}:<gap>; inset-inline-{start\|end}:<gap>`; `z-index:var(<Kind layer>)` for `Viewport`, `z-index:1` for `Parent` — a `Parent` dock is a control inside its own box: it declares its local level against its unpositioned siblings, but must not tie with real overlays |
+| `OnEdge(edge, side, block, inline)` | `position:absolute; margin:0; inset-block-{start\|end}:<block>; inset-inline-{start\|end}:<inline>; margin-block-{start\|end}:calc(-0.5 * var(--chip-height,1.25rem)); z-index:1` — the straddle is half the shared `--chip-height` token, never a `transform` (transforms are invisible to `scrollHeight` by spec, so no ancestor could reserve the space the chip really occupies, and they create an implicit stacking context); `z-index:1` orders the chip against its own siblings without claiming the overlay layer |
+| `FloatingChrome(edge, size, gap)` | declares the strip this element occupies along its edge as an inherited custom property — `--floating-{top\|bottom}:calc(<size> + 2 * <gap>)` — consumed by every `Scroll()` descendant via `var(--floating-{top\|bottom},0px)`. The seam between a floating action button and the scroll container behind it: the reservation crosses widget boundaries because the property is inherited, and no declaration without `FloatingChrome` (the `0px` default applies everywhere) |
 | `Anchor()` | `position:relative` — the positioning reference a `Flyout` hangs from |
 | `Flyout(side)` | `position:absolute; inset-block-start:100%; inset-inline-{start\|end}:0; z-index:var(<Kind layer>)` |
 | `Drawer(side, size)` | `position:fixed; inset-block:0; inset-inline-{start|end}:0; width:var(<size>); z-index:var(<Kind layer>)` |

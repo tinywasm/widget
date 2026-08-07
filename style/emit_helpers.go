@@ -242,6 +242,68 @@ func layerVar(l widget.Layer) string {
 	}
 }
 
+// stackingFor is the package's ONLY source of a z-index value. An element
+// taken out of the flow must never be left at `auto`: auto means "whatever
+// the DOM order and the engine's compositor happen to do" — the silent
+// failure of the OnEdge-under-the-input bug, where Safari composites a UA
+// form control over an auto-z-index sibling that every other engine painted
+// on top. Two declared levels exist:
+//
+//   - local (1): chrome that rides on its own widget's content — OnEdge, and
+//     Parent-scoped Docked/Backdrop. Deliberately NOT the overlay layer:
+//     overlay tokens start at --z-dropdown (100+), and a chip level with a
+//     real dropdown would tie it and win on DOM order, rendering under it.
+//     The same applies to a Parent backdrop: on the overlay layer a dialog's
+//     click-catcher outranked its own panel, and the blur it carried blurred
+//     the very thing it was meant to isolate.
+//   - overlay (var(--z-dropdown) and up, via Kind.Layer()): real overlays —
+//     Flyout, Drawer, Backdrop(Viewport), Docked(Viewport).
+//
+// Returns "" only when nothing in the rule is out of flow; the emitter then
+// emits nothing, and Validate() flags an out-of-flow rule whose level came
+// back unresolvable.
+func stackingFor(r rule, layer widget.Layer) string {
+	switch {
+	case r.hasOnEdge:
+		return "z-index: 1;"
+	case r.hasDocked && r.dockedScope == Parent:
+		return "z-index: 1;"
+	case r.hasBackdrop && r.backdropScope == Parent:
+		return "z-index: 1;"
+	case r.hasDrawer:
+		return "z-index: " + layerVar(layer) + ";"
+	case r.hasDocked && r.dockedScope == Viewport:
+		return "z-index: " + layerVar(layer) + ";"
+	case r.hasFlyout:
+		return "z-index: " + layerVar(layer) + ";"
+	case r.hasBackdrop && r.backdropScope == Viewport:
+		return "z-index: " + layerVar(layer) + ";"
+	default:
+		return ""
+	}
+}
+
+// The custom properties the floating-chrome seam is built on: a FloatingChrome
+// host declares the strip it occupies along its edge, and every Scroll()
+// region descendant reserves it through var(--floating-<edge>, 0px). They are
+// DSL-owned variables crossing a component boundary, so they are not css
+// tokens — the drift guard knows them by name.
+const (
+	floatingTopVar    = "--floating-top"
+	floatingBottomVar = "--floating-bottom"
+)
+
+// floatingPadDecls are the reservations a Scroll() region carries: whatever a
+// FloatingChrome ancestor declares it occupies along the region's edges —
+// nothing declared means 0px, which is the default padding anyway, so the
+// cost of the seam for authors who do not use it is zero.
+func floatingPadDecls() []string {
+	return []string{
+		"padding-block-start: var(" + floatingTopVar + ", 0px);",
+		"padding-block-end: var(" + floatingBottomVar + ", 0px);",
+	}
+}
+
 func railVar(rw RailWidth) string {
 	switch rw {
 	case RailNarrow:

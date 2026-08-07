@@ -270,12 +270,12 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 	emitPrimitive(pushEndSel, []string{
 		"margin-inline-start: auto;",
 	})
-	emitPrimitive(scrollSel, []string{
+	emitPrimitive(scrollSel, append([]string{
 		"overflow-y: auto;",
 		"height: 100%;",
 		"min-height: 0;",
 		"flex-grow: 1;",
-	})
+	}, floatingPadDecls()...))
 	emitPrimitive(keepSizeSel, []string{
 		"flex-shrink: 0;",
 		"flex-grow: 0;",

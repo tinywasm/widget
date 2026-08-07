@@ -38,7 +38,7 @@ type State uint8
 const (
 	Selected State = iota
 	Disabled
-	Locked  // read-only, but fully legible
+	Locked // read-only, but fully legible
 	Invalid
 	Busy
 	Open    // deployed / expanded

@@ -24,7 +24,8 @@ The substitute for design judgement: you do not choose, you look up.
 | a button holding only an icon | `CenterContent()` |
 | a floating action pinned to a corner | `Anchor()` on the panel + `Docked(Parent, EdgeBottom, SideEnd, Space4)` |
 | an action that stays put while panels swipe | `Docked(Viewport, EdgeBottom, SideEnd, Space4)` |
-| a chip riding a box's border, legend-style | `Anchor()` on the box + `OnEdge(EdgeTop, SideStart, …)` |
+| a chip riding a box's border, legend-style | `Anchor()` on the box + `OnEdge(EdgeTop, SideStart, …)` — the straddle is half the shared `--chip-height` token |
+| a scroll container that never hides what floats over its end | `FloatingChrome(EdgeBottom, ControlBox, Space2)` on the floating element + `Scroll()` on the container |
 | a dropdown that does not push the page | `Anchor()` on the trigger + `Flyout(SideEnd)` on the list |
 | a panel that slides in from an edge | `Drawer(SideEnd, TwoThirds)` + `RevealedBy(widget.Open)` |
 | panels that slide instead of jumping | `SlideDeck(MotionBase)` — the panel on screen carries `widget.Current` |

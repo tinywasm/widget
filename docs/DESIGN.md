@@ -444,10 +444,10 @@ not that it *is*.
 
 ## 18. Why a state never changes the box size
 
-**Decision.** A state rule (`When`, `Cue`, `CueWithin`) draws a bordered surface
-with `outline` plus `outline-offset: -1px` instead of `border`. The outline is
-drawn exactly where the border would be — a negative offset paints it inward, on
-the pixel the border would have occupied — but it takes no layout space.
+**Decision.** A state rule (`When`, `Cue`, `CueWithin`) repaints a bordered
+surface as a shadow ring — `box-shadow: 0 0 0 1px <border color>`, the border's
+width a hair's breadth outside the box — instead of `border:`. The ring takes no
+layout space.
 
 This is a correctness rule, not a pixel-pushing detail. On the nav rail of
 `platformd` the `+2px` border under `:hover` grew the item, pushed its siblings,
@@ -456,9 +456,21 @@ pointer entered again — a continuous flicker while the mouse sat still. The st
 rule is what makes the element grow, and the growth is what destroys the state:
 the two failure modes feed each other.
 
-**Rejected: box-shadow.** It also takes no layout space, but `Raise()` already
-owns that property, and two features colliding on one declaration is exactly the
-kind of coupling that makes a sheet impossible to reason about.
+**Rejected: outline.** An `outline` also takes no layout space, and the first
+implementation used it (`outline` + `outline-offset: -1px`). It was a two-fold
+defect: outlines paint at the END of the stacking context, over the element's
+positioned descendants — a Locked border crossed over the legend riding the same
+line — and Safari < 16.4 ignores `border-radius` on outlines, so every state
+border in the system rendered square.
+
+**Rejected: box-shadow for the border alone.** It also takes no layout space, but
+`Raise()` already owns that property, and two features colliding on one
+declaration is exactly the kind of coupling that makes a sheet impossible to
+reason about. The collision is unavoidable — the ring IS a box-shadow — so the
+two compose in one place instead: `boxShadowDecls` is the package's only
+box-shadow decision point, and when a state rule also raises, the ring and the
+elevation merge into a single declaration, ring first. When a state rule only
+raises (no border), it emits the bare elevation like any other raised rule.
 
 **Consequence.** The base rule (`Root`, `Part`, `On`, `OnlyOn`) keeps `border:`
 — the base box owns the border and pays its layout cost once, at rest.

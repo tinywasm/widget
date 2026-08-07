@@ -224,6 +224,16 @@ This is the one place the "no free strings" guarantee is not enforced: that
 to **numeric custom properties** keeps the hole small, and it is a hole by
 design rather than by oversight.
 
+Distinct from the hole: custom properties **the sheet itself** writes and
+consumes — `--gap`, `--rail`, `--max-width`, and the `FloatingChrome` strip
+(`--floating-top`/`--floating-bottom`, written on the host, consumed by any
+`Scroll()` descendant through `var(…, 0px)`, inherited across widget
+boundaries). These are statically emitted, token-derived, drift-guarded, and
+carry their own fallbacks at every consumption site, so they are governed by
+the same rules as any other declaration — `FloatingChrome` is not an exception
+to "no free strings", it is a declaration like any other that happens to be a
+custom property.
+
 ---
 
 ## Related documents

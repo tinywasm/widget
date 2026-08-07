@@ -48,6 +48,11 @@ type rule struct {
 	onEdgeBlock  Space
 	onEdgeInline Space
 
+	hasFloatingChrome  bool
+	floatingChromeEdge Edge
+	floatingChromeSize Size
+	floatingChromeGap  Space
+
 	hasAnchor  bool
 	hasFlyout  bool
 	flyoutSide Side
@@ -59,7 +64,8 @@ type rule struct {
 	// overlay marca una regla de ESTADO (When/Cue/CueWithin). Un estado se pinta
 	// encima de la caja base: no puede cambiar su tamaño, porque el elemento
 	// crecería justo cuando el puntero está encima y perdería el propio hover que
-	// lo activó. Es lo que hace que As() emita outline en vez de border.
+	// lo activó. Es lo que hace que As() emita un anillo de box-shadow (ver
+	// boxShadowDecls) en vez de border.
 	overlay bool
 
 	hasPad bool

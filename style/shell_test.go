@@ -180,9 +180,15 @@ func TestDockedPinsToTheAnchorCorner(t *testing.T) {
 
 	// A Parent dock stays out of the overlay layer: siblings doing the same
 	// would tie there, and the last in the DOM would cover the panel the first
-	// one opened.
-	if strings.Contains(s, "z-index") {
-		t.Errorf("Docked(Parent) must not claim a stacking level, got:\n%s", s)
+	// one opened. It still declares a LOCAL level (z-index: 1) — leaving it
+	// `auto` let Safari paint an unpositioned sibling over the pinned control
+	// — and that is the whole declaration it is allowed: any other level is a
+	// claim on a layer it does not own.
+	if !strings.Contains(s, "z-index: 1;") {
+		t.Errorf("Docked(Parent) must declare its local stacking level, got:\n%s", s)
+	}
+	if strings.Contains(s, "z-index: var(--z-") {
+		t.Errorf("Docked(Parent) must not claim an overlay stacking level, got:\n%s", s)
 	}
 
 	// A corner pin owns all four insets: the unpinned pair has to be reset, or
@@ -203,8 +209,11 @@ func TestDockedPinsToTheAnchorCorner(t *testing.T) {
 
 func TestOnEdgeStraddlesTheLine(t *testing.T) {
 	// A fieldset legend rides the border it labels. Half of the chip has to sit
-	// outside the box and half inside, at any font size — which is why the shift
-	// is half of the element's own height and not a guessed length.
+	// outside the box and half inside; the straddle is exact because the chip's
+	// height is the shared --chip-height token, applied as half a chip-height
+	// of negative margin — not a transform, which is invisible to scrollHeight
+	// by spec (no ancestor could reserve the space the chip really occupies)
+	// and which created an implicit stacking context.
 	w := testWidget{name: "tw-field", kind: widget.Form}
 	s := style.For(w).
 		Root(style.Anchor()).
@@ -215,15 +224,18 @@ func TestOnEdgeStraddlesTheLine(t *testing.T) {
 	for _, want := range []string{
 		"inset-block-start: var(--space-2,0.5rem);",
 		"inset-inline-start: var(--space-4,1rem);",
-		"transform: translateY(-50%);",
+		"margin-block-start: calc(-0.5 * " + css.ChipHeight.Var() + ");",
 		"inset-block-end: 0;",
 		"inset-inline-end: var(--space-3,0.75rem);",
-		"transform: translateY(50%);",
+		"margin-block-end: calc(-0.5 * " + css.ChipHeight.Var() + ");",
 		"margin: 0;",
 	} {
 		if !strings.Contains(s, want) {
 			t.Errorf("expected OnEdge to emit %q, got:\n%s", want, s)
 		}
+	}
+	if strings.Contains(s, "transform") {
+		t.Errorf("OnEdge must not emit transform, got:\n%s", s)
 	}
 
 	// A chip is content, so it must not reach the OVERLAY layer: level with the
@@ -378,9 +390,12 @@ func TestSlideDeckIsNotAScroller(t *testing.T) {
 	}
 }
 
-func TestStateSurfaceUsesOutlineNotBorder(t *testing.T) {
+func TestStateSurfaceRepaintsBorderAsRing(t *testing.T) {
 	// A state is painted OVER the base box: a border here grows the element
 	// exactly when the pointer is on it, and the hover is what made it grow.
+	// The border is therefore repainted as a shadow ring — 0 0 0 1px, the
+	// border width a hair's breadth outside the box — never as a border, and
+	// never as an outline (see the ring comment in emit_decls.go for why).
 	w := testWidget{name: "w", kind: widget.Region}
 	s := style.For(w).
 		Part("x", style.As(style.Page)).
@@ -393,14 +408,85 @@ func TestStateSurfaceUsesOutlineNotBorder(t *testing.T) {
 	}
 	hoverRule := s[idx : idx+strings.Index(s[idx:], "}")]
 
-	if !strings.Contains(hoverRule, "outline: 1px solid") {
-		t.Errorf("expected the state rule to draw the border with outline, got:\n%s", hoverRule)
-	}
-	if !strings.Contains(hoverRule, "outline-offset: -1px;") {
-		t.Errorf("expected outline-offset: -1px to paint inside the box, got:\n%s", hoverRule)
+	if !strings.Contains(hoverRule, "box-shadow: 0 0 0 1px") {
+		t.Errorf("expected the state rule to repaint the border as a ring, got:\n%s", hoverRule)
 	}
 	if strings.Contains(hoverRule, "border:") {
 		t.Errorf("a state rule must not emit border:, got:\n%s", hoverRule)
+	}
+	if strings.Contains(hoverRule, "outline") {
+		t.Errorf("a state rule must not emit outline, got:\n%s", hoverRule)
+	}
+}
+
+func TestStateRingComposesWithElevation(t *testing.T) {
+	// Raise() and a state border both paint through box-shadow. When a state
+	// rule raises AND repaints its border, the two must compose into ONE
+	// declaration — ring first, elevation after — or the later declaration
+	// would silently stomp the earlier one and the raised border would come
+	// out bare.
+	w := testWidget{name: "w", kind: widget.Region}
+	s := style.For(w).
+		Part("x", style.As(style.Page), style.Raise(style.Raised)).
+		Cue(widget.Hover, "x", style.As(style.Inset), style.Raise(style.Raised)).
+		Stylesheet().String()
+
+	idx := strings.Index(s, ".w__x:hover")
+	if idx < 0 {
+		t.Fatalf("expected a :hover rule, got:\n%s", s)
+	}
+	hoverRule := s[idx : idx+strings.Index(s[idx:], "}")]
+
+	// The ring is the token's Var() form when it composes with an elevation
+	// (see boxShadowDecls): the light-dark() half would defer the whole
+	// declaration to computed-value time, so the static/enhanced pair is
+	// structurally impossible here.
+	want := "box-shadow: 0 0 0 1px " + css.ColorOutline.Var() + ", " + css.ShadowSm.Var() + ";"
+	if !strings.Contains(hoverRule, want) {
+		t.Errorf("expected the raised state rule to compose ring then elevation in one declaration:\nwant %q\ngot:\n%s", want, hoverRule)
+	}
+	if strings.Contains(hoverRule, "box-shadow: "+css.ShadowSm.Var()+";") {
+		t.Errorf("a raised state rule must not repeat a bare elevation declaration, got:\n%s", hoverRule)
+	}
+}
+
+func TestFloatingChromeReservesScrollEndSpace(t *testing.T) {
+	// A floating chrome strip (the host: a FAB, a miniplayer) declares the
+	// band of its edge it occupies as an inherited custom property; every
+	// Scroll() region — in this widget or a descendant one — reserves it
+	// through var(--floating-bottom, 0px). No chrome means no declaration and
+	// no reservation.
+	w := testWidget{name: "fab", kind: widget.Region}
+	s := style.For(w).
+		Part("host", style.FloatingChrome(style.EdgeBottom, style.Readable, style.Space4)).
+		Part("list", style.Scroll()).
+		Stylesheet().String()
+
+	want := "--floating-bottom: calc(" + css.MaxWReadable.Var() + " + 2 * " + css.Space4.Var() + ");"
+	if !strings.Contains(s, want) {
+		t.Errorf("expected the host to declare its strip with %q, got:\n%s", want, s)
+	}
+	for _, want := range []string{
+		"padding-block-start: var(--floating-top, 0px);",
+		"padding-block-end: var(--floating-bottom, 0px);",
+	} {
+		if !strings.Contains(s, want) {
+			t.Errorf("expected Scroll() to reserve the floating strip with %q, got:\n%s", want, s)
+		}
+	}
+
+	// EdgeTop is the mirror: the strip declaration switches property, the
+	// Scroll() padding stays the same.
+	top := style.For(w).Part("host", style.FloatingChrome(style.EdgeTop, style.Readable, style.Space4)).Stylesheet().String()
+	if !strings.Contains(top, "--floating-top: calc("+css.MaxWReadable.Var()+" + 2 * "+css.Space4.Var()+");") {
+		t.Errorf("expected FloatingChrome(EdgeTop) to declare --floating-top, got:\n%s", top)
+	}
+
+	// And with no chrome at all, Scroll() pads by the 0px default — the var
+	// references stay, but no sheet declares the property.
+	bare := style.For(w).Part("list", style.Scroll()).Stylesheet().String()
+	if strings.Contains(bare, "--floating-top:") || strings.Contains(bare, "--floating-bottom:") {
+		t.Errorf("no FloatingChrome means no floating declaration, got:\n%s", bare)
 	}
 }
 
