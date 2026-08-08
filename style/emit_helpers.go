@@ -487,6 +487,10 @@ func familyBase(s Surface) css.Token {
 		return css.ColorDanger
 	case Subtle:
 		return css.ColorMuted
+	case Page:
+		// Page is the whitest surface: a white base lets Interactive(Page)
+		// derive a hover/focus/press family from the page background itself.
+		return css.ColorBackground
 	default:
 		return css.Token{}
 	}

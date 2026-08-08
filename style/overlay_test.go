@@ -88,3 +88,47 @@ func TestBackdrop(t *testing.T) {
 		t.Errorf("expected .w__p[data-open=\"true\"] with display: block; in @layer states part, got:\n%s", statesPart)
 	}
 }
+
+// TestRevealedByWinsOverCenterContent: a part with BOTH RevealedBy and
+// CenterContent must end hidden — CenterContent opens a block with
+// display: flex, and a flex declaration emitted AFTER the reveal's
+// display: none would resurrect a part that is supposed to stay parked
+// until its state arrives. The last display: wins in CSS, so the hiding
+// declaration has to be the very last one in the @layer widgets block.
+// Regression: the reveal block used to sit before CenterContent, and the
+// platform's hamburger (RevealedBy + CenterContent) never hid on scroll.
+func TestRevealedByWinsOverCenterContent(t *testing.T) {
+	w := testWidget{name: "w", kind: widget.Region}
+
+	s := style.For(w).
+		Part(widget.Part("p"), style.RevealedBy(widget.Open), style.CenterContent()).
+		Stylesheet().
+		String()
+
+	// The .w__p rule lives in @layer widgets; the reveal state lives in
+	// @layer states. The LAST display declaration inside the widgets block
+	// decides what the part looks like while parked.
+	idxWidgets := strings.Index(s, "@layer widgets {")
+	idxStates := strings.Index(s, "@layer states {")
+	if idxWidgets == -1 || idxStates == -1 {
+		t.Fatalf("expected @layer widgets and @layer states, got:\n%s", s)
+	}
+	widgetsPart := s[idxWidgets:idxStates]
+
+	if !strings.Contains(widgetsPart, ".w__p {") {
+		t.Fatalf("expected .w__p in @layer widgets part, got:\n%s", widgetsPart)
+	}
+	ruleBlock := widgetsPart[strings.Index(widgetsPart, ".w__p {"):]
+	if !strings.Contains(ruleBlock, "display: none;") {
+		t.Errorf("expected .w__p to carry display: none; while parked, got:\n%s", ruleBlock)
+	}
+	if !strings.Contains(ruleBlock, "display: flex;") {
+		t.Errorf("expected .w__p to carry CenterContent's display: flex, got:\n%s", ruleBlock)
+	}
+	// display: none must come AFTER display: flex inside the block.
+	flexIdx := strings.Index(ruleBlock, "display: flex;")
+	noneIdx := strings.Index(ruleBlock, "display: none;")
+	if noneIdx < flexIdx {
+		t.Errorf("expected display: none; to come AFTER display: flex;, got:\n%s", ruleBlock)
+	}
+}

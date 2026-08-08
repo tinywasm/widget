@@ -274,8 +274,11 @@ func (s *Sheet) Validate() []error {
 		}
 	}
 
+	// Inactive is the only surface with no interaction family: interacting
+	// with the deliberately-dead shade is always a mistake. Page stays legal —
+	// it is the whitest surface and a perfectly live (even default) one.
 	checkInteractive := func(p widget.Part, r rule) {
-		if r.interactive && (r.surface == Page || r.surface == Inactive) {
+		if r.interactive && r.surface == Inactive {
 			errs = append(errs, fmt.Errf("sheet %s: part %q: surface %s has no interaction states", string(s.widget.WidgetName()), string(p), r.surface.String()))
 		}
 	}

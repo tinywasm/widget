@@ -630,16 +630,36 @@ func TestNoUnreachableSelectors(t *testing.T) {
 }
 
 func TestInteractiveRejectsNonInteractive(t *testing.T) {
-	// Interactive(Page) and Interactive(Inactive) are reported (closes D-3)
+	// Interactive(Inactive) is reported: it is the deliberately-dead shade,
+	// and interacting with it is always a mistake (closes D-3)
+	wd := &testWidget{name: "w", kind: widget.Region}
+	sheet := style.For(wd).Root(style.Interactive(style.Inactive))
+	if len(sheet.Validate()) == 0 {
+		t.Error("Interactive(Inactive) should be reported as invalid")
+	}
+}
+
+func TestInteractivePageIsLegalAndWhite(t *testing.T) {
+	// Interactive(Page) validates and derives a family from the whitest
+	// surface: the white page background plus the cursor: pointer an
+	// interactive rule carries (closes 0.2 — white-and-clickable was not
+	// expressible).
 	wd := &testWidget{name: "w", kind: widget.Region}
 	sheet := style.For(wd).Root(style.Interactive(style.Page))
-	if len(sheet.Validate()) == 0 {
-		t.Error("Interactive(Page) should be reported as invalid")
+	if errs := sheet.Validate(); len(errs) != 0 {
+		t.Fatalf("Interactive(Page) must validate, got: %v", errs)
 	}
 
-	sheet2 := style.For(wd).Root(style.Interactive(style.Inactive))
-	if len(sheet2.Validate()) == 0 {
-		t.Error("Interactive(Inactive) should be reported as invalid")
+	s := sheet.Stylesheet().String()
+	if !strings.Contains(s, "cursor: pointer;") {
+		t.Errorf("expected Interactive(Page) to emit cursor: pointer, got:\n%s", s)
+	}
+	if !strings.Contains(s, "background-color: "+css.ColorBackground.LightValue()+";") {
+		t.Errorf("expected Interactive(Page) to emit the white page background (%s), got:\n%s", css.ColorBackground.LightValue(), s)
+	}
+	// the family derives from the page background, not from nothing
+	if !strings.Contains(s, css.Hover(css.ColorBackground)) {
+		t.Errorf("expected the hover derivation from ColorBackground, got:\n%s", s)
 	}
 }
 

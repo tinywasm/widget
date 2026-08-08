@@ -181,10 +181,6 @@ func (r rule) Decls(layer widget.Layer) []string {
 		decls = append(decls, "backdrop-filter: blur("+css.VeilBlur.Var()+");")
 	}
 
-	if r.hasRevealed {
-		decls = append(decls, "display: none;")
-	}
-
 	if r.hasDrawer {
 		decls = append(decls, "position: fixed;")
 		decls = append(decls, "inset-block: 0;")
@@ -304,6 +300,15 @@ func (r rule) Decls(layer widget.Layer) []string {
 		if z := stackingFor(r, layer); z != "" {
 			decls = append(decls, z)
 		}
+	}
+
+	// display: none last, after every declaration that could turn it back into
+	// display: flex. CenterContent/StartContent open a block by adding
+	// display: flex, so a part with both RevealedBy and one of them must end
+	// hidden or the reveal contract silently dies. Same reason r.hidden sits
+	// last of all.
+	if r.hasRevealed {
+		decls = append(decls, "display: none;")
 	}
 
 	if r.hidden {

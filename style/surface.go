@@ -21,6 +21,7 @@ const (
 	Success
 	Danger
 	Subtle
+	Bare
 	Inactive
 )
 
@@ -52,6 +53,8 @@ func (s Surface) String() string {
 		return "Danger"
 	case Subtle:
 		return "Subtle"
+	case Bare:
+		return "Bare"
 	case Inactive:
 		return "Inactive"
 	default:
@@ -170,6 +173,13 @@ func (s Surface) resolve() triplet {
 			bg: "transparent", text: css.ColorMuted.EnhancedVar(),
 			bgStatic: "transparent", textStatic: css.ColorMuted.LightValue(),
 		}
+	// Bare is the non-surface: no background, no border, and — unlike
+	// Subtle — no text tint either. It exists for the device-scoped rule
+	// that must strip a container's card look without pretending to be a
+	// meaningful surface of its own. Subtle is for text that is meant to
+	// stay muted; Bare is for "this is not a surface at all".
+	case Bare:
+		return triplet{bg: "transparent", bgStatic: "transparent"}
 	case Inactive:
 		return triplet{
 			bg: css.ColorSurface.EnhancedVar(), text: css.ColorMuted.EnhancedVar(),
@@ -183,7 +193,7 @@ func (s Surface) resolve() triplet {
 // defaultRadius returns the default radius associated with a Surface.
 func (s Surface) defaultRadius() Radius {
 	switch s {
-	case Page, Subtle:
+	case Page, Subtle, Bare:
 		return RadiusNone
 	case Panel:
 		return RadiusMd
