@@ -145,6 +145,44 @@ func (s *Sheet) Validate() []error {
 		}
 	}
 
+	// A Flyout descendant of a Scroll() region is clipped by it: overflow
+	// clips every descendant that escapes the padding box, containing block
+	// or not. Same two-primitive seam as the theft above — Scroll() on an
+	// ancestor, Flyout() on a descendant, no type naming the crossing. Unlike
+	// the theft, an Anchor above the scroller does not save it: the panel is
+	// still a DOM descendant of the scroller, so the whole declared chain is
+	// walked, Anchor or not. Reject the composition; the author then chooses
+	// consciously — a flow accordion, or a panel out of the scroller.
+	for p, pr := range s.partRules {
+		if !pr.hasFlyout {
+			continue
+		}
+		container, ok := s.within[p]
+		if !ok {
+			continue
+		}
+		seen := map[widget.Part]bool{}
+		for container != "" {
+			if seen[container] {
+				break // cycle already reported above
+			}
+			seen[container] = true
+			cr, ok := s.partRules[container]
+			if !ok {
+				break // undeclared container already reported above
+			}
+			if cr.scroll {
+				errs = append(errs, fmt.Errf("sheet %s: part %q: part %q is a Scroll() region and clips the Flyout inside it; move the panel out of the scroller or use a flow accordion", string(s.widget.WidgetName()), string(p), string(container)))
+				break
+			}
+			next, ok := s.within[container]
+			if !ok {
+				break
+			}
+			container = next
+		}
+	}
+
 	// Ambiguous composition, containment NOT declared: a Flyout the author
 	// has not nested inside anything, coexisting with a part that IS a
 	// containing block (Docked(Parent, …), OnEdge, Backdrop(Parent)), cannot

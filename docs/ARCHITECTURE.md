@@ -184,7 +184,11 @@ default:
   part (`Docked(Parent, …)`, `OnEdge`, `Backdrop(Parent)`) — ambiguous by
   construction, the author is told to declare the nesting; and
 - a positioned part on the declared chain *between* the `Flyout` and its
-  `Anchor` — the theft is named, both parts.
+  `Anchor` — the theft is named, both parts; and
+- a `Scroll()` part anywhere on the declared chain — overflow clips the panel
+  by DOM ancestry, containing block or not (an `Anchor` above the scroller
+  does not save it), so unlike the theft this walk runs to the end of the
+  chain; rejected, both parts named.
 
 A chain that ends at the declared container with no `Anchor` above it is the
 author's explicit choice (a docked trigger that spans its anchor) and is

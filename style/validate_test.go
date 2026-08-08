@@ -157,6 +157,63 @@ func TestUncontainedFlyoutAlongsideContainingBlockIsAmbiguous(t *testing.T) {
 	}
 }
 
+// The other half of the Scroll/Flyout seam: a Flyout whose declared chain
+// passes through a Scroll() region is clipped by it — the targetlist shape,
+// list is a scroller and options is a flyout inside it, which measured 10px
+// visible of 84.8. Validate must reject it instead of emitting CSS that shows
+// a panel at half height.
+func TestFlyoutInsideScrollRegionIsRejected(t *testing.T) {
+	w := testWidget{name: "w", kind: widget.Listbox}
+
+	s := style.For(w).
+		Part("list", style.Scroll()).
+		Within("list", "options", style.Flyout(style.SideStart))
+
+	errs := s.Validate()
+	if len(errs) != 1 {
+		t.Fatalf("expected exactly one error, got: %v", errs)
+	}
+	for _, want := range []string{"options", "list", "Scroll()"} {
+		if !strings.Contains(errs[0].Error(), want) {
+			t.Errorf("the diagnostic must name the parts involved; %q missing from:\n%s", want, errs[0])
+		}
+	}
+}
+
+// The clip is by DOM ancestry, so an Anchor below the scroller does not save
+// the Flyout — the walk goes past it, to the end of the declared chain. But a
+// scroller that is NOT on the Flyout's chain changes nothing and must not be
+// reported: only the chain decides.
+func TestFlyoutScrollChainWalkIsCompleteAndExact(t *testing.T) {
+	w := testWidget{name: "w", kind: widget.Listbox}
+
+	// Anchor between the Flyout and the scroller: still clipped.
+	s := style.For(w).
+		Part("list", style.Scroll()).
+		Within("list", "row", style.Row(style.Space2)).
+		Part("row", style.Anchor()).
+		Within("row", "options", style.Flyout(style.SideStart))
+
+	found := false
+	for _, e := range s.Validate() {
+		if strings.Contains(e.Error(), "Scroll() region") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("an Anchor below the scroller must not stop the chain walk, got: %v", s.Validate())
+	}
+
+	// A scroller on a different branch of the tree: not on the chain, ignored.
+	if errs := style.For(w).
+		Part("row", style.Anchor(), style.Row(style.Space2)).
+		Within("row", "options", style.Flyout(style.SideStart)).
+		Part("pane", style.Scroll()).
+		Validate(); len(errs) > 0 {
+		t.Errorf("a Scroll() part outside the Flyout's chain must not trip the check, got: %v", errs)
+	}
+}
+
 // The resolutions the plan leaves open for the components stage must NOT
 // trip the new rules: declaring the nesting silences the ambiguous error,
 // and a chain that ends at the declared container without an Anchor above it

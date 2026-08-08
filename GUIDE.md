@@ -28,6 +28,7 @@ The substitute for design judgement: you do not choose, you look up.
 | a scroll container that never hides what floats over its end | `FloatingChrome(EdgeBottom, IconLg, Space2)` on the floating element + `Scroll()` on the container |
 | a dropdown that does not push the page | `Anchor()` on the trigger + `Flyout(SideEnd)` on the list |
 | a dropdown whose trigger sits inside another positioned part | `Within("menu", "options", Flyout(SideStart))` — declare the nesting, or `Validate()` rejects the sheet: the positioned part between the Flyout and its Anchor steals the containing block |
+| a dropdown inside a scrolling list | an accordion in flow, or move the panel out of the scroller — `Validate()` rejects a Flyout whose chain passes through a `Scroll()` region, because the scroller clips the panel |
 | a panel that slides in from an edge | `Drawer(SideEnd, TwoThirds)` + `RevealedBy(widget.Open)` |
 | panels that slide instead of jumping | `SlideDeck(MotionBase)` — the panel on screen carries `widget.Current` |
 | a container that reveals its children on hover | `CueWithin(Hover, "menu", "link-text", …)` |

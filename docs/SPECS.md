@@ -355,7 +355,7 @@ func Drawer(side Side, size Size) Option
 | `OnEdge(edge, side, block, inline)` | `position:absolute; margin:0; inset-block-{start\|end}:<block>; inset-inline-{start\|end}:<inline>; margin-block-{start\|end}:calc(-0.5 * var(--chip-height,1.25rem)); z-index:1` — the straddle is half the shared `--chip-height` token, never a `transform` (transforms are invisible to `scrollHeight` by spec, so no ancestor could reserve the space the chip really occupies, and they create an implicit stacking context); `z-index:1` orders the chip against its own siblings without claiming the overlay layer. Like every positioned part, it is a containing block for a `Flyout()` descendant |
 | `FloatingChrome(edge, size, gap)` | declares the strip this element occupies along its edge as an inherited custom property — `--floating-{top\|bottom}:calc(<size> + 2 * <gap>)` — consumed by every `Scroll()` descendant via `var(--floating-{top\|bottom},0px)`. The seam between a floating action button and the scroll container behind it: the reservation crosses widget boundaries because the property is inherited, and no declaration without `FloatingChrome` (the `0px` default applies everywhere). `size` is an `IconSize`, not a `Size`: floating chrome pinned to a screen edge is by construction a small icon-only control (a FAB, a hamburger); a `Size`'s percentages would resolve against the scroll region's own inline size and `max-content` is not a `<length>` at all |
 | `Anchor()` | `position:relative` — makes the element a positioning reference. The containing block of a `Flyout()` is the nearest **positioned** ancestor, so this only becomes the reference if nothing positioned sits between the two; `Validate()` rejects the interposition (see `Within()`) |
-| `Flyout(side)` | `position:absolute; inset-block-start:100%; inset-inline-{start\|end}:0; z-index:var(<Kind layer>)` — the `100%` resolves against the nearest positioned ancestor; a positioned part between the element and its `Anchor()` steals the containing block, which the sheet detects through the declared part tree (`Within()`) |
+| `Flyout(side)` | `position:absolute; inset-block-start:100%; inset-inline-{start\|end}:0; z-index:var(<Kind layer>)` — the `100%` resolves against the nearest positioned ancestor; a positioned part between the element and its `Anchor()` steals the containing block, which the sheet detects through the declared part tree (`Within()`); a `Scroll()` part anywhere on the declared chain clips the panel, which the sheet also rejects (`Within()`) |
 | `Drawer(side, size)` | `position:fixed; inset-block:0; inset-inline-{start|end}:0; width:var(<size>); z-index:var(<Kind layer>)` |
 | `Animate(m)` | `transition: all var(--duration-*) var(--ease-in-out)` |
 
@@ -407,8 +407,9 @@ containing block). It reads like the DOM: `Within("menu", "options",
 Flyout(SideStart))` is "options, inside menu". `Part()` remains the normal
 declaration; `Within()` is only needed where containment changes the result —
 a `Flyout()` hanging from an `Anchor()` while a positioned part sits between
-them — and in exactly those cases `Validate()` (§6.1) rejects the sheet until
-the nesting is declared.
+them, or a `Flyout()` whose chain passes through a `Scroll()` region — and in
+exactly those cases `Validate()` (§6.1) rejects the sheet until the nesting is
+declared (or the composition corrected).
 
 ### 6.1 Validation conditions
 
@@ -432,6 +433,7 @@ the nesting is declared.
 | `Within()` containment is cyclic | `sheet <name>: part "<part>": Within() containment cycle` |
 | A `Flyout()` part is not nested inside anything while a containing-block part exists (`Docked(Parent, …)`, `OnEdge`, `Backdrop(Parent)`) | `sheet <name>: part "<flyout>" is a Flyout and part "<stealer>" is a containing block, but the sheet cannot know which contains which — declare the nesting with Within()` |
 | A positioned part sits between a `Flyout()` and its `Anchor()` in the declared chain | `sheet <name>: part "<flyout>": part "<thief>" is positioned between the Flyout and its Anchor and steals the containing block the Flyout hangs from; make it not positioned or re-anchor the Flyout` |
+| The declared chain of a `Flyout()` passes through a `Scroll()` part | `sheet <name>: part "<flyout>": part "<scroller>" is a Scroll() region and clips the Flyout inside it; move the panel out of the scroller or use a flow accordion` |
 
 Every message names the sheet and the part. The panic in `Stylesheet()` is the
 only signal the author gets, and it surfaces from inside `ssr`'s generated

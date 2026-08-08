@@ -432,6 +432,21 @@ un-positioning the part in between, moving the `Flyout` out of the docked part,
 or making the docked trigger span its anchor. The resolution chosen for
 `tinywasm/components` ships in its own release.
 
+### 9.7 A `Flyout` inside a `Scroll()` region is rejected
+
+An overlay anchored inside a scrolling list is **clipped by the scroller** —
+overflow clips every descendant that escapes the padding box, containing block
+or not. The shape measured 10px visible of a 84.8px panel in `targetlist`
+before that component moved its options to an accordion. The library now
+rejects it: a `Flyout()` whose declared chain (`Within()`) passes through a
+`Scroll()` part fails `Validate()` with both parts named.
+
+**If a sheet declares `Part(list, Scroll())` + `Within(list, "panel",
+style.Flyout(...))`**, `Validate()` now fails. Choose deliberately: an
+accordion in flow inside the row (what `targetlist` adopted), or move the panel
+out of the scroller (what `usermenu` does today). A `Scroll()` part that is
+NOT on the Flyout's declared chain is unaffected.
+
 ---
 
 ## Related documents
