@@ -57,6 +57,9 @@ type rule struct {
 	hasFlyout  bool
 	flyoutSide Side
 
+	hasDivider  bool
+	dividerSide Side
+
 	hasSurface  bool
 	surface     Surface
 	interactive bool

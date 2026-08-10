@@ -231,3 +231,16 @@ func Animate(m Motion) Option {
 		r.motion = m
 	}
 }
+
+// Divider draws a single hairline rule on one inline side — SideEnd for a
+// leading region separated from the content that follows it, SideStart for
+// the mirror case. It is independent of As(): a Surface's border is part of
+// a background+text+border package deal, and a part that wants a plain
+// separator with no background of its own (a badge that no longer fills a
+// color, just marks where it ends) has no Surface to reach for.
+func Divider(side Side) Option {
+	return func(r *rule) {
+		r.hasDivider = true
+		r.dividerSide = side
+	}
+}

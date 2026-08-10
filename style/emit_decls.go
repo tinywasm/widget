@@ -395,6 +395,16 @@ func primitiveDecls(r rule) []string {
 	if r.hideOverflow {
 		decls = append(decls, "overflow: hidden;")
 	}
+	if r.hasDivider {
+		prop := "border-inline-end"
+		if r.dividerSide == SideStart {
+			prop = "border-inline-start"
+		}
+		decls = append(decls,
+			prop+": "+borderStyle+css.ColorOutline.LightValue()+";",
+			prop+": "+borderStyle+css.ColorOutline.EnhancedVar()+";",
+		)
+	}
 	return decls
 }
 
