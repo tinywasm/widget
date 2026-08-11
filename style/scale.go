@@ -127,6 +127,7 @@ type Size uint8
 const (
 	Content  Size = iota // adjusts to its content
 	Readable             // readable line length
+	Compact              // a single column of controls: a login card, a settings pane
 	Third
 	Half
 	TwoThirds

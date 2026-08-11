@@ -142,7 +142,7 @@ of these.
 | `Motion` | `MotionNone, MotionFast, MotionBase, MotionSlow` | `none`, `--duration-*` + `--ease-in-out` |
 | `ColumnWidth` | `ColumnNarrow, ColumnMedium, ColumnWide` | `--column-narrow/medium/wide` |
 | shared boxes | `ControlBox()`, `ChipBox()` | `--control-height`, `--chip-width`, `--chip-height` |
-| `Size` | `Content, Readable, Third, Half, TwoThirds, Most, Full` | `max-content`, `--max-w-readable`, `33.33%`, `50%`, `66.66%`, `90%`, `100%` |
+| `Size` | `Content, Readable, Compact, Third, Half, TwoThirds, Most, Full` | `max-content`, `--max-w-readable`, `min(100%, 24rem)`, `33.33%`, `50%`, `66.66%`, `90%`, `100%` |
 | `SplitRatio` | `SplitHalf, SplitTwoThirds, SplitThreeQuarters` | `1`, `2`, `3` — unitless, they feed `flex-grow` against a trailing `1` |
 | `Aspect` | `AspectSquare, Aspect3x2, Aspect4x3, Aspect16x9` | `1/1`, `3/2`, `4/3`, `16/9` |
 | `Scope` | `Parent, Viewport` | `position: absolute` / `fixed` |
@@ -153,8 +153,11 @@ of these.
 `Size` percentages and `Aspect` fractions are geometry, not theme, and are the
 only literals the drift guard permits, **except** `100dvh` which is permitted
 exclusively in the `Cover` primitive, the `0px` defaults of the floating
-reservation (`--floating-top`/`--floating-bottom`) and the `-0.5` factor of the
-`OnEdge` straddle. `ColumnWidth` requires `--column-*`, and `Readable` requires `--max-w-readable`
+reservation (`--floating-top`/`--floating-bottom`), the `-0.5` factor of the
+`OnEdge` straddle and the `24rem` cap of `Compact`. `Compact` is the one `Size`
+step that is a cap rather than a share — the percentages resolve against the
+container and shrink with it for free, while a fixed width would overflow a
+phone, so it emits `min(100%, …)` and stops. `ColumnWidth` requires `--column-*`, and `Readable` requires `--max-w-readable`
 (today `--max-w-prose`); both are prerequisites of the release, because a scale
 step is named after the token it emits and the two must not drift apart.
 

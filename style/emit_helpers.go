@@ -134,6 +134,17 @@ func sizeValue(s Size) string {
 		return "max-content"
 	case Readable:
 		return css.MaxWReadable.Var()
+	case Compact:
+		// A stack of controls is not prose: Readable's 65ch is the measure a
+		// LINE of text wants, and a login card or a settings pane sized to it
+		// reads as a form someone forgot to constrain. 24rem is the width a
+		// single column of fields is legible at.
+		//
+		// min(), unlike every other step here, because this one is a cap and
+		// not a share: the percentages resolve against the container and shrink
+		// with it for free, while a bare 24rem would overflow a phone. The
+		// element takes the container up to 24rem and stops.
+		return "min(100%, 24rem)"
 	case Third:
 		return "33.33%"
 	case Half:

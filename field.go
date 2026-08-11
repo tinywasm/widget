@@ -16,4 +16,5 @@ const (
 	PartInput      = Part("input")
 	PartError      = Part("error")
 	PartRadioGroup = Part("radio-group")
+	PartSubmit     = Part("submit")
 )
