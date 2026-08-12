@@ -26,6 +26,8 @@ func TestPrimitiveOnlyPartIsNotEmpty(t *testing.T) {
 		{"EdgeToEdge", style.EdgeToEdge(), "margin: 0;"},
 		{"HideOverflow", style.HideOverflow(), "overflow: hidden;"},
 		{"FillCentered", style.FillCentered(), "place-items: center;"},
+		{"Meter", style.Meter(style.Space1), "width: var(--meter-fill, 0%);"},
+		{"CenterSelf", style.CenterSelf(), "margin-inline: auto;"},
 	}
 
 	for _, c := range cases {

@@ -51,13 +51,13 @@ func (s *Sheet) Validate() []error {
 	// containing blocks, so the Anchor is redundant as well as destructive.
 	checkPosition := func(p widget.Part, r rule) {
 		n := 0
-		for _, on := range []bool{r.hasAnchor, r.hasDocked, r.hasOnEdge, r.hasFlyout, r.hasBackdrop, r.hasDrawer} {
+		for _, on := range []bool{r.hasAnchor, r.hasDocked, r.hasOnEdge, r.hasFlyout, r.hasBackdrop, r.hasDrawer, r.hasEdgeStrip} {
 			if on {
 				n++
 			}
 		}
 		if n > 1 {
-			errs = append(errs, fmt.Errf("sheet %s: part %q: Anchor/Docked/OnEdge/Flyout/Backdrop/Drawer all set position; use one", string(s.widget.WidgetName()), string(p)))
+			errs = append(errs, fmt.Errf("sheet %s: part %q: Anchor/Docked/OnEdge/Flyout/Backdrop/Drawer/EdgeStrip all set position; use one", string(s.widget.WidgetName()), string(p)))
 		}
 	}
 	// Both ends of a descendant rule have to exist, or it silently styles
@@ -104,7 +104,7 @@ func (s *Sheet) Validate() []error {
 	// choice of container (a docked trigger that spans its anchor) and is
 	// accepted; the theft only exists when an Anchor sits beyond the thief.
 	positioned := func(r rule) bool {
-		return r.hasDocked || r.hasOnEdge || r.hasBackdrop || r.hasFlyout || r.hasDrawer
+		return r.hasDocked || r.hasOnEdge || r.hasBackdrop || r.hasFlyout || r.hasDrawer || r.hasEdgeStrip
 	}
 	for p, pr := range s.partRules {
 		if !pr.hasFlyout {
@@ -204,7 +204,8 @@ func (s *Sheet) Validate() []error {
 				continue // the root can never sit BETWEEN a Flyout and anything
 			}
 			if (pr.hasDocked && pr.dockedScope == Parent) || pr.hasOnEdge ||
-				(pr.hasBackdrop && pr.backdropScope == Parent) {
+				(pr.hasBackdrop && pr.backdropScope == Parent) ||
+				(pr.hasEdgeStrip && pr.edgeStripScope == Parent) {
 				stealers = append(stealers, p)
 			}
 		}

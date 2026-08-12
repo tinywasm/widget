@@ -241,9 +241,10 @@ family's interaction state.
 | `Row(gap)` | `display:flex; flex-wrap:wrap; gap:var(--gap); align-items:center` |
 | `Split(r, gap)` | `display:flex; flex-wrap:wrap; gap:var(--gap)`, and `> * { flex-grow:1; flex-basis:calc((40rem - 100%) * 999) }` plus `> :first-child { flex-grow:var(--ratio) }` — stacks below ~40rem of **its own** width, no query and no wrapper element |
 | `Grid(min, gap)` | `display:grid; gap:var(--gap); grid-template-columns:repeat(auto-fit, minmax(min(var(--column),100%),1fr))` |
+| `FixedGrid(cols, gap)` | `display:grid; gap:var(--gap); grid-template-columns:repeat(var(--cols), minmax(0,1fr))` — unlike `Grid`, the column count never reflows. `--cols` is a value, not a literal `repeat(N,1fr)`: a stylesheet builder works on a zero-value receiver and cannot read an instance field, so a count only known at runtime (a month strip sized by an instance's field) is set the same way any other per-instance value crosses into an otherwise-static sheet — the host overrides `--cols` inline on the element |
 | `Center(max)` | `margin-inline:auto; width:100%; max-width:var(--max-width)` |
 | `FillCentered()` | `display:grid; place-items:center; min-height:100%; width:100%` |
-| `ScrollRow(gap)` | `display:flex; gap:var(--gap); overflow-x:auto; scroll-snap-type:x mandatory`, and `> * { scroll-snap-align:start; flex:0 0 auto }` |
+| `ScrollRow(gap)` | `display:flex; gap:var(--gap); overflow-x:auto; scroll-snap-type:x mandatory; scroll-behavior:smooth`, and `> * { scroll-snap-align:start; flex:0 0 auto }` |
 | `MediaBox(a)` | `aspect-ratio:var(--ratio); overflow:hidden; display:flex; justify-content:center; align-items:center`, and `> img, > video { width:100%; height:100%; object-fit:cover }` |
 | `Cover()` | `display:flex; flex-direction:column; height:100dvh` |
 | `MasterDetail(detail)` | `display:flex; flex-direction:row; flex-wrap:nowrap; direction:rtl; gap:0; overflow-x:auto; overflow-y:hidden; scroll-snap-type:x mandatory; scroll-behavior:smooth`, and `> * { flex:0 0 auto }` plus `> :nth-child(1) { direction:ltr; flex:0 0 <detail>; scroll-snap-align:end; order:2 }` plus `> :nth-child(2) { direction:ltr; flex:0 0 100%; scroll-snap-align:start; order:1 }` |
@@ -315,9 +316,12 @@ func ControlBox() Option
 func ChipBox() Option
 func Hide() Option
 func CenterContent() Option
+func CenterSelf() Option
 func StartContent() Option
 func Anchor() Option
 func Docked(scope Scope, edge Edge, side Side, gap Space) Option
+func EdgeStrip(scope Scope, side Side) Option
+func Meter(thickness Space) Option
 func OnEdge(edge Edge, side Side, block Space, inline Space) Option
 func FloatingChrome(edge Edge, size IconSize, gap Space) Option
 func Flyout(side Side) Option
@@ -353,6 +357,7 @@ func Drawer(side Side, size Size) Option
 | `ChipBox()` | `width:var(--chip-width); overflow:hidden` |
 | `Hide()` | `display:none` — for use inside `On()`, the inverse of `OnlyOn` |
 | `CenterContent()` | `display:flex; align-items:center; justify-content:center` |
+| `CenterSelf()` | `margin-inline:auto` — centers the part itself within the space its container gives it; the counterpart of `CenterContent()`, which centers what a part contains. Needed alongside `IconBox()`/`Width()` inside a wider flex/grid track: an item with an explicit size does not stretch to fill the track and defaults to the leading edge |
 | `StartContent()` | `display:flex; align-items:center; justify-content:flex-start` |
 | `Docked(scope, edge, side, gap)` | `position:{absolute\|fixed}; margin:0; inset-block-{start\|end}:<gap>; inset-inline-{start\|end}:<gap>`; `z-index:var(<Kind layer>)` for `Viewport`, `z-index:1` for `Parent` — a `Parent` dock pins the element to the corner of the nearest **positioned** ancestor (the `Anchor()` only if nothing positioned sits between) and is a control inside its own box: it declares its local level against its unpositioned siblings, but must not tie with real overlays. A `Parent` dock is itself a containing block: a `Flyout()` inside it hangs from THIS box, not from whatever `Anchor()` sits above — `Validate()` rejects that theft (see `Within()`) |
 | `OnEdge(edge, side, block, inline)` | `position:absolute; margin:0; inset-block-{start\|end}:<block>; inset-inline-{start\|end}:<inline>; margin-block-{start\|end}:calc(-0.5 * var(--chip-height,1.25rem)); z-index:1` — the straddle is half the shared `--chip-height` token, never a `transform` (transforms are invisible to `scrollHeight` by spec, so no ancestor could reserve the space the chip really occupies, and they create an implicit stacking context); `z-index:1` orders the chip against its own siblings without claiming the overlay layer. Like every positioned part, it is a containing block for a `Flyout()` descendant |
@@ -360,6 +365,8 @@ func Drawer(side Side, size Size) Option
 | `Anchor()` | `position:relative` — makes the element a positioning reference. The containing block of a `Flyout()` is the nearest **positioned** ancestor, so this only becomes the reference if nothing positioned sits between the two; `Validate()` rejects the interposition (see `Within()`) |
 | `Flyout(side)` | `position:absolute; inset-block-start:100%; inset-inline-{start\|end}:0; z-index:var(<Kind layer>)` — the `100%` resolves against the nearest positioned ancestor; a positioned part between the element and its `Anchor()` steals the containing block, which the sheet detects through the declared part tree (`Within()`); a `Scroll()` part anywhere on the declared chain clips the panel, which the sheet also rejects (`Within()`) |
 | `Drawer(side, size)` | `position:fixed; inset-block:0; inset-inline-{start|end}:0; width:var(<size>); z-index:var(<Kind layer>)` |
+| `EdgeStrip(scope, side)` | `position:{absolute\|fixed}; inset-block:0; inset-inline-{start\|end}:0`; `z-index:var(<Kind layer>)` for `Viewport`, `z-index:1` for `Parent` — spans the FULL block axis of its `Scope` plus one inline edge, and deliberately emits no `width:` — the property that differentiates it from `Drawer()`, which forces one and hard-requires a paired `RevealedBy()`. `EdgeStrip` carries no such requirement: it is permanent chrome (a calendar's prev/next overlay strip), not a toggled panel. Like `Docked`/`OnEdge`, a `Parent`-scoped `EdgeStrip` is itself a containing block for a `Flyout()` descendant |
+| `Meter(thickness)` | `height:var(<thickness>); width:var(--meter-fill,0%)` — a thin bar whose fill fraction is a per-instance runtime value, not a scale step: the stylesheet declares only the SHAPE (that the length axis feeds `width`, with a `0%` fallback); the host sets ONLY the bare `--meter-fill:N%;` value inline, never a property name or selector |
 | `Animate(m)` | `transition: all var(--duration-*) var(--ease-in-out)` |
 
 `Veil()` must emit the token **with its catalog fallback**. Every rule carrying

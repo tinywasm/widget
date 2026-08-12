@@ -25,7 +25,7 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 
 	sb.WriteString("@layer tokens, primitives, widgets, states;\n\n")
 
-	var stackSel, rowSel, splitSel, gridSel, centerSel, fillCenteredSel, scrollRowSel, mediaBoxSel []string
+	var stackSel, rowSel, splitSel, gridSel, fixedGridSel, centerSel, fillCenteredSel, scrollRowSel, mediaBoxSel []string
 	var coverSels []string
 
 	type sidebarInfo struct {
@@ -59,6 +59,8 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 				splitSel = append(splitSel, sel)
 			case flowGrid:
 				gridSel = append(gridSel, sel)
+			case flowFixedGrid:
+				fixedGridSel = append(fixedGridSel, sel)
 			case flowCenter:
 				centerSel = append(centerSel, sel)
 			case flowFillCentered:
@@ -170,6 +172,12 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 		"grid-template-columns: repeat(auto-fit, minmax(min(var(--track), 100%), 1fr));",
 	})
 
+	emitPrimitive(fixedGridSel, []string{
+		"display: grid;",
+		"gap: var(--gap);",
+		"grid-template-columns: repeat(var(--cols), minmax(0, 1fr));",
+	})
+
 	emitPrimitive(centerSel, []string{
 		"margin-inline: auto;",
 		"max-width: var(--max-width);",
@@ -188,6 +196,7 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 		"gap: var(--gap);",
 		"overflow-x: auto;",
 		"scroll-snap-type: x mandatory;",
+		"scroll-behavior: smooth;",
 	})
 	if len(scrollRowSel) > 0 {
 		var scrollRowKids []string
@@ -619,12 +628,14 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 					devWidSB.WriteString(formatRule([]string{sel + " > :first-child"}, []string{"flex-grow: var(--ratio);"}))
 				case flowGrid:
 					devWidSB.WriteString(formatRule([]string{sel}, []string{"display: grid;", "gap: var(--gap);", "grid-template-columns: repeat(auto-fit, minmax(min(var(--track), 100%), 1fr));"}))
+				case flowFixedGrid:
+					devWidSB.WriteString(formatRule([]string{sel}, []string{"display: grid;", "gap: var(--gap);", "grid-template-columns: repeat(var(--cols), minmax(0, 1fr));"}))
 				case flowCenter:
 					devWidSB.WriteString(formatRule([]string{sel}, []string{"margin-inline: auto;", "max-width: var(--max-width);", "width: 100%;"}))
 				case flowFillCentered:
 					devWidSB.WriteString(formatRule([]string{sel}, []string{"display: grid;", "place-items: center;", "min-height: 100%;", "width: 100%;"}))
 				case flowScrollRow:
-					devWidSB.WriteString(formatRule([]string{sel}, []string{"display: flex;", "gap: var(--gap);", "overflow-x: auto;", "scroll-snap-type: x mandatory;"}))
+					devWidSB.WriteString(formatRule([]string{sel}, []string{"display: flex;", "gap: var(--gap);", "overflow-x: auto;", "scroll-snap-type: x mandatory;", "scroll-behavior: smooth;"}))
 					devWidSB.WriteString(formatRule([]string{sel + " > *"}, []string{"scroll-snap-align: start;", "flex: 0 0 auto;"}))
 				case flowMediaBox:
 					devWidSB.WriteString(formatRule([]string{sel}, []string{"aspect-ratio: var(--ratio);", "overflow: hidden;", "display: flex;", "justify-content: center;", "align-items: center;"}))

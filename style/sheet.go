@@ -22,10 +22,19 @@ type rule struct {
 	flowRail   RailWidth
 	flowDetail Size
 	flowMotion Motion
+	flowCols   int
 
 	hasDrawer  bool
 	drawerSide Side
 	drawerSize Size
+
+	hasEdgeStrip   bool
+	edgeStripScope Scope
+	edgeStripSide  Side
+
+	hasMeter       bool
+	meterThickness Space
+	centerSelf     bool
 
 	centerContent bool
 	startContent  bool

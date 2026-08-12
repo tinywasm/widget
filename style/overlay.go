@@ -96,6 +96,27 @@ func Docked(scope Scope, edge Edge, side Side, gap Space) Option {
 	}
 }
 
+// EdgeStrip pins the element to one full inline edge of its Scope — the
+// entire block-axis span (inset-block: 0) plus one inline edge — and, unlike
+// Drawer(), sizes itself to its own content/padding instead of forcing a
+// width, and unlike Docked(), spans the full edge instead of a single
+// corner. Use it for chrome that must stay reachable along an entire edge
+// and is always visible, never toggled: a calendar's full-height prev/next
+// overlay strip. Drawer() is the right primitive instead when the panel is
+// meant to slide in and out — it requires a paired RevealedBy() for exactly
+// that reason; EdgeStrip() has no such requirement because it is not a
+// panel, it is permanent chrome.
+//
+// Pin it inside an Anchor()ed ancestor for Parent scope, the same
+// relationship Docked() needs.
+func EdgeStrip(scope Scope, side Side) Option {
+	return func(r *rule) {
+		r.hasEdgeStrip = true
+		r.edgeStripScope = scope
+		r.edgeStripSide = side
+	}
+}
+
 // OnEdge centres the element ON one of its Anchor's edge lines — half outside
 // the box, half inside — the way a fieldset legend rides the border it labels.
 //

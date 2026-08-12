@@ -18,6 +18,7 @@ const (
 	flowSidebar
 	flowMasterDetail
 	flowSlideDeck
+	flowFixedGrid
 )
 
 // Stack defines a vertical rhythm with children at full width.
@@ -58,6 +59,28 @@ func Grid(min ColumnWidth, gap Space) Option {
 	}
 }
 
+// FixedGrid lays out children in exactly cols equal-width columns; unlike
+// Grid()'s auto-fit/minmax, the column count never reflows on its own. Use
+// Grid() when the item count varies and should reflow with the container's
+// width; use FixedGrid() when the column count is a structural fact — a
+// calendar's 7 weekdays, a fixed-size month strip — and every column must
+// stay equal regardless of content.
+//
+// cols becomes the --cols custom property, not a literal repeat(N, 1fr): a
+// stylesheet builder must work on a zero-value receiver (it cannot read
+// instance fields), so a column count only known at runtime is set the same
+// way any other per-instance value crosses into an otherwise-static
+// stylesheet — the host overrides --cols inline on the element, never
+// grid-template-columns itself.
+func FixedGrid(cols int, gap Space) Option {
+	return func(r *rule) {
+		r.hasFlow = true
+		r.flowType = flowFixedGrid
+		r.flowCols = cols
+		r.flowGap = gap
+	}
+}
+
 // Center defines a centered column with an optional maximum size (defaults to Readable).
 func Center(max ...Size) Option {
 	sz := Readable
@@ -80,7 +103,10 @@ func FillCentered() Option {
 	}
 }
 
-// ScrollRow defines a horizontal scrolling strip with scroll-snap.
+// ScrollRow defines a horizontal scrolling strip with scroll-snap and smooth
+// scroll-behavior — so a same-page anchor link (<a href="#childID">) or a
+// programmatic scroll into one of its children slides instead of jumping,
+// with no JS and no per-consumer opt-in.
 func ScrollRow(gap Space) Option {
 	return func(r *rule) {
 		r.hasFlow = true

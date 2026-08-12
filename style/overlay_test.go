@@ -89,6 +89,54 @@ func TestBackdrop(t *testing.T) {
 	}
 }
 
+// EdgeStrip spans the full block axis of its Scope plus one inline edge, and
+// — the property that differentiates it from Drawer() — never forces a
+// width. It also carries no RevealedBy() requirement: unlike Drawer, it is
+// permanent chrome, not a toggled panel.
+func TestEdgeStripSpansFullEdgeWithNoForcedWidth(t *testing.T) {
+	w := testWidget{name: "w", kind: widget.Region}
+
+	sheet := style.For(w).
+		Part("next", style.EdgeStrip(style.Parent, style.SideEnd))
+
+	if errs := sheet.Validate(); len(errs) > 0 {
+		t.Fatalf("EdgeStrip alone (no RevealedBy) must validate, got: %v", errs)
+	}
+
+	out := sheet.Stylesheet().String()
+	if !strings.Contains(out, "position: absolute;") {
+		t.Errorf("expected Parent-scoped EdgeStrip to emit position: absolute;, got:\n%s", out)
+	}
+	if !strings.Contains(out, "inset-block: 0;") {
+		t.Errorf("expected inset-block: 0;, got:\n%s", out)
+	}
+	if !strings.Contains(out, "inset-inline-end: 0;") {
+		t.Errorf("expected EdgeStrip(SideEnd) to emit inset-inline-end: 0;, got:\n%s", out)
+	}
+	if strings.Contains(out, "inset-inline-start:") {
+		t.Errorf("expected exactly one inline inset, not both, got:\n%s", out)
+	}
+	if strings.Contains(out, "width:") {
+		t.Errorf("EdgeStrip must never force a width — that is what differentiates it from Drawer(), got:\n%s", out)
+	}
+}
+
+// Viewport-scoped EdgeStrip is position: fixed and claims the widget's own
+// stacking layer, the same split Docked/Backdrop already draw between local
+// chrome and a real overlay.
+func TestEdgeStripViewportScopeIsFixed(t *testing.T) {
+	w := testWidget{name: "w", kind: widget.Region}
+
+	s := style.For(w).Root(style.EdgeStrip(style.Viewport, style.SideStart)).Stylesheet().String()
+
+	if !strings.Contains(s, "position: fixed;") {
+		t.Errorf("expected Viewport-scoped EdgeStrip to emit position: fixed;, got:\n%s", s)
+	}
+	if !strings.Contains(s, "inset-inline-start: 0;") {
+		t.Errorf("expected EdgeStrip(SideStart) to emit inset-inline-start: 0;, got:\n%s", s)
+	}
+}
+
 // TestRevealedByWinsOverCenterContent: a part with BOTH RevealedBy and
 // CenterContent must end hidden — CenterContent opens a block with
 // display: flex, and a flex declaration emitted AFTER the reveal's

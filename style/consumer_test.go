@@ -328,6 +328,10 @@ func TestNoInventedValues(t *testing.T) {
 		Part("item15", style.IconBox(style.IconLg)).
 		Part("item16", style.Anchor(), style.FloatingChrome(style.EdgeBottom, style.IconLg, style.Space4)).
 		Part("item17", style.OnEdge(style.EdgeTop, style.SideStart, style.Space2, style.Space1)).
+		Part("item18", style.EdgeStrip(style.Parent, style.SideStart)).
+		Part("item19", style.Meter(style.Space1)).
+		Part("item20", style.IconBox(style.IconMd), style.CenterSelf()).
+		Part("item21", style.FixedGrid(7, style.Space2)).
 		On(css.Mobile, "item10", style.Stack(style.Space1))
 
 	cssStr := sheet.Stylesheet().String()
@@ -370,10 +374,12 @@ func TestNoInventedValues(t *testing.T) {
 		"--gap":             true,
 		"--ratio":           true,
 		"--track":           true,
+		"--cols":            true,
 		"--rail":            true,
 		"--max-width":       true,
 		"--floating-top":    true,
 		"--floating-bottom": true,
+		"--meter-fill":      true,
 	}
 	// Every theme pair's plain light/dark half properties (see
 	// css.Token.EnhancedVar, css declareSplit) — a different kind of

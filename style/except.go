@@ -200,6 +200,35 @@ func IconBox(s IconSize) Option {
 	}
 }
 
+// Meter sizes a part as a thin bar whose fill fraction is supplied per
+// instance at runtime — an occupancy indicator, a progress bar. thickness
+// sets the bar's cross-axis size from the space scale; its length axis reads
+// the --meter-fill custom property, which the stylesheet declares the SHAPE
+// of (that it feeds width, and a 0% fallback) but never assigns a value to —
+// a stylesheet builder works on a zero-value receiver, so a per-instance
+// fill level cannot be baked in. The host sets ONLY the value at runtime,
+// e.g. a bare `--meter-fill:73%;` inline style — never a property name,
+// selector, or unit beyond the percent sign the value itself carries.
+func Meter(thickness Space) Option {
+	return func(r *rule) {
+		r.hasMeter = true
+		r.meterThickness = thickness
+	}
+}
+
+// CenterSelf centers a part horizontally within the space its container
+// gives it, via margin-inline: auto — the counterpart of CenterContent(),
+// which centers what a part CONTAINS rather than the part itself. An item
+// with an explicit width (IconBox(), Width()) inside a wider flex or grid
+// track does not stretch to fill it and defaults to the leading edge; pair
+// it with CenterSelf() to center the fixed-size box inside that track — a
+// calendar day marker inside its week-row column.
+func CenterSelf() Option {
+	return func(r *rule) {
+		r.centerSelf = true
+	}
+}
+
 // As sets the surface decision (background, text, border, and radius default).
 func As(s Surface) Option {
 	return func(r *rule) {

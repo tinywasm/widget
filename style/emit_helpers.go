@@ -261,14 +261,15 @@ func layerVar(l widget.Layer) string {
 // on top. Two declared levels exist:
 //
 //   - local (1): chrome that rides on its own widget's content — OnEdge, and
-//     Parent-scoped Docked/Backdrop. Deliberately NOT the overlay layer:
-//     overlay tokens start at --z-dropdown (100+), and a chip level with a
-//     real dropdown would tie it and win on DOM order, rendering under it.
-//     The same applies to a Parent backdrop: on the overlay layer a dialog's
-//     click-catcher outranked its own panel, and the blur it carried blurred
-//     the very thing it was meant to isolate.
+//     Parent-scoped Docked/Backdrop/EdgeStrip. Deliberately NOT the overlay
+//     layer: overlay tokens start at --z-dropdown (100+), and a chip level
+//     with a real dropdown would tie it and win on DOM order, rendering
+//     under it. The same applies to a Parent backdrop: on the overlay layer
+//     a dialog's click-catcher outranked its own panel, and the blur it
+//     carried blurred the very thing it was meant to isolate.
 //   - overlay (var(--z-dropdown) and up, via Kind.Layer()): real overlays —
-//     Flyout, Drawer, Backdrop(Viewport), Docked(Viewport).
+//     Flyout, Drawer, Backdrop(Viewport), Docked(Viewport),
+//     EdgeStrip(Viewport).
 //
 // Returns "" only when nothing in the rule is out of flow; the emitter then
 // emits nothing, and Validate() flags an out-of-flow rule whose level came
@@ -279,11 +280,15 @@ func stackingFor(r rule, layer widget.Layer) string {
 		return "z-index: 1;"
 	case r.hasDocked && r.dockedScope == Parent:
 		return "z-index: 1;"
+	case r.hasEdgeStrip && r.edgeStripScope == Parent:
+		return "z-index: 1;"
 	case r.hasBackdrop && r.backdropScope == Parent:
 		return "z-index: 1;"
 	case r.hasDrawer:
 		return "z-index: " + layerVar(layer) + ";"
 	case r.hasDocked && r.dockedScope == Viewport:
+		return "z-index: " + layerVar(layer) + ";"
+	case r.hasEdgeStrip && r.edgeStripScope == Viewport:
 		return "z-index: " + layerVar(layer) + ";"
 	case r.hasFlyout:
 		return "z-index: " + layerVar(layer) + ";"
@@ -341,12 +346,14 @@ func flowSelfDecls(r rule) []string {
 		return []string{"display: flex;", "flex-wrap: wrap;", "gap: var(--gap);"}
 	case flowGrid:
 		return []string{"display: grid;", "gap: var(--gap);", "grid-template-columns: repeat(auto-fit, minmax(min(var(--track), 100%), 1fr));"}
+	case flowFixedGrid:
+		return []string{"display: grid;", "gap: var(--gap);", "grid-template-columns: repeat(var(--cols), minmax(0, 1fr));"}
 	case flowCenter:
 		return []string{"margin-inline: auto;", "max-width: var(--max-width);", "width: 100%;"}
 	case flowFillCentered:
 		return []string{"display: grid;", "place-items: center;", "min-height: 100%;", "width: 100%;"}
 	case flowScrollRow:
-		return []string{"display: flex;", "gap: var(--gap);", "overflow-x: auto;", "scroll-snap-type: x mandatory;"}
+		return []string{"display: flex;", "gap: var(--gap);", "overflow-x: auto;", "scroll-snap-type: x mandatory;", "scroll-behavior: smooth;"}
 	case flowMediaBox:
 		return []string{"aspect-ratio: var(--ratio);", "overflow: hidden;", "display: flex;", "justify-content: center;", "align-items: center;"}
 	case flowCover:

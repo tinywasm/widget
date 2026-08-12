@@ -37,6 +37,9 @@ func (r rule) Decls(layer widget.Layer) []string {
 		case flowGrid:
 			decls = append(decls, "--gap: "+spaceVar(r.flowGap)+";")
 			decls = append(decls, "--track: "+columnWidthValue(r.flowWidth)+";")
+		case flowFixedGrid:
+			decls = append(decls, "--gap: "+spaceVar(r.flowGap)+";")
+			decls = append(decls, "--cols: "+fmt.Sprint(r.flowCols)+";")
 		case flowCenter:
 			if r.hasSize {
 				decls = append(decls, "--max-width: "+sizeValue(r.size)+";")
@@ -257,6 +260,34 @@ func (r rule) Decls(layer widget.Layer) []string {
 		if z := stackingFor(r, layer); z != "" {
 			decls = append(decls, z)
 		}
+	}
+
+	if r.hasEdgeStrip {
+		if r.edgeStripScope == Viewport {
+			decls = append(decls, "position: fixed;")
+		} else {
+			decls = append(decls, "position: absolute;")
+		}
+		decls = append(decls, "inset-block: 0;")
+		if r.edgeStripSide == SideStart {
+			decls = append(decls, "inset-inline-start: 0;")
+		} else {
+			decls = append(decls, "inset-inline-end: 0;")
+		}
+		// Deliberately no width: — that is what differentiates this from
+		// Drawer(); the element sizes to its own content/padding.
+		if z := stackingFor(r, layer); z != "" {
+			decls = append(decls, z)
+		}
+	}
+
+	if r.hasMeter {
+		decls = append(decls, "height: "+spaceVar(r.meterThickness)+";")
+		decls = append(decls, "width: var(--meter-fill, 0%);")
+	}
+
+	if r.centerSelf {
+		decls = append(decls, "margin-inline: auto;")
 	}
 
 	if r.hasOnEdge {

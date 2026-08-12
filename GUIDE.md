@@ -11,6 +11,7 @@ The substitute for design judgement: you do not choose, you look up.
 | a column of things | `Stack(Space2)` |
 | a row of buttons | `Row(Space1)` |
 | a grid that adapts by itself | `Grid(ColumnNarrow, Space2)` |
+| a grid with an exact column count that never reflows (a calendar week, a fixed strip) | `FixedGrid(7, Space2)` |
 | list plus detail | `Split(SplitTwoThirds, Space3)` |
 | a centred column of text | `Center(Readable)` |
 | a horizontal scrolling strip | `ScrollRow(Space2)` |
@@ -22,8 +23,11 @@ The substitute for design judgement: you do not choose, you look up.
 | list and detail swiped on a phone | `On(css.Mobile, "", MasterDetail(Most))` |
 | a fixed nav rail beside the content | `Sidebar(SideEnd, RailNarrow, SpaceNone)` |
 | a button holding only an icon | `CenterContent()` |
+| a fixed-size item (an `IconBox()`) centered inside a wider row/grid track | `CenterSelf()` |
+| a runtime fill level — an occupancy bar, a progress meter | `Meter(Space1)`, host sets `--meter-fill:N%;` per instance |
 | a floating action pinned to a corner | `Anchor()` on the panel + `Docked(Parent, EdgeBottom, SideEnd, Space4)` |
 | an action that stays put while panels swipe | `Docked(Viewport, EdgeBottom, SideEnd, Space4)` |
+| a full-height strip of chrome pinned along one whole edge, sized to its own content (not a corner, not a forced width) | `Anchor()` on the panel + `EdgeStrip(Parent, SideStart)` |
 | a chip riding a box's border, legend-style | `Anchor()` on the box + `OnEdge(EdgeTop, SideStart, …)` — the straddle is half the shared `--chip-height` token |
 | a scroll container that never hides what floats over its end | `FloatingChrome(EdgeBottom, IconLg, Space2)` on the floating element + `Scroll()` on the container |
 | a dropdown that does not push the page | `Anchor()` on the trigger + `Flyout(SideEnd)` on the list |
