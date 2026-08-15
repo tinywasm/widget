@@ -392,6 +392,17 @@ func TestNoInventedValues(t *testing.T) {
 		layoutVariables[tok.LightVarName()] = true
 		layoutVariables[tok.DarkVarName()] = true
 	}
+	// Every surface family's background-image companion (see
+	// css.Token.ImageVarName, css.SetGradient) — emitted unconditionally
+	// alongside background-color for every surfaced rule, one per distinct
+	// token familyBase() can return, inert (var(..., none)) until an app
+	// opts in with SetGradient.
+	for _, tok := range []css.Token{
+		css.ColorSurface, css.ColorPrimary, css.ColorAccent,
+		css.ColorSuccess, css.ColorDanger, css.ColorMuted, css.ColorBackground,
+	} {
+		layoutVariables[tok.ImageVarName()] = true
+	}
 
 	// Check there are no hardcoded hexadecimal colors or rgba except in fallbacks of var()
 	// or in a Safari-legacy static fallback (see below).

@@ -741,6 +741,33 @@ func TestValidateDrawerWithoutRevealedBy(t *testing.T) {
 	}
 }
 
+// TestPrimarySurface_GradientHookIsInertByDefaultAndLiveWhenSet is the
+// consumer-shaped proof for css.SetGradient (tinywasm/css) and the
+// background-image line it depends on (style/emit_decls.go): a Primary
+// surface always emits the hook, it costs nothing when no app opts in, and
+// when an app's own Theme() call sets it, the SAME rule's output carries it
+// through — the two packages actually compose, not just each in isolation.
+func TestPrimarySurface_GradientHookIsInertByDefaultAndLiveWhenSet(t *testing.T) {
+	w := testWidget{name: "w", kind: widget.Region}
+	s := style.For(w).Part("cta", style.As(style.Primary)).Stylesheet().String()
+
+	if !strings.Contains(s, "background-color: "+css.ColorPrimary.EnhancedVar()+";") {
+		t.Errorf("expected the solid background-color to still be emitted, got:\n%s", s)
+	}
+	if !strings.Contains(s, "background-image: var(--color-primary-image, none);") {
+		t.Errorf("expected the always-present, inert-by-default gradient hook, got:\n%s", s)
+	}
+
+	themed := css.Theme(
+		css.Set(css.ColorPrimary, "#16a34a"),
+		css.SetGradient(css.ColorPrimary, "135deg", css.ColorPrimary, css.ColorAccent),
+	).String()
+
+	if !strings.Contains(themed, "--color-primary-image: linear-gradient(135deg, var(--color-primary") {
+		t.Errorf("expected the app's Theme() to set the same --color-primary-image the widget rule reads, got:\n%s", themed)
+	}
+}
+
 func TestEmissionDeterministic(t *testing.T) {
 	w := testWidget{name: "w", kind: widget.Region}
 	sheet := style.For(w).

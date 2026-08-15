@@ -68,6 +68,12 @@ func (r rule) Decls(layer widget.Layer) []string {
 				decls = append(decls, "background-color: "+t.bgStatic+";")
 			}
 			decls = append(decls, "background-color: "+t.bg+";")
+			// Always present, always inert until an app calls
+			// css.Theme(css.SetGradient(...)) for this surface's family
+			// token: background-image paints over background-color rather
+			// than replacing it, so this costs nothing for the (default)
+			// solid case and needs no per-surface opt-in flag.
+			decls = append(decls, "background-image: var("+familyBase(r.surface).ImageVarName()+", none);")
 		}
 		// edgeToEdge's border-radius: 0 lives in the primitives layer, which the
 		// widgets layer outranks — a default radius emitted here would win over
