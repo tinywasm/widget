@@ -46,6 +46,8 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 	}
 	var slideDeckInfos []slideDeckInfo
 
+	var autoRotateSels []string
+
 	var fillSel, growSel, pushEndSel, scrollSel, keepSizeSel, edgeToEdgeSel, hideOverflowSel []string
 
 	collect := func(r rule, sel string) {
@@ -75,6 +77,8 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 				sidebarInfos = append(sidebarInfos, sidebarInfo{sel: sel, side: r.flowSide})
 			case flowSlideDeck:
 				slideDeckInfos = append(slideDeckInfos, slideDeckInfo{sel: sel, motion: r.flowMotion})
+			case flowAutoRotate:
+				autoRotateSels = append(autoRotateSels, sel)
 			case flowMasterDetail:
 				masterDetailInfos = append(masterDetailInfos, masterDetailInfo{sel: sel, detail: r.flowDetail})
 			}
@@ -260,6 +264,26 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 			slideDeckCurrentDecls(sd.motion))
 	}
 
+	if len(autoRotateSels) > 0 {
+		emitPrimitive(autoRotateSels, autoRotateStripDecls())
+
+		var kids, firsts []string
+		for _, sel := range autoRotateSels {
+			kids = append(kids, sel+" > *")
+			firsts = append(firsts, sel+" > :first-child")
+		}
+		emitPrimitive(kids, autoRotateLayerDecls())
+		emitPrimitive(firsts, autoRotateFirstDecls())
+
+		for slot := 2; slot <= AutoRotateLayers; slot++ {
+			var nths []string
+			for _, sel := range autoRotateSels {
+				nths = append(nths, fmt.Sprintf("%s > :nth-child(%d)", sel, slot))
+			}
+			emitPrimitive(nths, autoRotateDelayDecls(slot))
+		}
+	}
+
 	for _, mi := range masterDetailInfos {
 		emitPrimitive([]string{mi.sel}, masterDetailStripDecls())
 		emitPrimitive([]string{mi.sel + " > *"}, masterDetailResetDecls())
@@ -302,6 +326,10 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 		sb.WriteString("@layer primitives {\n")
 		sb.WriteString(prims)
 		sb.WriteString("}\n\n")
+	}
+
+	if len(autoRotateSels) > 0 {
+		sb.WriteString(autoRotateKeyframesCSS())
 	}
 
 	widgetsSB := fmt.GetConv()
@@ -745,6 +773,17 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 		sort.Strings(motionSel)
 		sb.WriteString("@media (prefers-reduced-motion: reduce) {\n")
 		sb.WriteString(formatRule(motionSel, []string{"transition: none;"}))
+		sb.WriteString("}\n")
+	}
+
+	if len(autoRotateSels) > 0 {
+		var kids []string
+		for _, sel := range autoRotateSels {
+			kids = append(kids, sel+" > *")
+		}
+		sort.Strings(kids)
+		sb.WriteString("@media (prefers-reduced-motion: reduce) {\n")
+		sb.WriteString(formatRule(kids, []string{"animation: none;"}))
 		sb.WriteString("}\n")
 	}
 

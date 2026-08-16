@@ -390,6 +390,62 @@ func TestSlideDeckIsNotAScroller(t *testing.T) {
 	}
 }
 
+func TestAutoRotateRunsOnZeroValueReceiver(t *testing.T) {
+	// The package-wide contract: RenderCSS runs on &T{}, so AutoRotate cannot
+	// take a count and must never panic or need instance data to build its
+	// stylesheet.
+	w := testWidget{name: "w", kind: widget.Region}
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("AutoRotate panicked on a zero-value receiver: %v", r)
+		}
+	}()
+	s := style.For(w).Part("x", style.AutoRotate()).Stylesheet().String()
+	if !strings.Contains(s, "@keyframes tw-auto-rotate") {
+		t.Errorf("expected the shared keyframes rule, got:\n%s", s)
+	}
+}
+
+func TestAutoRotateStagersDelayByPosition(t *testing.T) {
+	w := testWidget{name: "w", kind: widget.Region}
+	s := style.For(w).Part("x", style.AutoRotate()).Stylesheet().String()
+
+	for _, want := range []string{
+		".w__x > *",
+		"position: absolute;",
+		"inset: 0;",
+		"opacity: 0;",
+		"animation: tw-auto-rotate",
+		".w__x > :first-child {\n  opacity: 1;\n}",
+		".w__x > :nth-child(2) {\n  animation-delay: 5s;\n}",
+		".w__x > :nth-child(6) {\n  animation-delay: 25s;\n}",
+	} {
+		if !strings.Contains(s, want) {
+			t.Errorf("expected AutoRotate to emit %q, got:\n%s", want, s)
+		}
+	}
+
+	// No 7th slot: AutoRotateLayers caps the stagger.
+	if strings.Contains(s, ":nth-child(7)") {
+		t.Errorf("expected no :nth-child(7) rule beyond AutoRotateLayers, got:\n%s", s)
+	}
+}
+
+func TestAutoRotateRespectsReducedMotion(t *testing.T) {
+	// Disabling the animation must leave :first-child visible and every other
+	// layer hidden — the "first image, frozen" fallback — with no JS and no
+	// extra markup from the caller.
+	w := testWidget{name: "w", kind: widget.Region}
+	s := style.For(w).Part("x", style.AutoRotate()).Stylesheet().String()
+
+	if !strings.Contains(s, "@media (prefers-reduced-motion: reduce)") {
+		t.Fatalf("expected a prefers-reduced-motion block, got:\n%s", s)
+	}
+	if !strings.Contains(s, ".w__x > * {\n  animation: none;\n}") {
+		t.Errorf("expected AutoRotate layers to disable their animation under reduced motion, got:\n%s", s)
+	}
+}
+
 func TestStateSurfaceRepaintsBorderAsRing(t *testing.T) {
 	// A state is painted OVER the base box: a border here grows the element
 	// exactly when the pointer is on it, and the hover is what made it grow.

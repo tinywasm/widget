@@ -19,7 +19,20 @@ const (
 	flowMasterDetail
 	flowSlideDeck
 	flowFixedGrid
+	flowAutoRotate
 )
+
+// AutoRotateLayers is the fixed number of stacked children AutoRotate()
+// choreographs. RenderCSS runs on a zero-value receiver (see the package's
+// zero-value contract), so the rule can never see how many images a real
+// instance holds — it has to commit to a layer count at compile time instead
+// of computing one from instance data. A caller with fewer real images than
+// AutoRotateLayers must cycle through them to fill every slot (Images[i %
+// len(Images)] for i in [0, AutoRotateLayers)); leaving a slot's position
+// empty in the DOM produces a silent gap in the rotation — no image visible
+// — for that slot's turn, because the CSS has no way to know the slot is
+// unused and shrink the cycle around it.
+const AutoRotateLayers = 6
 
 // Stack defines a vertical rhythm with children at full width.
 func Stack(gap Space) Option {
@@ -162,6 +175,31 @@ func SlideDeck(m Motion) Option {
 		r.hasFlow = true
 		r.flowType = flowSlideDeck
 		r.flowMotion = m
+	}
+}
+
+// AutoRotate stacks up to AutoRotateLayers children as full-bleed layers and
+// cross-fades between them forever, driven purely by a shared @keyframes
+// rule and a per-child animation-delay staggered by DOM position — no state
+// to manage, no JS, no scroller. It is the unattended counterpart of
+// SlideDeck: SlideDeck changes panel because something set widget.Current,
+// AutoRotate changes layer because time passed.
+//
+// The stagger is expressed as :nth-child selectors, not as a parameter: like
+// every other rule in this package, AutoRotate runs on a zero-value receiver
+// when the stylesheet is built (see the package doc), so it cannot read how
+// many children a real instance renders. It always choreographs exactly
+// AutoRotateLayers slots; a caller with fewer real images must tile them
+// across all slots (see AutoRotateLayers) so no slot's turn goes dark.
+//
+// prefers-reduced-motion turns the animation off. Every layer then rests at
+// its own plain (non-animated) opacity, which this rule sets to visible only
+// for :first-child — the reduced-motion fallback is "first image, frozen",
+// automatically, with no extra markup from the caller.
+func AutoRotate() Option {
+	return func(r *rule) {
+		r.hasFlow = true
+		r.flowType = flowAutoRotate
 	}
 }
 

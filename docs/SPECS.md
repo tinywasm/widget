@@ -249,6 +249,7 @@ family's interaction state.
 | `Cover()` | `display:flex; flex-direction:column; height:100dvh` |
 | `MasterDetail(detail)` | `display:flex; flex-direction:row; flex-wrap:nowrap; direction:rtl; gap:0; overflow-x:auto; overflow-y:hidden; scroll-snap-type:x mandatory; scroll-behavior:smooth`, and `> * { flex:0 0 auto }` plus `> :nth-child(1) { direction:ltr; flex:0 0 <detail>; scroll-snap-align:end; order:2 }` plus `> :nth-child(2) { direction:ltr; flex:0 0 100%; scroll-snap-align:start; order:1 }` |
 | `SlideDeck(m)` | `position:relative; overflow:hidden`, and `> * { position:absolute; inset:0; transform:translateX(-100%); visibility:hidden; transition:transform <dur> var(--ease-in-out), visibility 0s linear <dur> }` plus `> *[data-current="true"] { transform:translateX(0); visibility:visible; transition:transform <dur> var(--ease-in-out), visibility 0s }` — `<dur>` is the `Motion`'s duration token; `MotionNone` switches without animation |
+| `AutoRotate()` | `position:relative; overflow:hidden`, and `> * { position:absolute; inset:0; opacity:0; animation:tw-auto-rotate 30s infinite }` plus `> :first-child { opacity:1 }` plus `> :nth-child(2)` through `> :nth-child(AutoRotateLayers)` each with a staggered `animation-delay`, plus the shared `@keyframes tw-auto-rotate` rule and an `@media (prefers-reduced-motion: reduce) { > * { animation:none } }` block — cross-fades children with no state and no JS. `AutoRotateLayers` (currently 6) is a fixed constant, not a parameter: like `FixedGrid`'s `--cols`, a stylesheet builder runs on a zero-value receiver and cannot read how many children a real instance renders, but unlike `--cols` this cannot be solved with an inline custom-property override either — the count changes keyframe *selector* percentages (e.g. `100/N%`), and `calc()`/`var()` are not valid there. A caller with fewer than `AutoRotateLayers` real children must tile them across all slots or unused slots go dark on their turn |
 | `Sidebar(side, width, gap)` | `display:flex; flex-wrap:wrap; gap:var(--gap)`, and `> :first-child` / `> :last-child` rail/content split based on `side` |
 
 No emitted selector may begin with `.fl-` or `.exc-`.
@@ -334,6 +335,7 @@ func Veil() Option
 func Cover() Option
 func Sidebar(side Side, width RailWidth, gap Space) Option
 func SlideDeck(m Motion) Option
+func AutoRotate() Option
 func MasterDetail(detail Size) Option
 func Drawer(side Side, size Size) Option
 ```

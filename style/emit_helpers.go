@@ -4,6 +4,7 @@ package style
 
 import (
 	"github.com/tinywasm/css"
+	"github.com/tinywasm/fmt"
 	"github.com/tinywasm/widget"
 )
 
@@ -416,6 +417,81 @@ func slideDeckCurrentDecls(m Motion) []string {
 		"visibility: visible;",
 		"transition: transform " + d + " " + css.EaseInOut.Var() + ", visibility 0s;",
 	}
+}
+
+// autoRotateStepSeconds is how long one layer holds the screen before the
+// next takes over. Not a token: tinywasm/css's duration scale (150-400ms) is
+// for UI transitions, and an unattended background rotation runs one to two
+// orders of magnitude slower than that — there is nothing in the catalog to
+// reuse here, so this is a fixed implementation constant of AutoRotate, the
+// same way slideDeckPageDecls' "0s" fallback above is.
+const autoRotateStepSeconds = 5
+
+// autoRotateCycleSeconds is the time for every layer to get exactly one
+// turn. AutoRotateLayers is fixed (see its doc comment), so this is fixed
+// too: every AutoRotate() rule in a page shares one @keyframes definition
+// and one cycle length, regardless of how many of the layers a given
+// instance's markup actually fills.
+const autoRotateCycleSeconds = autoRotateStepSeconds * AutoRotateLayers
+
+// autoRotateKeyframesName is the single @keyframes identifier every
+// AutoRotate() rule references. Keyframe names are global in CSS, not
+// scoped to a selector, and the crossfade shape below never varies, so one
+// definition — duplicated harmlessly if more than one AutoRotate part
+// appears in the same stylesheet — is simpler than inventing a per-instance
+// name.
+const autoRotateKeyframesName = "tw-auto-rotate"
+
+// autoRotateStripDecls: the container is the containing block for its
+// layered children and clips whatever a layer's transform pushes outside it.
+func autoRotateStripDecls() []string {
+	return []string{
+		"position: relative;",
+		"overflow: hidden;",
+	}
+}
+
+// autoRotateLayerDecls: every layer covers the container and starts hidden.
+// The animation is what makes each one visible in turn; a layer whose delay
+// has not elapsed yet, or whose slot has no element mounted in it, simply
+// keeps showing this resting opacity — which is why :first-child overrides
+// it below, so the reduced-motion fallback (animation: none, see the
+// prefers-reduced-motion block this rule feeds into) is never a blank layer.
+func autoRotateLayerDecls() []string {
+	return []string{
+		"position: absolute;",
+		"inset: 0;",
+		"opacity: 0;",
+		fmt.Sprintf("animation: %s %ds infinite;", autoRotateKeyframesName, autoRotateCycleSeconds),
+	}
+}
+
+// autoRotateFirstDecls: the resting (non-animated) opacity for the first
+// layer. It is redundant while the animation runs — animation always wins
+// over a plain opacity declaration on the same property — and it is the
+// entire reduced-motion fallback once the animation is switched off.
+func autoRotateFirstDecls() []string {
+	return []string{"opacity: 1;"}
+}
+
+// autoRotateDelayDecls staggers slot's turn by slot * autoRotateStepSeconds.
+// slot is the layer's 1-based DOM position (1 is :first-child, which needs
+// no delay — its turn is the animation's own 0%).
+func autoRotateDelayDecls(slot int) []string {
+	return []string{fmt.Sprintf("animation-delay: %ds;", (slot-1)*autoRotateStepSeconds)}
+}
+
+// autoRotateKeyframesCSS is the shared crossfade shape every layer plays out
+// on its own staggered clock: fully visible for the first chunk of its slot,
+// a short fade, then hidden for the rest of the cycle until its next turn.
+// The 12%/16% breakpoints are fixed because autoRotateCycleSeconds is fixed
+// — see AutoRotateLayers' doc comment for why this package cannot compute
+// them from a real image count.
+func autoRotateKeyframesCSS() string {
+	return "@keyframes " + autoRotateKeyframesName + " {\n" +
+		"  0%, 12% { opacity: 1; }\n" +
+		"  16%, 100% { opacity: 0; }\n" +
+		"}\n\n"
 }
 
 // masterDetailStripDecls lays the two panels out as a horizontal scroll-snap
