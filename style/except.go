@@ -91,6 +91,21 @@ func Hide() Option {
 	}
 }
 
+// Show puts back an element that the base rule hid. It is Hide()'s missing
+// counterpart, and it is for a STATE rule: a control that swaps one glyph for
+// another — a hamburger becoming a close cross — hides the inactive one by
+// default and shows it through When()/WhenWithin(). RevealedBy() cannot
+// express that, because it selects on the element that CARRIES the state, and
+// here the state lives on the button while what changes are its children.
+//
+// The display it restores follows the rule's own flow, exactly as RevealedBy
+// does, so revealing a Row comes back as a row and not as a block.
+func Show() Option {
+	return func(r *rule) {
+		r.shown = true
+	}
+}
+
 // StartContent packs what the element contains against its leading edge. It is
 // the counterpart of CenterContent, for the case where the same part is centred
 // in one state and aligned in another — an icon alone in a narrow rail, icon

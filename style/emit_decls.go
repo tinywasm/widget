@@ -371,6 +371,10 @@ func (r rule) Decls(layer widget.Layer) []string {
 		decls = append(decls, "display: none;")
 	}
 
+	if r.shown {
+		decls = append(decls, "display: "+displayFor(r.flowType)+";")
+	}
+
 	if r.hidden {
 		decls = append(decls, "display: none;")
 	}
@@ -472,7 +476,7 @@ func (r rule) emitsNothing(layer widget.Layer) bool {
 	if len(r.Decls(layer)) > 0 {
 		return false
 	}
-	return !r.hasFlow && !r.fill && !r.grow && !r.pushEnd && !r.scroll && !r.keepSize && !r.edgeToEdge && !r.hideOverflow && !r.hasIcon && !r.controlBox && !r.logoBox && !r.chipBox && !r.hasGlyph && !r.hasPadEdge && !r.hasPadInline && !r.startContent
+	return !r.hasFlow && !r.fill && !r.grow && !r.pushEnd && !r.scroll && !r.keepSize && !r.edgeToEdge && !r.hideOverflow && !r.hasIcon && !r.controlBox && !r.logoBox && !r.chipBox && !r.hasGlyph && !r.hasPadEdge && !r.hasPadInline && !r.startContent && !r.shown
 }
 
 func formatRule(selectors []string, decls []string) string {

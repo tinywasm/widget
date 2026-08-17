@@ -127,6 +127,7 @@ type rule struct {
 	hasRevealed   bool
 
 	hidden bool
+	shown  bool
 }
 
 type stateKey struct {
