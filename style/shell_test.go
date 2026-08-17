@@ -470,7 +470,10 @@ func TestStateSurfaceRepaintsBorderAsRing(t *testing.T) {
 	if strings.Contains(hoverRule, "border:") {
 		t.Errorf("a state rule must not emit border:, got:\n%s", hoverRule)
 	}
-	if strings.Contains(hoverRule, "outline") {
+	// "outline:" with the colon, not the bare word: the ring's colour is
+	// var(--color-outline), and matching the token NAME would flag the very
+	// declaration this test wants.
+	if strings.Contains(hoverRule, "outline:") {
 		t.Errorf("a state rule must not emit outline, got:\n%s", hoverRule)
 	}
 }

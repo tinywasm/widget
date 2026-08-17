@@ -110,6 +110,20 @@ func ControlBox() Option {
 	}
 }
 
+// LogoBox caps a media element to the shared control height, width auto to
+// preserve whatever aspect ratio the source art has. A brand mark's file —
+// often an SVG traced from artwork with no relationship to a nav row's
+// geometry — has an intrinsic size the browser will render at verbatim if
+// nothing constrains it, the same failure IconBox exists to prevent for a
+// bare <svg>. IconBox is not the fix here: it forces width equal to height,
+// and a logo is rarely square. ControlBox is not either: min-height sets a
+// floor, not the ceiling an oversized intrinsic image needs.
+func LogoBox() Option {
+	return func(r *rule) {
+		r.logoBox = true
+	}
+}
+
 // KeepSize does NOT reflow: maintains its size under any width.
 func KeepSize() Option {
 	return func(r *rule) {

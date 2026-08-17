@@ -461,6 +461,16 @@ func autoRotateLayerDecls() []string {
 	return []string{
 		"position: absolute;",
 		"inset: 0;",
+		// A rotating layer is almost always a photograph, and inset alone does
+		// not size a replaced element: an <img> with auto width/height keeps
+		// its intrinsic dimensions no matter what the four insets say, so a
+		// 1024x1368 portrait rendered in a 982x517 hero showed its top-left
+		// corner and nothing else. Sizing the box explicitly and cropping with
+		// object-fit is what "the photo fills the banner" means; on a
+		// non-replaced child (a <div> with a background) these are inert.
+		"width: 100%;",
+		"height: 100%;",
+		"object-fit: cover;",
 		"opacity: 0;",
 		fmt.Sprintf("animation: %s %ds infinite;", autoRotateKeyframesName, autoRotateCycleSeconds),
 	}

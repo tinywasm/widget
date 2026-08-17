@@ -39,6 +39,7 @@ type rule struct {
 	centerContent bool
 	startContent  bool
 	controlBox    bool
+	logoBox       bool
 	chipBox       bool
 	capitalize    bool
 
@@ -63,6 +64,7 @@ type rule struct {
 	floatingChromeGap  Space
 
 	hasAnchor  bool
+	foreground bool
 	hasFlyout  bool
 	flyoutSide Side
 

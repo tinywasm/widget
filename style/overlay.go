@@ -30,6 +30,23 @@ func Veil() Option {
 	}
 }
 
+// Foreground lifts the element above its own widget's Parent-scoped chrome
+// without taking it out of the flow. It is the counterpart of Backdrop(Parent):
+// a backdrop is pinned at the local stacking level (z-index 1, see
+// stackingFor), and an in-flow sibling sits at `auto`, which loses — so a hero
+// banner's caption vanished behind the photograph the moment the photograph
+// actually filled its box. Positioning the content at the SAME level and
+// letting DOM order decide is what puts it back on top; giving it a higher
+// number would outrank a real overlay declared later.
+//
+// Reach for it only where the widget owns both layers. Between widgets,
+// stacking is the layout's business, not a part's.
+func Foreground() Option {
+	return func(r *rule) {
+		r.foreground = true
+	}
+}
+
 // RevealedBy binds hiding/showing the element to a widget State.
 func RevealedBy(st widget.State) Option {
 	return func(r *rule) {

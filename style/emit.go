@@ -714,7 +714,17 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 				sk := stateKey{state: r.revealedBy, part: dk.part}
 				attr := sk.state.Attr()
 				stateSel := fmt.Sprintf("%s[%s=\"%s\"]", sel, attr.Key(), attr.Value())
-				devSB.WriteString(formatRule([]string{stateSel}, []string{"display: " + displayFor(r.flowType) + ";"}))
+				// The display to restore is the PART's, not the device
+				// rule's: a device rule that only says "hidden here, revealed
+				// by Open" declares no flow of its own, so reading its
+				// flowType returned the zero value and revealed a flex row as
+				// a block — the nav's links reappeared stacked one per line
+				// instead of in the row they are laid out as everywhere else.
+				reveal := r.flowType
+				if !r.hasFlow {
+					reveal = s.partRules[dk.part].flowType
+				}
+				devSB.WriteString(formatRule([]string{stateSel}, []string{"display: " + displayFor(reveal) + ";"}))
 			}
 		}
 

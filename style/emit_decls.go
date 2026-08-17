@@ -73,7 +73,16 @@ func (r rule) Decls(layer widget.Layer) []string {
 			// token: background-image paints over background-color rather
 			// than replacing it, so this costs nothing for the (default)
 			// solid case and needs no per-surface opt-in flag.
-			decls = append(decls, "background-image: var("+familyBase(r.surface).ImageVarName()+", none);")
+			//
+			// Unless the surface has no family: familyBase returns the zero
+			// Token for the derived ones (AccentWash, AccentInverse,
+			// AccentHover, Inactive), and its ImageVarName() is the bare
+			// "-image" — not a custom property name at all, since those must
+			// start with two dashes. Browsers discard it, so the bug was
+			// invisible; it was still shipping junk in every stylesheet.
+			if family := familyBase(r.surface); family.Name != "" {
+				decls = append(decls, "background-image: var("+family.ImageVarName()+", none);")
+			}
 		}
 		// edgeToEdge's border-radius: 0 lives in the primitives layer, which the
 		// widgets layer outranks — a default radius emitted here would win over
@@ -223,6 +232,11 @@ func (r rule) Decls(layer widget.Layer) []string {
 		decls = append(decls, "min-height: "+css.ControlHeight.Var()+";")
 	}
 
+	if r.logoBox {
+		decls = append(decls, "height: "+css.ControlHeight.Var()+";")
+		decls = append(decls, "width: auto;")
+	}
+
 	if r.centerContent {
 		decls = append(decls, "display: flex;")
 		decls = append(decls, "align-items: center;")
@@ -237,6 +251,15 @@ func (r rule) Decls(layer widget.Layer) []string {
 
 	if r.hasAnchor {
 		decls = append(decls, "position: relative;")
+	}
+
+	if r.foreground {
+		// z-index only applies to a positioned element, so the position comes
+		// with it. Level 1 is the local chrome level (stackingFor) — the same
+		// one a Backdrop(Parent) sits at — so DOM order decides, and content
+		// declared after the backdrop wins without outranking a real overlay.
+		decls = append(decls, "position: relative;")
+		decls = append(decls, "z-index: 1;")
 	}
 
 	if r.hasDocked {
@@ -449,7 +472,7 @@ func (r rule) emitsNothing(layer widget.Layer) bool {
 	if len(r.Decls(layer)) > 0 {
 		return false
 	}
-	return !r.hasFlow && !r.fill && !r.grow && !r.pushEnd && !r.scroll && !r.keepSize && !r.edgeToEdge && !r.hideOverflow && !r.hasIcon && !r.controlBox && !r.chipBox && !r.hasGlyph && !r.hasPadEdge && !r.hasPadInline && !r.startContent
+	return !r.hasFlow && !r.fill && !r.grow && !r.pushEnd && !r.scroll && !r.keepSize && !r.edgeToEdge && !r.hideOverflow && !r.hasIcon && !r.controlBox && !r.logoBox && !r.chipBox && !r.hasGlyph && !r.hasPadEdge && !r.hasPadInline && !r.startContent
 }
 
 func formatRule(selectors []string, decls []string) string {
