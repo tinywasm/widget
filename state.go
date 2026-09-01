@@ -98,4 +98,10 @@ const (
 	Focus
 	Press
 	Target
+	// FocusWithin is the browser's :focus-within — the element itself or any
+	// descendant holds focus. Meant for widget/style's CueAcross, where it
+	// reads as "while anything inside this region is focused": a floating
+	// control that yields whenever the user is interacting with the content
+	// it would otherwise cover.
+	FocusWithin
 )

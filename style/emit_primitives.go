@@ -1,0 +1,339 @@
+//go:build !wasm
+
+package style
+
+import (
+	"github.com/tinywasm/fmt"
+	"github.com/tinywasm/widget"
+)
+
+// emitPrimitives renders `@layer primitives` — the layout half of the sheet:
+// every flow (Stack/Row/Split/Grid/Sidebar/SlideDeck/MasterDetail/AutoRotate…)
+// and every boolean layout flag (Fill/Grow/Scroll/KeepSize/EdgeToEdge…),
+// grouped so parts that ask for the same thing share one rule. It also emits
+// the AutoRotate @keyframes that follow the layer.
+//
+// It returns the AutoRotate selectors: emit_motion.go needs them to add an
+// `animation: none` reduced-motion rule, and only this pass knows which parts
+// used the flow.
+func (s *Sheet) emitPrimitives(sb *fmt.Conv, parts []widget.Part) (autoRotateSels []string) {
+	var stackSel, rowSel, splitSel, gridSel, fixedGridSel, centerSel, fillCenteredSel, scrollRowSel, mediaBoxSel []string
+	var coverSels []string
+
+	type sidebarInfo struct {
+		sel  string
+		side Side
+	}
+	var sidebarInfos []sidebarInfo
+
+	type masterDetailInfo struct {
+		sel    string
+		detail Size
+	}
+	var masterDetailInfos []masterDetailInfo
+
+	type slideDeckInfo struct {
+		sel    string
+		motion Motion
+	}
+	var slideDeckInfos []slideDeckInfo
+
+	var fillSel, growSel, pushEndSel, scrollSel, keepSizeSel, edgeToEdgeSel, hideOverflowSel []string
+
+	type scrollGutterInfo struct {
+		sel    string
+		gutter Space
+	}
+	var scrollGutterInfos []scrollGutterInfo
+
+	collect := func(r rule, sel string) {
+		if r.hasFlow {
+			switch r.flowType {
+			case flowStack:
+				stackSel = append(stackSel, sel)
+			case flowRow:
+				rowSel = append(rowSel, sel)
+			case flowSplit:
+				splitSel = append(splitSel, sel)
+			case flowGrid:
+				gridSel = append(gridSel, sel)
+			case flowFixedGrid:
+				fixedGridSel = append(fixedGridSel, sel)
+			case flowCenter:
+				centerSel = append(centerSel, sel)
+			case flowFillCentered:
+				fillCenteredSel = append(fillCenteredSel, sel)
+			case flowScrollRow:
+				scrollRowSel = append(scrollRowSel, sel)
+			case flowMediaBox:
+				mediaBoxSel = append(mediaBoxSel, sel)
+			case flowCover:
+				coverSels = append(coverSels, sel)
+			case flowSidebar:
+				sidebarInfos = append(sidebarInfos, sidebarInfo{sel: sel, side: r.flowSide})
+			case flowSlideDeck:
+				slideDeckInfos = append(slideDeckInfos, slideDeckInfo{sel: sel, motion: r.flowMotion})
+			case flowAutoRotate:
+				autoRotateSels = append(autoRotateSels, sel)
+			case flowMasterDetail:
+				masterDetailInfos = append(masterDetailInfos, masterDetailInfo{sel: sel, detail: r.flowDetail})
+			}
+		}
+		if r.fill {
+			fillSel = append(fillSel, sel)
+		}
+		if r.grow {
+			growSel = append(growSel, sel)
+		}
+		if r.pushEnd {
+			pushEndSel = append(pushEndSel, sel)
+		}
+		if r.scroll {
+			if r.hasScrollGutter {
+				scrollGutterInfos = append(scrollGutterInfos, scrollGutterInfo{sel: sel, gutter: r.scrollGutter})
+			} else {
+				scrollSel = append(scrollSel, sel)
+			}
+		}
+		if r.keepSize {
+			keepSizeSel = append(keepSizeSel, sel)
+		}
+		if r.edgeToEdge {
+			edgeToEdgeSel = append(edgeToEdgeSel, sel)
+		}
+		if r.hideOverflow {
+			hideOverflowSel = append(hideOverflowSel, sel)
+		}
+	}
+
+	collect(s.rootRule, selectorOf(s.widget.WidgetName(), ""))
+	for _, p := range parts {
+		collect(s.partRules[p], selectorOf(s.widget.WidgetName(), p))
+	}
+
+	primitivesSB := fmt.GetConv()
+	defer primitivesSB.PutConv()
+
+	emitPrimitive := func(extraSel []string, decls []string) {
+		if len(extraSel) > 0 {
+			primitivesSB.WriteString(formatRule(extraSel, decls))
+		}
+	}
+
+	// gap on the container, not margin-block-start on the children: a child rule
+	// reading var(--gap) resolves it against the CHILD, so any child that is
+	// itself a flow container declares its own --gap and silently replaces the
+	// separation its parent asked for. A child whose gap is SpaceNone collapses
+	// the parent's spacing to zero. On the container the variable resolves where
+	// it was declared.
+	emitPrimitive(stackSel, []string{
+		"display: flex;",
+		"flex-direction: column;",
+		"gap: var(--gap);",
+		"min-height: 0;",
+	})
+
+	emitPrimitive(rowSel, []string{
+		"display: flex;",
+		"flex-wrap: wrap;",
+		"gap: var(--gap);",
+		"align-items: center;",
+	})
+
+	emitPrimitive(splitSel, []string{
+		"display: flex;",
+		"flex-wrap: wrap;",
+		"gap: var(--gap);",
+	})
+	if len(splitSel) > 0 {
+		var splitKids []string
+		var splitFirst []string
+		for _, sel := range splitSel {
+			splitKids = append(splitKids, sel+" > *")
+			splitFirst = append(splitFirst, sel+" > :first-child")
+		}
+		emitPrimitive(splitKids, []string{
+			"flex-grow: 1;",
+			"flex-basis: calc((40rem - 100%) * 999);",
+		})
+		emitPrimitive(splitFirst, []string{
+			"flex-grow: var(--ratio);",
+		})
+	}
+
+	emitPrimitive(gridSel, []string{
+		"display: grid;",
+		"gap: var(--gap);",
+		"grid-template-columns: repeat(auto-fit, minmax(min(var(--track), 100%), 1fr));",
+	})
+
+	emitPrimitive(fixedGridSel, []string{
+		"display: grid;",
+		"gap: var(--gap);",
+		"grid-template-columns: repeat(var(--cols), minmax(0, 1fr));",
+	})
+
+	emitPrimitive(centerSel, []string{
+		"margin-inline: auto;",
+		"max-width: var(--max-width);",
+		"width: 100%;",
+	})
+
+	emitPrimitive(fillCenteredSel, []string{
+		"display: grid;",
+		"place-items: center;",
+		"min-height: 100%;",
+		"width: 100%;",
+	})
+
+	emitPrimitive(scrollRowSel, []string{
+		"display: flex;",
+		"gap: var(--gap);",
+		"overflow-x: auto;",
+		"scroll-snap-type: x mandatory;",
+		"scroll-behavior: smooth;",
+	})
+	if len(scrollRowSel) > 0 {
+		var scrollRowKids []string
+		for _, sel := range scrollRowSel {
+			scrollRowKids = append(scrollRowKids, sel+" > *")
+		}
+		emitPrimitive(scrollRowKids, []string{
+			"scroll-snap-align: start;",
+			"flex: 0 0 auto;",
+		})
+	}
+
+	emitPrimitive(mediaBoxSel, []string{
+		"aspect-ratio: var(--ratio);",
+		"overflow: hidden;",
+		"display: flex;",
+		"justify-content: center;",
+		"align-items: center;",
+	})
+	if len(mediaBoxSel) > 0 {
+		var mediaBoxKids []string
+		for _, sel := range mediaBoxSel {
+			mediaBoxKids = append(mediaBoxKids, sel+" > img", sel+" > video")
+		}
+		emitPrimitive(mediaBoxKids, []string{
+			"width: 100%;",
+			"height: 100%;",
+			"object-fit: cover;",
+		})
+	}
+
+	emitPrimitive(coverSels, []string{
+		"height: 100dvh;",
+		"display: flex;",
+		"flex-direction: column;",
+	})
+
+	for _, si := range sidebarInfos {
+		emitPrimitive([]string{si.sel}, []string{
+			"display: flex;",
+			"flex-wrap: wrap;",
+			"gap: var(--gap);",
+		})
+		emitPrimitive([]string{sidebarRailSel(si.sel, si.side)}, []string{
+			"flex-basis: var(--rail);",
+			"flex-grow: 1;",
+		})
+		emitPrimitive([]string{sidebarContentSel(si.sel, si.side)}, []string{
+			"flex-basis: 0;",
+			"flex-grow: 999;",
+			"min-width: 50%;",
+		})
+	}
+
+	for _, sd := range slideDeckInfos {
+		emitPrimitive([]string{sd.sel}, slideDeckStripDecls())
+		emitPrimitive([]string{sd.sel + " > *"}, slideDeckPageDecls(sd.motion))
+		cur := widget.Current.Attr()
+		emitPrimitive(
+			[]string{sd.sel + ` > *[` + cur.Key() + `="` + cur.Value() + `"]`},
+			slideDeckCurrentDecls(sd.motion))
+	}
+
+	if len(autoRotateSels) > 0 {
+		emitPrimitive(autoRotateSels, autoRotateStripDecls())
+
+		var kids, firsts []string
+		for _, sel := range autoRotateSels {
+			kids = append(kids, sel+" > *")
+			firsts = append(firsts, sel+" > :first-child")
+		}
+		emitPrimitive(kids, autoRotateLayerDecls())
+		emitPrimitive(firsts, autoRotateFirstDecls())
+
+		for slot := 2; slot <= AutoRotateLayers; slot++ {
+			var nths []string
+			for _, sel := range autoRotateSels {
+				nths = append(nths, fmt.Sprintf("%s > :nth-child(%d)", sel, slot))
+			}
+			emitPrimitive(nths, autoRotateDelayDecls(slot))
+		}
+	}
+
+	for _, mi := range masterDetailInfos {
+		emitPrimitive([]string{mi.sel}, masterDetailStripDecls())
+		emitPrimitive([]string{mi.sel + " > *"}, masterDetailResetDecls())
+		emitPrimitive([]string{mi.sel + " > :nth-child(1)"}, masterDetailDetailDecls(mi.detail))
+		emitPrimitive([]string{mi.sel + " > :nth-child(2)"}, masterDetailMasterDecls())
+	}
+
+	emitPrimitive(fillSel, []string{
+		"height: 100%;",
+		"min-height: 0;",
+		"flex-grow: 1;",
+	})
+	emitPrimitive(growSel, []string{
+		"flex-grow: 1;",
+		"min-width: 0;",
+	})
+	emitPrimitive(pushEndSel, []string{
+		"margin-inline-start: auto;",
+	})
+	emitPrimitive(scrollSel, append([]string{
+		"overflow-y: auto;",
+		"height: 100%;",
+		"min-height: 0;",
+		"flex-grow: 1;",
+	}, floatingPadDecls()...))
+	// One rule per gutter value rather than a shared bucket: unlike the plain
+	// scrollSel above, these carry a value (the gutter) baked straight into
+	// the calc, so two parts asking for a different Space could not share one
+	// rule body. In practice this is a handful of selectors ecosystem-wide.
+	for _, gi := range scrollGutterInfos {
+		emitPrimitive([]string{gi.sel}, append([]string{
+			"overflow-y: auto;",
+			"height: 100%;",
+			"min-height: 0;",
+			"flex-grow: 1;",
+		}, floatingPadDeclsWithGutter(gi.gutter)...))
+	}
+	emitPrimitive(keepSizeSel, []string{
+		"flex-shrink: 0;",
+		"flex-grow: 0;",
+	})
+	emitPrimitive(edgeToEdgeSel, []string{
+		"margin: 0;",
+		"border-radius: 0;",
+	})
+	emitPrimitive(hideOverflowSel, []string{
+		"overflow: hidden;",
+	})
+
+	prims := primitivesSB.GetString(fmt.BuffOut)
+	if len(prims) > 0 {
+		sb.WriteString("@layer primitives {\n")
+		sb.WriteString(prims)
+		sb.WriteString("}\n\n")
+	}
+
+	if len(autoRotateSels) > 0 {
+		sb.WriteString(autoRotateKeyframesCSS())
+	}
+
+	return autoRotateSels
+}

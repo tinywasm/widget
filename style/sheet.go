@@ -169,6 +169,29 @@ type stateWithinKey struct {
 	part      widget.Part
 }
 
+// cueAcrossKey addresses a part through a cue on some REGION, with no assumed
+// DOM relationship between them: it is checked from the root with :has(), so
+// the region and the part may sit anywhere. The escape hatch for the cases
+// cueWithinKey (descendant) cannot reach — floating chrome that yields while
+// the module content region has focus within it, wherever each lives in the
+// tree.
+type cueAcrossKey struct {
+	cue    widget.Cue
+	region widget.Part
+	part   widget.Part
+}
+
+// stateAcrossKey is the written-state counterpart of cueAcrossKey: it fires
+// while the region CONTAINS an element carrying the state
+// (`.n:has(.n__region [data-x="true"]) .n__part`), for a state a module sets
+// deep inside the content region — a record being edited — that the same
+// floating chrome must also yield to.
+type stateAcrossKey struct {
+	state  widget.State
+	region widget.Part
+	part   widget.Part
+}
+
 type deviceKey struct {
 	device css.Device
 	part   widget.Part
@@ -184,6 +207,8 @@ type Sheet struct {
 	cueRules       map[cueKey]rule
 	cueWithin      map[cueWithinKey]rule
 	cueWithinHover map[cueWithinKey]rule
+	cueAcross     map[cueAcrossKey]rule
+	stateAcross    map[stateAcrossKey]rule
 	deviceRules    map[deviceKey]rule
 
 	// within records the part tree: which part renders inside which. The
@@ -203,6 +228,8 @@ func For(w widget.Widget) *Sheet {
 		cueRules:       make(map[cueKey]rule),
 		cueWithin:      make(map[cueWithinKey]rule),
 		cueWithinHover: make(map[cueWithinKey]rule),
+		cueAcross:     make(map[cueAcrossKey]rule),
+		stateAcross:    make(map[stateAcrossKey]rule),
 		deviceRules:    make(map[deviceKey]rule),
 		within:         make(map[widget.Part]widget.Part),
 	}
@@ -319,6 +346,46 @@ func (s *Sheet) CueWithinHover(c widget.Cue, container, p widget.Part, opts ...O
 	}
 	r.overlay = true
 	s.cueWithinHover[key] = r
+	return s
+}
+
+// CueAcross styles a part while some REGION part carries a browser cue, with NO
+// assumed DOM relationship between them — emitted as
+// `.n:has(.n__region:cue) .n__part`, checked from the widget root via :has().
+//
+// It is the escape hatch for what CueWithin (strict descendant) cannot express:
+// floating chrome that has to yield while the module content region has focus
+// within it, when the chrome and the region sit in unrelated branches of the
+// tree. Reach for Cue() or CueWithin() first; this one carries a :has() on the
+// root, re-evaluated on every matching state change.
+//
+// Pair widget.FocusWithin as the cue to mean "while anything inside region is
+// focused".
+func (s *Sheet) CueAcross(c widget.Cue, region, part widget.Part, opts ...Option) *Sheet {
+	key := cueAcrossKey{cue: c, region: region, part: part}
+	r := s.cueAcross[key]
+	for _, opt := range opts {
+		opt(&r)
+	}
+	r.overlay = true
+	s.cueAcross[key] = r
+	return s
+}
+
+// StateAcross is CueAcross for a WRITTEN state: it styles part while region
+// CONTAINS an element carrying state — `.n:has(.n__region [data-x="true"])
+// .n__part`. Use it for a state a module writes deep inside the content region
+// that the chrome must also react to — the mobile hamburger staying hidden
+// while a record is being edited (crudview's action button sits at
+// widget.Open then), not only while a field has focus.
+func (s *Sheet) StateAcross(st widget.State, region, part widget.Part, opts ...Option) *Sheet {
+	key := stateAcrossKey{state: st, region: region, part: part}
+	r := s.stateAcross[key]
+	for _, opt := range opts {
+		opt(&r)
+	}
+	r.overlay = true
+	s.stateAcross[key] = r
 	return s
 }
 

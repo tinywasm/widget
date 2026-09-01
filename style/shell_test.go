@@ -296,6 +296,81 @@ func TestCueWithinReachesADescendant(t *testing.T) {
 	}
 }
 
+func TestCueAcrossSpansAnArbitraryRelationship(t *testing.T) {
+	// The escape hatch for what CueWithin cannot reach: a part reacting to a
+	// cue on a region that is NOT its ancestor. Checked from the root via
+	// :has(). Here: floating chrome hidden while the content region has focus
+	// within it — and it must OUTRANK a RevealedBy reveal on the same part,
+	// which the device path emits unlayered, so CueAcross is emitted unlayered
+	// too (after the states layer closes).
+	w := testWidget{name: "pd", kind: widget.Menu}
+	s := style.For(w).
+		Part("panel", style.Scroll()).
+		Part("chrome", style.Raise(style.Floating), style.RevealedBy(widget.Open)).
+		CueAcross(widget.FocusWithin, "panel", "chrome", style.Hide()).
+		Stylesheet().String()
+
+	yield := strings.Index(s, ".pd:has(.pd__panel:focus-within) .pd__chrome")
+	if yield < 0 {
+		t.Fatalf("expected the :has()-from-root selector, got:\n%s", s)
+	}
+	if !strings.Contains(s[yield:], "display: none;") {
+		t.Errorf("expected Hide() to emit display:none, got:\n%s", s[yield:])
+	}
+	// The RevealedBy reveal is emitted unlayered; the yield rule must come
+	// AFTER it in source order (and be more specific) so it wins the cascade.
+	reveal := strings.Index(s, `.pd__chrome[data-open="true"]`)
+	if reveal < 0 {
+		t.Fatalf("expected the RevealedBy reveal rule, got:\n%s", s)
+	}
+	if yield < reveal {
+		t.Errorf("CueAcross must be emitted AFTER the RevealedBy reveal so it overrides it; got yield@%d reveal@%d\n%s", yield, reveal, s)
+	}
+	// Not swallowed by a layer: no unclosed "@layer" between the last one and
+	// the yield selector.
+	tail := s[:yield]
+	if la := strings.LastIndex(tail, "@layer "); la >= 0 && strings.Count(tail[la:], "{") > strings.Count(tail[la:], "}") {
+		t.Errorf("the CueAcross rule must be unlayered, but sits inside an open @layer block:\n%s", s)
+	}
+}
+
+func TestCueAcrossRejectsSameParts(t *testing.T) {
+	w := testWidget{name: "pd", kind: widget.Menu}
+	sheet := style.For(w).
+		Part("panel", style.Scroll()).
+		CueAcross(widget.FocusWithin, "panel", "panel", style.Hide())
+	errs := sheet.Validate()
+	if len(errs) == 0 {
+		t.Fatal("expected CueAcross with region == part to be rejected")
+	}
+}
+
+func TestStateAcrossProbesForADescendantState(t *testing.T) {
+	// StateAcross is CueAcross for a WRITTEN state: the chrome yields while the
+	// region CONTAINS an element carrying the state, deep inside — a record
+	// being edited, not only a field with focus.
+	w := testWidget{name: "pd", kind: widget.Menu}
+	s := style.For(w).
+		Part("panel", style.Scroll()).
+		Part("chrome", style.Raise(style.Floating), style.RevealedBy(widget.Open)).
+		StateAcross(widget.Open, "panel", "chrome", style.Hide()).
+		Stylesheet().String()
+
+	want := `.pd:has(.pd__panel [data-open="true"]) .pd__chrome`
+	i := strings.Index(s, want)
+	if i < 0 {
+		t.Fatalf("expected the :has()-descendant-state selector %q, got:\n%s", want, s)
+	}
+	if !strings.Contains(s[i:], "display: none;") {
+		t.Errorf("expected Hide() in the StateAcross rule, got:\n%s", s[i:])
+	}
+	// Unlayered and after the RevealedBy reveal, same as CueAcross.
+	reveal := strings.Index(s, `.pd__chrome[data-open="true"]`)
+	if reveal >= 0 && i < reveal {
+		t.Errorf("StateAcross must come AFTER the RevealedBy reveal to override it\n%s", s)
+	}
+}
+
 func TestCueWithinHoverScopesToFinePointer(t *testing.T) {
 	// CueWithinHover is the same descendant selector as CueWithin, gated on
 	// the fine-pointer capability: a touch tap fires :hover but never

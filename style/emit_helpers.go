@@ -25,6 +25,8 @@ func cuePseudo(c widget.Cue) string {
 		return ":active"
 	case widget.Target:
 		return ":target"
+	case widget.FocusWithin:
+		return ":focus-within"
 	default:
 		return ""
 	}

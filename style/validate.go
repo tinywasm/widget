@@ -79,6 +79,45 @@ func (s *Sheet) Validate() []error {
 	for k := range s.cueWithinHover {
 		checkCueWithin("CueWithinHover", k)
 	}
+	// A :has()-spanned rule styles nothing unless both ends exist somewhere in
+	// the sheet (a part styled ONLY on one device — the mobile hamburger — is
+	// still a real part), and both being the same means Cue()/When() was meant.
+	declared := func(p widget.Part) bool {
+		if p == "" {
+			return true
+		}
+		if _, ok := s.partRules[p]; ok {
+			return true
+		}
+		for k := range s.deviceRules {
+			if k.part == p {
+				return true
+			}
+		}
+		return false
+	}
+	for k := range s.cueAcross {
+		if !declared(k.region) {
+			errs = append(errs, fmt.Errf("sheet %s: CueAcross region %q is not a declared part", string(s.widget.WidgetName()), string(k.region)))
+		}
+		if !declared(k.part) {
+			errs = append(errs, fmt.Errf("sheet %s: CueAcross part %q is not a declared part", string(s.widget.WidgetName()), string(k.part)))
+		}
+		if k.region == k.part {
+			errs = append(errs, fmt.Errf("sheet %s: CueAcross region and part are both %q; use Cue()", string(s.widget.WidgetName()), string(k.part)))
+		}
+	}
+	for k := range s.stateAcross {
+		if !declared(k.region) {
+			errs = append(errs, fmt.Errf("sheet %s: StateAcross region %q is not a declared part", string(s.widget.WidgetName()), string(k.region)))
+		}
+		if !declared(k.part) {
+			errs = append(errs, fmt.Errf("sheet %s: StateAcross part %q is not a declared part", string(s.widget.WidgetName()), string(k.part)))
+		}
+		if k.region == k.part {
+			errs = append(errs, fmt.Errf("sheet %s: StateAcross region and part are both %q; use When()", string(s.widget.WidgetName()), string(k.part)))
+		}
+	}
 
 	// Within() declares the part tree — which part renders inside which —
 	// and the sheet reasons about positioning from it: a Flyout's
