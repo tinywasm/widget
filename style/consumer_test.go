@@ -322,7 +322,7 @@ func TestNoInventedValues(t *testing.T) {
 		Part("item9", style.Row(style.SpaceNone), style.Interactive(style.Inset)).
 		Part("item10", style.Cover()).
 		Part("item11", style.Sidebar(style.SideEnd, style.RailNarrow, style.SpaceNone)).
-		Part("item12", style.Drawer(style.SideEnd, style.TwoThirds), style.RevealedBy(widget.Open)).
+		Part("item12", style.Drawer(style.SideEnd, style.TwoThirds, style.MotionSlow), style.RevealedBy(widget.Open)).
 		Part("item13", style.IconBox(style.IconSm)).
 		Part("item14", style.IconBox(style.IconMd)).
 		Part("item15", style.IconBox(style.IconLg)).
@@ -625,6 +625,51 @@ func TestSurfaceCarriesShape(t *testing.T) {
 	s2 := style.For(wd).Root(style.As(style.Panel), style.Round(style.RadiusNone)).Stylesheet().String()
 	if strings.Contains(s2, "border-radius: var(--radius-md") {
 		t.Errorf("expected Round(RadiusNone) to override Panel's default radius, got:\n%s", s2)
+	}
+}
+
+func TestDerivedSurfaceAssertsNoBackgroundImage(t *testing.T) {
+	// A family surface emits its `--x-image` companion so css.SetGradient can
+	// reach it. A DERIVED surface (AccentWash/AccentInverse/AccentHover — no
+	// family token) has no image of its own, but must still emit
+	// `background-image: none` so a lower-layer family image cannot bleed
+	// through: a nav item filled As(Primary) in @layer widgets and overridden
+	// As(AccentInverse) in @layer states would otherwise keep the widgets-layer
+	// `background-image: var(--color-primary-image, none)` — under SetGradient,
+	// the gradient painting over the amber "current" fill.
+	wd := &testWidget{name: "w", kind: widget.Region}
+
+	for _, s := range []style.Surface{style.AccentWash, style.AccentInverse, style.AccentHover} {
+		out := style.For(wd).Root(style.As(s)).Stylesheet().String()
+		if !strings.Contains(out, "background-image: none;") {
+			t.Errorf("As(%s) must emit `background-image: none;`, got:\n%s", s, out)
+		}
+		if strings.Contains(out, "background-image: var(") {
+			t.Errorf("As(%s) is derived and must not emit a family background-image var, got:\n%s", s, out)
+		}
+	}
+
+	fam := style.For(wd).Root(style.As(style.Primary)).Stylesheet().String()
+	if !strings.Contains(fam, "background-image: var(--color-primary-image, none);") {
+		t.Errorf("As(Primary) must still emit its family image companion, got:\n%s", fam)
+	}
+}
+
+func TestDividerBelowEmitsBlockEndHairline(t *testing.T) {
+	// DividerBelow is the block-end counterpart of Divider(side): a hairline
+	// under a row (a drawer nav item) with no Surface of its own. Like the
+	// other primitive flags it emits in device/state/cue rules (the base path
+	// groups those flags into shared selectors instead).
+	wd := &testWidget{name: "w", kind: widget.Region}
+	out := style.For(wd).
+		Root(style.Stack(style.Space1)).
+		On(css.Mobile, widget.Part("item"), style.Row(style.Space1), style.DividerBelow()).
+		Stylesheet().String()
+	if !strings.Contains(out, "border-block-end: 1px solid ") {
+		t.Errorf("DividerBelow must emit a border-block-end hairline, got:\n%s", out)
+	}
+	if strings.Contains(out, "border-inline-end: 1px solid ") || strings.Contains(out, "border-inline-start: 1px solid ") {
+		t.Errorf("DividerBelow must not touch the inline edges, got:\n%s", out)
 	}
 }
 

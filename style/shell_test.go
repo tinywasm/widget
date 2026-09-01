@@ -716,7 +716,7 @@ func TestSidebarRailUsesToken(t *testing.T) {
 func TestDrawerAnchorsToEdge(t *testing.T) {
 	w := testWidget{name: "w", kind: widget.Region}
 	s := style.For(w).
-		Root(style.Drawer(style.SideEnd, style.TwoThirds), style.RevealedBy(widget.Open)).
+		Root(style.Drawer(style.SideEnd, style.TwoThirds, style.MotionSlow), style.RevealedBy(widget.Open)).
 		Stylesheet().String()
 
 	if !strings.Contains(s, "position: fixed;") {
@@ -733,6 +733,53 @@ func TestDrawerAnchorsToEdge(t *testing.T) {
 	}
 	if !strings.Contains(s, "z-index: var(--z-base") {
 		t.Errorf("expected Drawer on Region to emit z-index matching layer:\n%s", s)
+	}
+
+	// The drawer rests parked on a transform (never display:none), so the
+	// RevealedBy can transition it in AND out — the exit is choreographed.
+	if strings.Contains(s, "display: none;") {
+		t.Errorf("a Drawer must not use display:none — it parks on a transform so it can transition:\n%s", s)
+	}
+	if !strings.Contains(s, "transform: translateX(100%);") {
+		t.Errorf("expected Drawer(SideEnd) to park at translateX(100%%):\n%s", s)
+	}
+	if !strings.Contains(s, "visibility: hidden;") {
+		t.Errorf("expected the parked drawer to be visibility: hidden:\n%s", s)
+	}
+	if !strings.Contains(s, "transition: transform var(--duration-slow") {
+		t.Errorf("expected the parked drawer to carry the slide transition:\n%s", s)
+	}
+	// The RevealedBy state is the "arrived" slide — same transition, so close
+	// animates too — never a bare display flip.
+	if !strings.Contains(s, "[data-open=\"true\"] {\n  transform: translateX(0);") {
+		t.Errorf("expected RevealedBy to emit the arrived slide state, not display:\n%s", s)
+	}
+	if strings.Contains(s, "[data-open=\"true\"] {\n  display:") {
+		t.Errorf("a revealed Drawer must not restore via display — it slides:\n%s", s)
+	}
+	// prefers-reduced-motion silences both the parked and the arrived rule.
+	if !strings.Contains(s, "@media (prefers-reduced-motion: reduce) {") {
+		t.Errorf("expected an animated Drawer to register for reduced-motion:\n%s", s)
+	}
+}
+
+// TestDrawerMotionNoneParksWithoutAnimation is MotionNone's contract: the
+// panel still parks on a transform (so RevealedBy stays a class swap, not a
+// display flip) but carries no transition.
+func TestDrawerMotionNoneParksWithoutAnimation(t *testing.T) {
+	w := testWidget{name: "w", kind: widget.Region}
+	s := style.For(w).
+		Root(style.Drawer(style.SideStart, style.TwoThirds, style.MotionNone), style.RevealedBy(widget.Open)).
+		Stylesheet().String()
+
+	if !strings.Contains(s, "transform: translateX(-100%);") {
+		t.Errorf("expected Drawer(SideStart) to park at translateX(-100%%):\n%s", s)
+	}
+	if strings.Contains(s, "transition: transform") {
+		t.Errorf("MotionNone Drawer must emit no transition:\n%s", s)
+	}
+	if strings.Contains(s, "display: none;") {
+		t.Errorf("even a MotionNone Drawer parks on a transform, not display:none:\n%s", s)
 	}
 }
 
@@ -827,7 +874,7 @@ func TestStateAttrsListsEveryRevealedBy(t *testing.T) {
 func TestValidateDrawerWithoutRevealedBy(t *testing.T) {
 	w := testWidget{name: "w", kind: widget.Region}
 	sheet := style.For(w).
-		Part("panel", style.Drawer(style.SideEnd, style.TwoThirds))
+		Part("panel", style.Drawer(style.SideEnd, style.TwoThirds, style.MotionNone))
 
 	errs := sheet.Validate()
 	if len(errs) == 0 {
@@ -865,12 +912,42 @@ func TestPrimarySurface_GradientHookIsInertByDefaultAndLiveWhenSet(t *testing.T)
 	}
 }
 
+// TestGradientAngle_RepaintsFamilyGradientPerSurface: GradientAngle on an
+// As(<family>) surface adds a second background-image that re-angles the theme
+// gradient using the app's own stops (css ImageStopsVarName), emitted AFTER the
+// plain hook so it wins when the app set a gradient and is silently ignored
+// (invalid) when it did not.
+func TestGradientAngle_RepaintsFamilyGradientPerSurface(t *testing.T) {
+	w := testWidget{name: "w", kind: widget.Region}
+	s := style.For(w).Part("rail", style.As(style.Primary), style.GradientAngle("315deg")).Stylesheet().String()
+
+	// plain hook still there...
+	if !strings.Contains(s, "background-image: var(--color-primary-image, none);") {
+		t.Errorf("GradientAngle must not remove the inert family hook, got:\n%s", s)
+	}
+	// ...and the re-angled override comes AFTER it, referencing the stops.
+	iHook := strings.Index(s, "background-image: var(--color-primary-image, none);")
+	iAngle := strings.Index(s, "background-image: linear-gradient(315deg, var(--color-primary-image-stops));")
+	if iAngle == -1 {
+		t.Fatalf("GradientAngle must emit the re-angled override referencing --color-primary-image-stops, got:\n%s", s)
+	}
+	if iAngle < iHook {
+		t.Errorf("the re-angled override must come AFTER the plain hook (fallback order), got:\n%s", s)
+	}
+
+	// A derived surface has no family gradient — GradientAngle is a no-op there.
+	d := style.For(w).Part("x", style.As(style.AccentInverse), style.GradientAngle("315deg")).Stylesheet().String()
+	if strings.Contains(d, "linear-gradient(315deg") {
+		t.Errorf("GradientAngle on a derived surface must be a no-op, got:\n%s", d)
+	}
+}
+
 func TestEmissionDeterministic(t *testing.T) {
 	w := testWidget{name: "w", kind: widget.Region}
 	sheet := style.For(w).
 		Root(style.Cover()).
 		Part("sidebar", style.Sidebar(style.SideEnd, style.RailNarrow, style.SpaceNone)).
-		Part("drawer", style.Drawer(style.SideEnd, style.TwoThirds), style.RevealedBy(widget.Open)).
+		Part("drawer", style.Drawer(style.SideEnd, style.TwoThirds, style.MotionSlow), style.RevealedBy(widget.Open)).
 		On(css.Mobile, "drawer", style.Stack(style.Space2))
 
 	css1 := sheet.Stylesheet().String()

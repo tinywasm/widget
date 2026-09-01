@@ -288,6 +288,22 @@ func As(s Surface) Option {
 	}
 }
 
+// GradientAngle repaints THIS surface's theme gradient at its own angle,
+// reusing the app's colour stops (css.SetGradient publishes them as the
+// family's ImageStopsVarName()). Every As(<family>) surface otherwise
+// re-origins the one baked-in direction over its own box; a rail that wants
+// the light end where it meets a panel's light end can flip just itself with
+// GradientAngle("315deg"). Requires As() of a family surface (Primary,
+// Accent, Panel, …); a no-op on a derived surface. Inert until the app calls
+// css.SetGradient — the override references an unset custom property and is
+// ignored, so the plain solid/gradient hook still applies.
+func GradientAngle(angle string) Option {
+	return func(r *rule) {
+		r.hasGradientAngle = true
+		r.gradientAngle = angle
+	}
+}
+
 // FontSize sets the text size.
 func FontSize(ts TextSize) Option {
 	return func(r *rule) {
@@ -322,5 +338,16 @@ func Divider(side Side) Option {
 	return func(r *rule) {
 		r.hasDivider = true
 		r.dividerSide = side
+	}
+}
+
+// DividerBelow draws the same hairline rule as Divider, on the block-end
+// (bottom) edge instead of an inline side. It is for a row in a stack that
+// wants a visible seam under it — a navigation item in a drawer, a list row —
+// without the row carrying a Surface of its own. Like Divider it is
+// independent of As() and uses the outline colour.
+func DividerBelow() Option {
+	return func(r *rule) {
+		r.hasDividerBelow = true
 	}
 }

@@ -434,6 +434,18 @@ func slideDeckCurrentDecls(m Motion) []string {
 	}
 }
 
+// drawerRevealDecls is the "arrived" state a RevealedBy applies to a Drawer:
+// the same shape as slideDeckCurrentDecls, so a drawer's entry and exit share
+// one transition instead of the exit being a discrete display flip. MotionNone
+// drops the transition (snap into place, still no display toggle).
+func drawerRevealDecls(m Motion) []string {
+	d := []string{"transform: translateX(0);", "visibility: visible;"}
+	if m != MotionNone {
+		d = append(d, "transition: transform "+motionDurationVar(m)+" "+css.EaseInOut.Var()+", visibility 0s;")
+	}
+	return d
+}
+
 // autoRotateStepSeconds is how long one layer holds the screen before the
 // next takes over. Not a token: tinywasm/css's duration scale (150-400ms) is
 // for UI transitions, and an unattended background rotation runs one to two

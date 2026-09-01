@@ -24,9 +24,10 @@ type rule struct {
 	flowMotion Motion
 	flowCols   int
 
-	hasDrawer  bool
-	drawerSide Side
-	drawerSize Size
+	hasDrawer    bool
+	drawerSide   Side
+	drawerSize   Size
+	drawerMotion Motion
 
 	hasEdgeStrip   bool
 	edgeStripScope Scope
@@ -68,8 +69,9 @@ type rule struct {
 	hasFlyout  bool
 	flyoutSide Side
 
-	hasDivider  bool
-	dividerSide Side
+	hasDivider      bool
+	dividerSide     Side
+	hasDividerBelow bool
 
 	hasSurface  bool
 	surface     Surface
@@ -94,6 +96,9 @@ type rule struct {
 
 	hasRound bool
 	round    Radius
+
+	hasGradientAngle bool
+	gradientAngle    string
 
 	hasRaise bool
 	raise    Elevation

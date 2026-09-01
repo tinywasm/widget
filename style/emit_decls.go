@@ -80,8 +80,28 @@ func (r rule) Decls(layer widget.Layer) []string {
 			// "-image" — not a custom property name at all, since those must
 			// start with two dashes. Browsers discard it, so the bug was
 			// invisible; it was still shipping junk in every stylesheet.
+			//
+			// A derived surface still emits `background-image: none`, though: it
+			// is a flat fill with no family image of its own, and a lower-layer
+			// rule's family image can otherwise bleed through. A nav item filled
+			// As(Primary) in @layer widgets and overridden As(AccentInverse) in
+			// @layer states keeps the widgets-layer `background-image:
+			// var(--color-primary-image, none)` unless the states rule sets the
+			// longhand too — under css.SetGradient that is the gradient painting
+			// over the amber "current" fill.
 			if family := familyBase(r.surface); family.Name != "" {
 				decls = append(decls, "background-image: var("+family.ImageVarName()+", none);")
+				// GradientAngle: repaint the family gradient at this surface's
+				// own angle. Emitted AFTER the line above so it wins when
+				// valid; when the app set no gradient the -image-stops var is
+				// unset, `linear-gradient(<angle>, )` is invalid, this
+				// declaration is dropped, and the `var(--x-image, none)`
+				// above still applies. Double-declaration fallback, no flag.
+				if r.hasGradientAngle {
+					decls = append(decls, "background-image: linear-gradient("+r.gradientAngle+", var("+family.ImageStopsVarName()+"));")
+				}
+			} else {
+				decls = append(decls, "background-image: none;")
 			}
 		}
 		// edgeToEdge's border-radius: 0 lives in the primitives layer, which the
@@ -202,14 +222,29 @@ func (r rule) Decls(layer widget.Layer) []string {
 	if r.hasDrawer {
 		decls = append(decls, "position: fixed;")
 		decls = append(decls, "inset-block: 0;")
+		off := "translateX(100%)" // SideEnd parks off the inline-end edge
 		if r.drawerSide == SideStart {
 			decls = append(decls, "inset-inline-start: 0;")
+			off = "translateX(-100%)"
 		} else {
 			decls = append(decls, "inset-inline-end: 0;")
 		}
 		decls = append(decls, "width: "+sizeValue(r.drawerSize)+";")
 		if z := stackingFor(r, layer); z != "" {
 			decls = append(decls, z)
+		}
+		// Parked off-screen but STILL in the layout: a transform (not
+		// display) is what RevealedBy can transition back to translateX(0),
+		// so open AND close are the same choreographed slide. visibility
+		// drops it from the tab order; on the way out it is delayed to the
+		// end of the slide (visibility 0s linear <dur>) — the SlideDeck
+		// pattern, see slideDeckPageDecls.
+		if r.hasRevealed {
+			decls = append(decls, "transform: "+off+";", "visibility: hidden;")
+			if r.drawerMotion != MotionNone {
+				d := motionDurationVar(r.drawerMotion)
+				decls = append(decls, "transition: transform "+d+" "+css.EaseInOut.Var()+", visibility 0s linear "+d+";")
+			}
 		}
 	}
 
@@ -367,7 +402,7 @@ func (r rule) Decls(layer widget.Layer) []string {
 	// display: flex, so a part with both RevealedBy and one of them must end
 	// hidden or the reveal contract silently dies. Same reason r.hidden sits
 	// last of all.
-	if r.hasRevealed {
+	if r.hasRevealed && !r.hasDrawer {
 		decls = append(decls, "display: none;")
 	}
 
@@ -472,6 +507,12 @@ func primitiveDecls(r rule) []string {
 		decls = append(decls,
 			prop+": "+borderStyle+css.ColorOutline.LightValue()+";",
 			prop+": "+borderStyle+css.ColorOutline.EnhancedVar()+";",
+		)
+	}
+	if r.hasDividerBelow {
+		decls = append(decls,
+			"border-block-end: "+borderStyle+css.ColorOutline.LightValue()+";",
+			"border-block-end: "+borderStyle+css.ColorOutline.EnhancedVar()+";",
 		)
 	}
 	return decls

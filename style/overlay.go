@@ -193,11 +193,17 @@ func FloatingChrome(edge Edge, size IconSize, gap Space) Option {
 // navigation; pair it with RevealedBy(widget.Open) to control visibility and
 // with a sibling Backdrop(Viewport)+Veil() for the dimmed page behind it.
 //
+// m is the slide motion, exactly like SlideDeck(m): the panel rests parked
+// off the inline edge (transform, not display) and RevealedBy transitions it
+// in AND back out, so the exit is choreographed instead of a hard cut. Pass
+// MotionNone to park it with no animation.
+//
 // Drawer sets the element's width. Do NOT also pass Width() — Validate rejects it.
-func Drawer(side Side, size Size) Option {
+func Drawer(side Side, size Size, m Motion) Option {
 	return func(r *rule) {
 		r.hasDrawer = true
 		r.drawerSide = side
 		r.drawerSize = size
+		r.drawerMotion = m
 	}
 }

@@ -386,13 +386,21 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 
 	if s.rootRule.hasRevealed {
 		sk := stateKey{state: s.rootRule.revealedBy, part: ""}
-		stateDecls[sk] = append(stateDecls[sk], "display: "+displayFor(s.rootRule.flowType)+";")
+		if s.rootRule.hasDrawer {
+			stateDecls[sk] = append(stateDecls[sk], drawerRevealDecls(s.rootRule.drawerMotion)...)
+		} else {
+			stateDecls[sk] = append(stateDecls[sk], "display: "+displayFor(s.rootRule.flowType)+";")
+		}
 	}
 	for _, p := range parts {
 		pr := s.partRules[p]
 		if pr.hasRevealed {
 			sk := stateKey{state: pr.revealedBy, part: p}
-			stateDecls[sk] = append(stateDecls[sk], "display: "+displayFor(pr.flowType)+";")
+			if pr.hasDrawer {
+				stateDecls[sk] = append(stateDecls[sk], drawerRevealDecls(pr.drawerMotion)...)
+			} else {
+				stateDecls[sk] = append(stateDecls[sk], "display: "+displayFor(pr.flowType)+";")
+			}
 		}
 	}
 
@@ -736,17 +744,25 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 				sk := stateKey{state: r.revealedBy, part: dk.part}
 				attr := sk.state.Attr()
 				stateSel := fmt.Sprintf("%s[%s=\"%s\"]", sel, attr.Key(), attr.Value())
-				// The display to restore is the PART's, not the device
-				// rule's: a device rule that only says "hidden here, revealed
-				// by Open" declares no flow of its own, so reading its
-				// flowType returned the zero value and revealed a flex row as
-				// a block — the nav's links reappeared stacked one per line
-				// instead of in the row they are laid out as everywhere else.
-				reveal := r.flowType
-				if !r.hasFlow {
-					reveal = s.partRules[dk.part].flowType
+				if r.hasDrawer {
+					// A drawer slides in on a transform, never a display
+					// flip — so the reveal state is the "arrived" slide, the
+					// same one open and close both transition through.
+					devSB.WriteString(formatRule([]string{stateSel}, drawerRevealDecls(r.drawerMotion)))
+				} else {
+					// The display to restore is the PART's, not the device
+					// rule's: a device rule that only says "hidden here,
+					// revealed by Open" declares no flow of its own, so
+					// reading its flowType returned the zero value and
+					// revealed a flex row as a block — the nav's links
+					// reappeared stacked one per line instead of in the row
+					// they are laid out as everywhere else.
+					reveal := r.flowType
+					if !r.hasFlow {
+						reveal = s.partRules[dk.part].flowType
+					}
+					devSB.WriteString(formatRule([]string{stateSel}, []string{"display: " + displayFor(reveal) + ";"}))
 				}
-				devSB.WriteString(formatRule([]string{stateSel}, []string{"display: " + displayFor(reveal) + ";"}))
 			}
 		}
 
@@ -799,6 +815,24 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 			sel := selectorOf(s.widget.WidgetName(), k.part) + cuePseudo(k.cue)
 			motionSel = append(motionSel, sel)
 		}
+	}
+	// A Drawer(...,m) transitions on both its parked base rule and its
+	// RevealedBy "arrived" state, so reduced-motion must silence both.
+	addDrawerMotionSel := func(r rule, part widget.Part) {
+		if !r.hasDrawer || r.drawerMotion == MotionNone || !r.hasRevealed {
+			return
+		}
+		base := selectorOf(s.widget.WidgetName(), part)
+		attr := r.revealedBy.Attr()
+		motionSel = append(motionSel, base,
+			fmt.Sprintf("%s[%s=\"%s\"]", base, attr.Key(), attr.Value()))
+	}
+	addDrawerMotionSel(s.rootRule, "")
+	for _, p := range parts {
+		addDrawerMotionSel(s.partRules[p], p)
+	}
+	for k, dr := range s.deviceRules {
+		addDrawerMotionSel(dr, k.part)
 	}
 
 	if len(motionSel) > 0 {
