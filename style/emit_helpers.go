@@ -321,6 +321,21 @@ func floatingPadDecls() []string {
 	}
 }
 
+// floatingPadDeclsWithGutter is floatingPadDecls with ScrollGutter's ambient
+// gutter folded into the SAME calc as the FloatingChrome reservation, so a
+// later layer can never plainly override one without the other — see
+// ScrollGutter's doc for why that distinction matters. Kept as its own
+// function (not a parameter on floatingPadDecls) so the no-gutter path — the
+// overwhelming majority of Scroll() call sites — keeps emitting the exact
+// byte-identical decls it always has.
+func floatingPadDeclsWithGutter(g Space) []string {
+	gutter := spaceVar(g)
+	return []string{
+		"padding-block-start: calc(var(" + floatingTopVar + ", 0px) + " + gutter + ");",
+		"padding-block-end: calc(var(" + floatingBottomVar + ", 0px) + " + gutter + ");",
+	}
+}
+
 func railVar(rw RailWidth) string {
 	switch rw {
 	case RailNarrow:

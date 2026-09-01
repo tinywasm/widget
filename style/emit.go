@@ -50,6 +50,12 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 
 	var fillSel, growSel, pushEndSel, scrollSel, keepSizeSel, edgeToEdgeSel, hideOverflowSel []string
 
+	type scrollGutterInfo struct {
+		sel    string
+		gutter Space
+	}
+	var scrollGutterInfos []scrollGutterInfo
+
 	collect := func(r rule, sel string) {
 		if r.hasFlow {
 			switch r.flowType {
@@ -93,7 +99,11 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 			pushEndSel = append(pushEndSel, sel)
 		}
 		if r.scroll {
-			scrollSel = append(scrollSel, sel)
+			if r.hasScrollGutter {
+				scrollGutterInfos = append(scrollGutterInfos, scrollGutterInfo{sel: sel, gutter: r.scrollGutter})
+			} else {
+				scrollSel = append(scrollSel, sel)
+			}
 		}
 		if r.keepSize {
 			keepSizeSel = append(keepSizeSel, sel)
@@ -309,6 +319,18 @@ func (s *Sheet) Stylesheet() *css.Stylesheet {
 		"min-height: 0;",
 		"flex-grow: 1;",
 	}, floatingPadDecls()...))
+	// One rule per gutter value rather than a shared bucket: unlike the plain
+	// scrollSel above, these carry a value (the gutter) baked straight into
+	// the calc, so two parts asking for a different Space could not share one
+	// rule body. In practice this is a handful of selectors ecosystem-wide.
+	for _, gi := range scrollGutterInfos {
+		emitPrimitive([]string{gi.sel}, append([]string{
+			"overflow-y: auto;",
+			"height: 100%;",
+			"min-height: 0;",
+			"flex-grow: 1;",
+		}, floatingPadDeclsWithGutter(gi.gutter)...))
+	}
 	emitPrimitive(keepSizeSel, []string{
 		"flex-shrink: 0;",
 		"flex-grow: 0;",

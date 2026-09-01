@@ -112,6 +112,9 @@ type rule struct {
 	edgeToEdge   bool
 	hideOverflow bool
 
+	hasScrollGutter bool
+	scrollGutter    Space
+
 	hasTextSize bool
 	textSize    TextSize
 	hasWeight   bool

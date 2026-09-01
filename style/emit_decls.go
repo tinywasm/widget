@@ -441,8 +441,13 @@ func primitiveDecls(r rule) []string {
 	if r.scroll {
 		decls = append(decls, "overflow-y: auto;")
 		// Every scroll region reserves the strip a FloatingChrome ancestor
-		// declares it occupies — 0px when nobody declares one.
-		decls = append(decls, floatingPadDecls()...)
+		// declares it occupies — 0px when nobody declares one. ScrollGutter
+		// folds its own ambient gutter into that same reservation.
+		if r.hasScrollGutter {
+			decls = append(decls, floatingPadDeclsWithGutter(r.scrollGutter)...)
+		} else {
+			decls = append(decls, floatingPadDecls()...)
+		}
 	}
 	if r.grow {
 		decls = append(decls, "flex-grow: 1;", "min-width: 0;")

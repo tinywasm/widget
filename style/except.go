@@ -17,6 +17,28 @@ func Scroll() Option {
 	}
 }
 
+// ScrollGutter adds an ambient gutter to a Scroll() region's block edges,
+// ADDITIVE with whatever a FloatingChrome ancestor already reserves there —
+// never replacing it. Without ScrollGutter, Scroll() reserves exactly the
+// FloatingChrome strip and nothing else (0px when there is none), as before;
+// with it, padding-block-start/end becomes
+// calc(var(--floating-<edge>, 0px) + <gutter>).
+//
+// This exists because a plain PadEdge()/Pad() on a Scroll() region's own part
+// would be emitted in the widgets layer, which OUTRANKS the primitives layer
+// where the FloatingChrome reservation lives — CSS layers do not add, a later
+// layer's declaration replaces the earlier one outright. That silently erases
+// the strip a floating button reserved, hiding the scroller's last row under
+// it. ScrollGutter avoids that by folding the ambient gutter into the SAME
+// calc the reservation already uses, so both are always the final value —
+// there is no plain override to lose to.
+func ScrollGutter(s Space) Option {
+	return func(r *rule) {
+		r.hasScrollGutter = true
+		r.scrollGutter = s
+	}
+}
+
 // Grow takes the free space along the inline axis and nothing else. It is the
 // Row counterpart of Fill(): Fill() also claims `height: 100%`, which inside a
 // Row resolves against the row and stretches the part into a full-height block.
