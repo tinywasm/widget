@@ -145,3 +145,16 @@ const (
 	MotionBase               // state change
 	MotionSlow               // panel/overlay transition
 )
+
+// Turn is the closed set of rotations the DSL supports — quarter-turn steps,
+// which is every rotation a chevron, caret or disclosure arrow needs. A free
+// degree value is deliberately not accepted: it would be a generic hole with
+// no intent, and no part in the ecosystem has ever needed one.
+type Turn uint8
+
+const (
+	TurnNone         Turn = iota // 0deg — the resting position
+	TurnQuarter                  // 90deg
+	TurnHalf                     // 180deg — a chevron flipped to point the other way
+	TurnThreeQuarter             // 270deg
+)

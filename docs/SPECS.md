@@ -140,6 +140,7 @@ of these.
 | `Weight` | `WeightRegular, WeightMedium, WeightBold` | `--font-weight-*` |
 | `Elevation` | `Flat, Raised, Floating, Popover` | `none`, `--shadow-sm/md/lg` |
 | `Motion` | `MotionNone, MotionFast, MotionBase, MotionSlow` | `none`, `--duration-*` + `--ease-in-out` |
+| `Turn` | `TurnNone, TurnQuarter, TurnHalf, TurnThreeQuarter` | `0deg`, `90deg`, `180deg`, `270deg` — quarter-turn steps only; a free degree value is a generic hole with no intent |
 | `ColumnWidth` | `ColumnNarrow, ColumnMedium, ColumnWide` | `--column-narrow/medium/wide` |
 | shared boxes | `ControlBox()`, `ChipBox()` | `--control-height`, `--chip-width`, `--chip-height` |
 | `Size` | `Content, Readable, Compact, Third, Half, TwoThirds, Most, Full` | `max-content`, `--max-w-readable`, `min(100%, 24rem)`, `33.33%`, `50%`, `66.66%`, `90%`, `100%` |
@@ -154,7 +155,9 @@ of these.
 only literals the drift guard permits, **except** `100dvh` which is permitted
 exclusively in the `Cover` primitive, the `0px` defaults of the floating
 reservation (`--floating-top`/`--floating-bottom`), the `-0.5` factor of the
-`OnEdge` straddle and the `24rem` cap of `Compact`. `Compact` is the one `Size`
+`OnEdge` straddle and the `24rem` cap of `Compact`. The `Turn` angles emit
+`0deg`/`90deg`/`180deg`/`270deg` — rotation is the same class of pure geometry,
+and every cheat a chevron needs is a quarter-turn step. `Compact` is the one `Size`
 step that is a cap rather than a share — the percentages resolve against the
 container and shrink with it for free, while a fixed width would overflow a
 phone, so it emits `min(100%, …)` and stops. `ColumnWidth` requires `--column-*`, and `Readable` requires `--max-w-readable`
@@ -309,6 +312,7 @@ func IconBox(IconSize) Option
 func FontSize(TextSize) Option
 func FontWeight(Weight) Option
 func Animate(Motion) Option
+func Rotate(Turn) Option
 func Fill() Option
 func Grow() Option
 func PushEnd() Option
@@ -370,6 +374,7 @@ func Drawer(side Side, size Size) Option
 | `EdgeStrip(scope, side)` | `position:{absolute\|fixed}; inset-block:0; inset-inline-{start\|end}:0`; `z-index:var(<Kind layer>)` for `Viewport`, `z-index:1` for `Parent` — spans the FULL block axis of its `Scope` plus one inline edge, and deliberately emits no `width:` — the property that differentiates it from `Drawer()`, which forces one and hard-requires a paired `RevealedBy()`. `EdgeStrip` carries no such requirement: it is permanent chrome (a calendar's prev/next overlay strip), not a toggled panel. Like `Docked`/`OnEdge`, a `Parent`-scoped `EdgeStrip` is itself a containing block for a `Flyout()` descendant |
 | `Meter(thickness)` | `height:var(<thickness>); width:var(--meter-fill,0%)` — a thin bar whose fill fraction is a per-instance runtime value, not a scale step: the stylesheet declares only the SHAPE (that the length axis feeds `width`, with a `0%` fallback); the host sets ONLY the bare `--meter-fill:N%;` value inline, never a property name or selector |
 | `Animate(m)` | `transition: all var(--duration-*) var(--ease-in-out)` |
+| `Rotate(t)` | `transform: rotate(<Turn degrees>)` — emits `0deg`/`90deg`/`180deg`/`270deg` by the `Turn` step. Pair with a state rule (`When`/`WhenWithin`) so the rotation IS the state, and with `Animate()` on the base rule so the turn is a transition. Not combinable with `OnEdge()`/`Drawer()`: both already own the element's `transform`, and a second declaration would silently replace the first — `Validate()` rejects the combination |
 
 `Veil()` must emit the token **with its catalog fallback**. Every rule carrying
 `Animate` is repeated under `@media (prefers-reduced-motion: reduce)` with

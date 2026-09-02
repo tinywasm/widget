@@ -137,11 +137,16 @@ func EdgeStrip(scope Scope, side Side) Option {
 // OnEdge centres the element ON one of its Anchor's edge lines — half outside
 // the box, half inside — the way a fieldset legend rides the border it labels.
 //
-// block is the distance from the Anchor's border to the line being ridden: pass
-// the Anchor's padding to ride the box that padding encloses, or SpaceNone to
-// ride the Anchor's own border. inline is how far the chip is indented along
-// that line. The straddle is exact because the chip's height is the shared
-// --chip-height token, applied as half a chip-height of negative margin.
+// inline is how far the chip is indented along that line. block is the extra
+// distance from the Anchor's border to the line being ridden, ON TOP of the
+// half chip-height the straddle already needs — SpaceNone for the common case.
+//
+// For EdgeTop the straddle is now driven entirely by --chip-height: the chip's
+// top edge sits flush against the Anchor's padding box and its centre lands
+// half a chip-height in, so the Anchor pairs this with ChipSeat(EdgeTop) to
+// reserve exactly that space and the chip never pokes out of the box it labels.
+// EdgeBottom keeps the older "block is the gap from the border" behaviour that
+// the list badges depend on.
 func OnEdge(edge Edge, side Side, block Space, inline Space) Option {
 	return func(r *rule) {
 		r.hasOnEdge = true
@@ -149,6 +154,17 @@ func OnEdge(edge Edge, side Side, block Space, inline Space) Option {
 		r.onEdgeSide = side
 		r.onEdgeBlock = block
 		r.onEdgeInline = inline
+	}
+}
+
+// ChipSeat reserves half a chip-height of padding on one block edge — the space
+// an OnEdge chip on a child straddles into. Pair it with OnEdge(EdgeTop) on the
+// chip: the chip seats flush against this container's padding box and its
+// centre lands exactly on the content's top line, fully inside the container.
+func ChipSeat(e Edge) Option {
+	return func(r *rule) {
+		r.hasChipSeat = true
+		r.chipSeatEdge = e
 	}
 }
 

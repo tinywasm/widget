@@ -7,31 +7,29 @@ import (
 )
 
 func TestFieldAnatomy(t *testing.T) {
-	// 1. NameField.Root().String() is exactly "tw-field"
-	if got, want := NameField.Root().String(), "tw-field"; got != want {
+	// Every expectation derives from the NameField constant — the class
+	// contract is name + "__" + part, and a rename must not silently break
+	// the test or let it drift from the constant it is guarding.
+	wantRoot := string(NameField)
+	if got, want := NameField.Root().String(), wantRoot; got != want {
 		t.Errorf("NameField.Root().String() = %q; want %q", got, want)
 	}
 
-	// 2. NameField.Class(PartLabel).String() is exactly "tw-field__label"
-	if got, want := NameField.Class(PartLabel).String(), "tw-field__label"; got != want {
-		t.Errorf("NameField.Class(PartLabel).String() = %q; want %q", got, want)
+	for _, tc := range []struct {
+		part Part
+		want string
+	}{
+		{PartLabel, wantRoot + "__label"},
+		{PartInput, wantRoot + "__input"},
+		{PartError, wantRoot + "__error"},
+		{PartRadioGroup, wantRoot + "__radio-group"},
+	} {
+		if got := NameField.Class(tc.part).String(); got != tc.want {
+			t.Errorf("NameField.Class(%s).String() = %q; want %q", tc.part, got, tc.want)
+		}
 	}
 
-	// 3. Same for PartInput, PartError, and PartRadioGroup
-	if got, want := NameField.Class(PartInput).String(), "tw-field__input"; got != want {
-		t.Errorf("NameField.Class(PartInput).String() = %q; want %q", got, want)
-	}
-
-	if got, want := NameField.Class(PartError).String(), "tw-field__error"; got != want {
-		t.Errorf("NameField.Class(PartError).String() = %q; want %q", got, want)
-	}
-
-	if got, want := NameField.Class(PartRadioGroup).String(), "tw-field__radio-group"; got != want {
-		t.Errorf("NameField.Class(PartRadioGroup).String() = %q; want %q", got, want)
-	}
-
-	// 4. NameField.Class(PartLabel).AsAttr() returns fmt.KeyValue{Key: "class", Value: "tw-field__label"}
-	expectedAttr := fmt.KeyValue{Key: "class", Value: "tw-field__label"}
+	expectedAttr := fmt.KeyValue{Key: "class", Value: string(NameField.Class(PartLabel))}
 	if got := NameField.Class(PartLabel).AsAttr(); got != expectedAttr {
 		t.Errorf("NameField.Class(PartLabel).AsAttr() = %+v; want %+v", got, expectedAttr)
 	}

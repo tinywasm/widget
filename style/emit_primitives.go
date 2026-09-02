@@ -20,22 +20,8 @@ func (s *Sheet) emitPrimitives(sb *fmt.Conv, parts []widget.Part) (autoRotateSel
 	var stackSel, rowSel, splitSel, gridSel, fixedGridSel, centerSel, fillCenteredSel, scrollRowSel, mediaBoxSel []string
 	var coverSels []string
 
-	type sidebarInfo struct {
-		sel  string
-		side Side
-	}
 	var sidebarInfos []sidebarInfo
-
-	type masterDetailInfo struct {
-		sel    string
-		detail Size
-	}
 	var masterDetailInfos []masterDetailInfo
-
-	type slideDeckInfo struct {
-		sel    string
-		motion Motion
-	}
 	var slideDeckInfos []slideDeckInfo
 
 	var fillSel, growSel, pushEndSel, scrollSel, keepSizeSel, edgeToEdgeSel, hideOverflowSel []string
@@ -229,59 +215,10 @@ func (s *Sheet) emitPrimitives(sb *fmt.Conv, parts []widget.Part) (autoRotateSel
 		"flex-direction: column;",
 	})
 
-	for _, si := range sidebarInfos {
-		emitPrimitive([]string{si.sel}, []string{
-			"display: flex;",
-			"flex-wrap: wrap;",
-			"gap: var(--gap);",
-		})
-		emitPrimitive([]string{sidebarRailSel(si.sel, si.side)}, []string{
-			"flex-basis: var(--rail);",
-			"flex-grow: 1;",
-		})
-		emitPrimitive([]string{sidebarContentSel(si.sel, si.side)}, []string{
-			"flex-basis: 0;",
-			"flex-grow: 999;",
-			"min-width: 50%;",
-		})
-	}
-
-	for _, sd := range slideDeckInfos {
-		emitPrimitive([]string{sd.sel}, slideDeckStripDecls())
-		emitPrimitive([]string{sd.sel + " > *"}, slideDeckPageDecls(sd.motion))
-		cur := widget.Current.Attr()
-		emitPrimitive(
-			[]string{sd.sel + ` > *[` + cur.Key() + `="` + cur.Value() + `"]`},
-			slideDeckCurrentDecls(sd.motion))
-	}
-
-	if len(autoRotateSels) > 0 {
-		emitPrimitive(autoRotateSels, autoRotateStripDecls())
-
-		var kids, firsts []string
-		for _, sel := range autoRotateSels {
-			kids = append(kids, sel+" > *")
-			firsts = append(firsts, sel+" > :first-child")
-		}
-		emitPrimitive(kids, autoRotateLayerDecls())
-		emitPrimitive(firsts, autoRotateFirstDecls())
-
-		for slot := 2; slot <= AutoRotateLayers; slot++ {
-			var nths []string
-			for _, sel := range autoRotateSels {
-				nths = append(nths, fmt.Sprintf("%s > :nth-child(%d)", sel, slot))
-			}
-			emitPrimitive(nths, autoRotateDelayDecls(slot))
-		}
-	}
-
-	for _, mi := range masterDetailInfos {
-		emitPrimitive([]string{mi.sel}, masterDetailStripDecls())
-		emitPrimitive([]string{mi.sel + " > *"}, masterDetailResetDecls())
-		emitPrimitive([]string{mi.sel + " > :nth-child(1)"}, masterDetailDetailDecls(mi.detail))
-		emitPrimitive([]string{mi.sel + " > :nth-child(2)"}, masterDetailMasterDecls())
-	}
-
+	emitSidebarGroups(primitivesSB, sidebarInfos)
+	emitSlideDeckGroups(primitivesSB, slideDeckInfos)
+	emitAutoRotateGroups(primitivesSB, autoRotateSels)
+	emitMasterDetailGroups(primitivesSB, masterDetailInfos)
 	emitPrimitive(fillSel, []string{
 		"height: 100%;",
 		"min-height: 0;",
