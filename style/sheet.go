@@ -78,7 +78,8 @@ type rule struct {
 
 	hasDivider      bool
 	dividerSide     Side
-	hasDividerBelow bool
+	hasDividerBelow   bool
+	hasDividerBetween bool
 
 	hasSurface  bool
 	surface     Surface
@@ -112,6 +113,9 @@ type rule struct {
 
 	hasSize bool
 	size    Size
+
+	hasCapped bool
+	capped    Extent
 
 	hasIcon bool
 	icon    IconSize

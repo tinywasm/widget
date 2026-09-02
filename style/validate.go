@@ -53,5 +53,26 @@ func (s *Sheet) validateParts(errs []error) []error {
 	for p, pr := range s.partRules {
 		checkVeil(p, pr)
 	}
+
+	// DividerBetween() needs a child combinator, which only the base-rule path
+	// can write: On() and the state/cue rules emit a flat declaration list with
+	// no selector of their own. Declaring it there used to be accepted and then
+	// emit nothing — the exact silent failure that let Divider()/DividerBelow()
+	// go unnoticed on base rules for as long as they did. Fail loudly instead.
+	for k, dr := range s.deviceRules {
+		if dr.hasDividerBetween {
+			errs = append(errs, fmt.Errf("sheet %s: part %q: DividerBetween() cannot be used inside On()/OnlyOn(); declare it on the base Part() rule", string(s.widget.WidgetName()), string(k.part)))
+		}
+	}
+	for k, sr := range s.stateRules {
+		if sr.hasDividerBetween {
+			errs = append(errs, fmt.Errf("sheet %s: part %q: DividerBetween() cannot be used in a state rule; declare it on the base Part() rule", string(s.widget.WidgetName()), string(k.part)))
+		}
+	}
+	for k, cr := range s.cueRules {
+		if cr.hasDividerBetween {
+			errs = append(errs, fmt.Errf("sheet %s: part %q: DividerBetween() cannot be used in a Cue() rule; declare it on the base Part() rule", string(s.widget.WidgetName()), string(k.part)))
+		}
+	}
 	return errs
 }

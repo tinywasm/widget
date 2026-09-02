@@ -46,6 +46,19 @@ func radiusVar(r Radius) string {
 	}
 }
 
+func extentValue(e Extent) string {
+	switch e {
+	case ExtentHalf:
+		return "50dvh"
+	case ExtentMost:
+		return "70dvh"
+	case ExtentFull:
+		return "100dvh"
+	default:
+		return "70dvh"
+	}
+}
+
 func elevationVar(e Elevation) string {
 	switch e {
 	case Flat:

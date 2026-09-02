@@ -52,6 +52,29 @@ func Raise(e Elevation) Option {
 	}
 }
 
+// Capped bounds the element's block size against the viewport, so that a
+// Scroll() region inside it finally has somewhere to overflow TO.
+//
+// This is the missing half of Scroll(). Scroll() emits height: 100%,
+// min-height: 0, flex-grow: 1 and overflow-y: auto — every one of them
+// RELATIVE, so all four are inert until some ancestor has a DEFINITE block
+// size. A panel left at its content height has none: the percentage resolves
+// against an indefinite height and falls back to auto, flex-grow finds no
+// free space to claim, and the region grows to fit its content instead of
+// scrolling. Nothing looks broken in the stylesheet; the list simply pushes
+// the page down and the WHOLE app scrolls under the user's thumb.
+//
+// An in-flow panel usually inherits a bound from its layout. An out-of-flow
+// one never does: Flyout() and Drawer() take the element out of the flow, so
+// no ancestor's height reaches it. Pair Capped() with them, or with any
+// panel that holds a list of unknown length.
+func Capped(e Extent) Option {
+	return func(r *rule) {
+		r.hasCapped = true
+		r.capped = e
+	}
+}
+
 // Width applies the relative width (Size) to the rule.
 func Width(s Size) Option {
 	return func(r *rule) {
@@ -172,6 +195,28 @@ func Divider(side Side) Option {
 	return func(r *rule) {
 		r.hasDivider = true
 		r.dividerSide = side
+	}
+}
+
+// DividerBetween draws a hairline BETWEEN a container's children — declared on
+// the container, emitted on every child except the first, so N rows get N-1
+// rules and no line dangles at either end.
+//
+// It exists because DividerBelow() cannot express this. A separator belongs to
+// the PAIR of rows it comes between, not to one of them, and a border declared
+// on the row is a property of the row: the last one in the list carries a rule
+// under it with nothing after it to separate, which reads as a list that was
+// cut off rather than one that ended. Pair it with Stack(SpaceNone) — a
+// hairline only reads as a separator when the rows it divides are flush;
+// leave a gap and the same line reads as an underline on the row above.
+//
+// Container-only, and only on a base Part()/Root() rule: the child combinator
+// it needs cannot be expressed from the flat declaration list that On() and
+// the state rules emit. Validate() rejects it there rather than letting it
+// silently emit nothing.
+func DividerBetween() Option {
+	return func(r *rule) {
+		r.hasDividerBetween = true
 	}
 }
 

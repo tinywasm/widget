@@ -25,6 +25,7 @@ func (s *Sheet) emitPrimitives(sb *fmt.Conv, parts []widget.Part) (autoRotateSel
 	var slideDeckInfos []slideDeckInfo
 
 	var fillSel, growSel, pushEndSel, scrollSel, keepSizeSel, edgeToEdgeSel, hideOverflowSel []string
+	var dividerStartSel, dividerEndSel, dividerBelowSel, dividerBetweenSel []string
 
 	type scrollGutterInfo struct {
 		sel    string
@@ -89,6 +90,23 @@ func (s *Sheet) emitPrimitives(sb *fmt.Conv, parts []widget.Part) (autoRotateSel
 		}
 		if r.hideOverflow {
 			hideOverflowSel = append(hideOverflowSel, sel)
+		}
+		if r.hasDivider {
+			if r.dividerSide == SideStart {
+				dividerStartSel = append(dividerStartSel, sel)
+			} else {
+				dividerEndSel = append(dividerEndSel, sel)
+			}
+		}
+		if r.hasDividerBelow {
+			dividerBelowSel = append(dividerBelowSel, sel)
+		}
+		// The child combinator is what makes this a BETWEEN rather than an
+		// under: "every child that has a sibling before it" is exactly the set
+		// of gaps in the list, so the first child is skipped and no line is
+		// left dangling past the last row.
+		if r.hasDividerBetween {
+			dividerBetweenSel = append(dividerBetweenSel, sel+" > * + *")
 		}
 	}
 
@@ -260,6 +278,10 @@ func (s *Sheet) emitPrimitives(sb *fmt.Conv, parts []widget.Part) (autoRotateSel
 	emitPrimitive(hideOverflowSel, []string{
 		"overflow: hidden;",
 	})
+	emitPrimitive(dividerStartSel, dividerDecls(SideStart))
+	emitPrimitive(dividerEndSel, dividerDecls(SideEnd))
+	emitPrimitive(dividerBelowSel, dividerBelowDecls())
+	emitPrimitive(dividerBetweenSel, dividerBetweenDecls())
 
 	prims := primitivesSB.GetString(fmt.BuffOut)
 	if len(prims) > 0 {

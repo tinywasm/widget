@@ -135,6 +135,24 @@ const (
 	Full // 100% of the container
 )
 
+// Extent is the share of the VIEWPORT's block axis that Capped() lets an
+// element occupy. Deliberately a viewport share and not a container share:
+// the elements that need a ceiling are the ones taken out of the flow —
+// a Flyout, a Drawer — whose containing block is an ancestor box that says
+// nothing about how much screen is left.
+//
+// The steps are dvh, not vh: on a phone the browser chrome shrinks and grows
+// as the user scrolls, and vh is frozen at the LARGEST of those two states,
+// so a panel sized in vh hangs below the fold exactly when the toolbar is
+// showing — the one moment the user is looking at it.
+type Extent uint8
+
+const (
+	ExtentHalf Extent = iota // 50dvh — leaves the page behind clearly readable
+	ExtentMost               // 70dvh — the default for a picker: long list, page still visible
+	ExtentFull               // 100dvh — the panel is the screen
+)
+
 // Motion is the transition scale. Duration is owned by CSS;
 // here we only select the level.
 type Motion uint8

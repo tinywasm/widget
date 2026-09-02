@@ -30,6 +30,103 @@ func TestCoverEmitsViewportFrame(t *testing.T) {
 	}
 }
 
+func TestCappedGivesAScrollRegionSomewhereToOverflow(t *testing.T) {
+	// Scroll() emits height:100%, min-height:0, flex-grow:1 and overflow-y:auto
+	// — all four RELATIVE, so all four are inert until an ancestor has a
+	// definite block size. Without Capped() an out-of-flow panel has none: the
+	// list grows to its content and the page scrolls instead of the list.
+	w := testWidget{name: "picker", kind: widget.Combobox}
+	s := style.For(w).
+		Part("panel", style.Stack(style.Space1), style.Flyout(style.SideStart), style.Capped(style.ExtentMost)).
+		Part("options", style.Scroll()).
+		Stylesheet().String()
+
+	if !strings.Contains(s, "max-block-size: 70dvh;") {
+		t.Errorf("expected Capped(ExtentMost) to emit max-block-size: 70dvh, got:\n%s", s)
+	}
+	// dvh, not vh: vh is frozen at the tallest viewport state, so a panel sized
+	// in vh hangs below the fold whenever the phone's toolbar is showing.
+	if strings.Contains(s, "max-block-size: 70vh;") {
+		t.Errorf("Capped must not fall back to vh, got:\n%s", s)
+	}
+	if !strings.Contains(s, "overflow-y: auto;") {
+		t.Errorf("expected the Scroll() part to keep its overflow, got:\n%s", s)
+	}
+}
+
+func TestCappedStepsAreDistinct(t *testing.T) {
+	w := testWidget{name: "picker", kind: widget.Combobox}
+	seen := make(map[string]style.Extent)
+	for _, e := range []style.Extent{style.ExtentHalf, style.ExtentMost, style.ExtentFull} {
+		s := style.For(w).Part("panel", style.Capped(e)).Stylesheet().String()
+		if prev, dup := seen[s]; dup {
+			t.Errorf("Extent %d and %d resolve to the same cap", prev, e)
+		}
+		seen[s] = e
+	}
+}
+
+func TestDividersEmitOnABasePartRule(t *testing.T) {
+	// primitiveDecls() is reached from the device, state, hover and across
+	// paths — but the base-rule path groups its own primitives, and the two
+	// drifted: Divider()/DividerBelow() on a plain Part() validated, compiled
+	// and emitted no CSS at all. The only consumer in the ecosystem happened to
+	// declare it inside On(css.Mobile, …), so nothing caught it.
+	w := testWidget{name: "list", kind: widget.Region}
+	s := style.For(w).
+		Part("row", style.DividerBelow()).
+		Part("rail", style.Divider(style.SideEnd)).
+		Part("aside", style.Divider(style.SideStart)).
+		Stylesheet().String()
+
+	for _, want := range []string{
+		"border-block-end: 1px solid",
+		"border-inline-end: 1px solid",
+		"border-inline-start: 1px solid",
+	} {
+		if !strings.Contains(s, want) {
+			t.Errorf("expected a base Part rule to emit %q, got:\n%s", want, s)
+		}
+	}
+}
+
+func TestDividerBetweenSkipsTheFirstChild(t *testing.T) {
+	// A separator belongs to the pair of rows it comes between. DividerBelow on
+	// each row gives N rules for N rows, and the last one has nothing after it
+	// to separate — the list reads as cut off rather than ended.
+	w := testWidget{name: "list", kind: widget.Region}
+	s := style.For(w).
+		Part("options", style.Stack(style.SpaceNone), style.DividerBetween()).
+		Stylesheet().String()
+
+	if !strings.Contains(s, ".list__options > * + *") {
+		t.Errorf("expected DividerBetween to emit a `> * + *` child rule, got:\n%s", s)
+	}
+	if !strings.Contains(s, "border-block-start: 1px solid") {
+		t.Errorf("expected the between-rule to draw on the block-start edge, got:\n%s", s)
+	}
+	// Drawing below would need "every child that has a FOLLOWING sibling",
+	// which has no selector — the rule has to hang off the start edge.
+	if strings.Contains(s, ".list__options > * + * {\n  border-block-end") {
+		t.Errorf("DividerBetween must not draw on the block-end edge, got:\n%s", s)
+	}
+}
+
+func TestDividerBetweenIsRejectedWhereItCannotEmit(t *testing.T) {
+	w := testWidget{name: "list", kind: widget.Region}
+	errs := style.For(w).
+		Part("options", style.Stack(style.SpaceNone)).
+		On(css.Mobile, "options", style.DividerBetween()).
+		Validate()
+
+	if len(errs) == 0 {
+		t.Fatal("expected DividerBetween() inside On() to be rejected: the device path emits a flat declaration list and cannot write a child combinator, so it would silently emit nothing")
+	}
+	if !strings.Contains(errs[0].Error(), "DividerBetween()") {
+		t.Errorf("expected the error to name the offending option, got: %v", errs[0])
+	}
+}
+
 func TestIconBoxEmitsSquareThatCannotShrink(t *testing.T) {
 	w := testWidget{name: "shell", kind: widget.Region}
 	s := style.For(w).

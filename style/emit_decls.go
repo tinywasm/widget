@@ -94,6 +94,12 @@ func (r rule) Decls(layer widget.Layer) []string {
 			decls = append(decls, "width: "+sizeValue(r.size)+";")
 		}
 	}
+	// After hasSize, before the intrinsic boxes: a cap is the one sizing
+	// declaration that must survive whatever an inner Scroll() asks for, and
+	// max-block-size cannot be beaten by the height: 100% Scroll() emits.
+	if r.hasCapped {
+		decls = append(decls, "max-block-size: "+extentValue(r.capped)+";")
+	}
 	if r.hasIcon {
 		v := iconSizeValue(r.icon)
 		decls = append(decls, "width: "+v+";")
@@ -163,29 +169,55 @@ func primitiveDecls(r rule) []string {
 		decls = append(decls, "overflow: hidden;")
 	}
 	if r.hasDivider {
-		prop := "border-inline-end"
-		if r.dividerSide == SideStart {
-			prop = "border-inline-start"
-		}
-		decls = append(decls,
-			prop+": "+borderStyle+css.ColorOutline.LightValue()+";",
-			prop+": "+borderStyle+css.ColorOutline.EnhancedVar()+";",
-		)
+		decls = append(decls, dividerDecls(r.dividerSide)...)
 	}
 	if r.hasDividerBelow {
-		decls = append(decls,
-			"border-block-end: "+borderStyle+css.ColorOutline.LightValue()+";",
-			"border-block-end: "+borderStyle+css.ColorOutline.EnhancedVar()+";",
-		)
+		decls = append(decls, dividerBelowDecls()...)
 	}
 	return decls
+}
+
+// The hairline declarations, in one place. primitiveDecls is NOT the only
+// emitter that needs them: the base-rule path in emit_primitives.go groups
+// primitives into shared selectors of its own and has to build the same
+// strings, and when the two drifted apart Divider()/DividerBelow() silently
+// emitted nothing at all on a base Part rule — the option validated, compiled,
+// and produced no CSS. Both callers read these functions now, so a change to
+// the hairline lands on every path or on none.
+func dividerDecls(side Side) []string {
+	prop := "border-inline-end"
+	if side == SideStart {
+		prop = "border-inline-start"
+	}
+	return []string{
+		prop + ": " + borderStyle + css.ColorOutline.LightValue() + ";",
+		prop + ": " + borderStyle + css.ColorOutline.EnhancedVar() + ";",
+	}
+}
+
+func dividerBelowDecls() []string {
+	return []string{
+		"border-block-end: " + borderStyle + css.ColorOutline.LightValue() + ";",
+		"border-block-end: " + borderStyle + css.ColorOutline.EnhancedVar() + ";",
+	}
+}
+
+// The BETWEEN rule draws on the block-START edge, not the end: it is applied
+// to every child that HAS a preceding sibling, so the line belongs to the
+// boundary above each such child. Drawing it below would need the mirror set
+// ("every child that has a following sibling"), which has no CSS selector.
+func dividerBetweenDecls() []string {
+	return []string{
+		"border-block-start: " + borderStyle + css.ColorOutline.LightValue() + ";",
+		"border-block-start: " + borderStyle + css.ColorOutline.EnhancedVar() + ";",
+	}
 }
 
 func (r rule) emitsNothing(layer widget.Layer) bool {
 	if len(r.Decls(layer)) > 0 {
 		return false
 	}
-	return !r.hasFlow && !r.fill && !r.grow && !r.pushEnd && !r.scroll && !r.keepSize && !r.edgeToEdge && !r.hideOverflow && !r.hasIcon && !r.controlBox && !r.logoBox && !r.chipBox && !r.hasGlyph && !r.hasPadEdge && !r.hasChipSeat && !r.hasPadInline && !r.startContent && !r.shown && !r.hasRotate
+	return !r.hasFlow && !r.fill && !r.grow && !r.pushEnd && !r.scroll && !r.keepSize && !r.edgeToEdge && !r.hideOverflow && !r.hasIcon && !r.controlBox && !r.logoBox && !r.chipBox && !r.hasGlyph && !r.hasPadEdge && !r.hasChipSeat && !r.hasPadInline && !r.startContent && !r.shown && !r.hasRotate && !r.hasCapped && !r.hasDivider && !r.hasDividerBelow && !r.hasDividerBetween
 }
 
 func formatRule(selectors []string, decls []string) string {
