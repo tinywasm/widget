@@ -190,6 +190,7 @@ A surface resolves background, text, border and **radius** together. It does
 | `Accent` | `--color-accent` | `--color-on-accent` | — | `RadiusSm` |
 | `Success` | `--color-success` | `--color-on-success` | — | `RadiusSm` |
 | `Danger` | `--color-danger` | `--color-on-danger` | — | `RadiusSm` |
+| `DangerWash` | `--color-danger-wash` | `--color-on-surface` | — | `RadiusSm` |
 | `Subtle` | `transparent` | `--color-muted` | — | none |
 | `Inactive` | `--color-surface` | `--color-muted` | — | `RadiusSm` |
 

@@ -20,6 +20,7 @@ const (
 	AccentHover
 	Success
 	Danger
+	DangerWash
 	Subtle
 	Bare
 	Inactive
@@ -51,6 +52,8 @@ func (s Surface) String() string {
 		return "Success"
 	case Danger:
 		return "Danger"
+	case DangerWash:
+		return "DangerWash"
 	case Subtle:
 		return "Subtle"
 	case Bare:
@@ -167,6 +170,15 @@ func (s Surface) resolve() triplet {
 		return triplet{
 			bg: css.ColorDanger.EnhancedVar(), text: css.ColorOnDanger.EnhancedVar(),
 			bgStatic: css.ColorDanger.LightValue(), textStatic: css.ColorOnDanger.LightValue(),
+		}
+	// DangerWash is the Danger counterpart of AccentWash: Danger faded 85%
+	// toward transparency with on-surface text — a tint for a selection
+	// state that must read as "leans toward danger" without claiming the
+	// solid Danger fill, which stays reserved for a destructive commit.
+	case DangerWash:
+		return triplet{
+			bg: css.ColorDangerWash.EnhancedVar(), text: css.ColorOnSurface.EnhancedVar(),
+			bgStatic: css.ColorDangerWash.LightValue(), textStatic: css.ColorOnSurface.LightValue(),
 		}
 	case Subtle:
 		return triplet{
