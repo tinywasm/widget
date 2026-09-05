@@ -171,7 +171,7 @@ func (s Surface) resolve() triplet {
 			bg: css.ColorDanger.EnhancedVar(), text: css.ColorOnDanger.EnhancedVar(),
 			bgStatic: css.ColorDanger.LightValue(), textStatic: css.ColorOnDanger.LightValue(),
 		}
-	// DangerWash is the Danger counterpart of AccentWash: Danger faded 85%
+	// DangerWash is the Danger counterpart of AccentWash: Danger faded 70%
 	// toward transparency with on-surface text — a tint for a selection
 	// state that must read as "leans toward danger" without claiming the
 	// solid Danger fill, which stays reserved for a destructive commit.

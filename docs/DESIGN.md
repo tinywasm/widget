@@ -506,6 +506,44 @@ while it slides in and removed from the tab order after it rests.
 **Consequence.** The only horizontal snap scroller left in a shell is the one a
 module owns itself, so the swipe gesture can never chain out of the content.
 
+## 20. Why the animated reveal is `Animate` + `RevealedBy`, not a new option
+
+**Decision.** No new public option: `Animate(m)` on the same rule as
+`RevealedBy(st)` choreographs the swap as a fade (entry and exit, SPECS §5.2).
+A new option would be a second way to express motion that `Animate` already
+owns — the closed API removes those, it does not mint them. The precedent is
+the chevron recipe: `Rotate()` on the base rule means nothing animated until
+`Animate()` is beside it; the reveal works the same way.
+
+**Why opacity only, no slide.** A slide needs a length — 4px, 8px, anything —
+and lengths live in closed scales that have no step for "nudge an entering
+panel". Inventing one literal would force every future motion to answer why it
+cannot have its own. Opacity is unitless: the fade softens the swap with
+nothing invented.
+
+**Why `allow-discrete` + `@starting-style`, not the `Drawer` pattern.**
+`Drawer` parks with transform because it is `position: fixed` — layout never
+enters the question. An in-flow reveal must leave the layout when hidden, so
+only `display` removes it, and only the discrete transition choreographs a
+property that is discrete. Browsers without `@starting-style` ignore the block
+and get the instant swap `RevealedBy` always emitted: the fallback is today's
+behavior, not a breakage.
+
+**Rejected: keyframes.** TRADEOFFS already settles this: keyframes are an
+open-ended language, and components that need them fall back to application
+CSS. A fade needs no keyframes, so the closed surface stays closed.
+
+**Incidental fix in the same release: `OnlyOn` keeps its base hide.**
+`OnlyOn` documents "display:none by default", but it applied the hide only
+when the part rule did not exist yet — and base options read before device
+ones, so any part with both a `Part()` block and `OnlyOn()` painted on
+desktop (calendarslider's collapsed chip did exactly this). `OnlyOn` now
+merges `hidden` unconditionally, the same way `Part()` merges. One sheet in
+the wild combined the two, and its new output is the documented behavior, so
+no migration entry is needed — and neither is one for the animated reveal
+itself, which changes output only for sheets that pair the two options, a
+combination no consumer used.
+
 ## Related documents
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) — the structure these decisions produce.

@@ -374,7 +374,7 @@ func Drawer(side Side, size Size) Option
 | `Drawer(side, size)` | `position:fixed; inset-block:0; inset-inline-{start|end}:0; width:var(<size>); z-index:var(<Kind layer>)` |
 | `EdgeStrip(scope, side)` | `position:{absolute\|fixed}; inset-block:0; inset-inline-{start\|end}:0`; `z-index:var(<Kind layer>)` for `Viewport`, `z-index:1` for `Parent` — spans the FULL block axis of its `Scope` plus one inline edge, and deliberately emits no `width:` — the property that differentiates it from `Drawer()`, which forces one and hard-requires a paired `RevealedBy()`. `EdgeStrip` carries no such requirement: it is permanent chrome (a calendar's prev/next overlay strip), not a toggled panel. Like `Docked`/`OnEdge`, a `Parent`-scoped `EdgeStrip` is itself a containing block for a `Flyout()` descendant |
 | `Meter(thickness)` | `height:var(<thickness>); width:var(--meter-fill,0%)` — a thin bar whose fill fraction is a per-instance runtime value, not a scale step: the stylesheet declares only the SHAPE (that the length axis feeds `width`, with a `0%` fallback); the host sets ONLY the bare `--meter-fill:N%;` value inline, never a property name or selector |
-| `Animate(m)` | `transition: all var(--duration-*) var(--ease-in-out)` |
+| `Animate(m)` | `transition: all var(--duration-*) var(--ease-in-out)` — except on a rule that also carries `RevealedBy()`, where it becomes the animated reveal of §5.2 instead |
 | `Rotate(t)` | `transform: rotate(<Turn degrees>)` — emits `0deg`/`90deg`/`180deg`/`270deg` by the `Turn` step. Pair with a state rule (`When`/`WhenWithin`) so the rotation IS the state, and with `Animate()` on the base rule so the turn is a transition. Not combinable with `OnEdge()`/`Drawer()`: both already own the element's `transform`, and a second declaration would silently replace the first — `Validate()` rejects the combination |
 
 `Veil()` must emit the token **with its catalog fallback**. Every rule carrying
@@ -393,6 +393,34 @@ Base rule emits `display:none`. The state rule emits:
 
 **Invariant:** `display: revert-layer` is never emitted — it resolves to the base
 `display:none` and leaves the element hidden.
+
+### 5.2 Animated reveal (`RevealedBy` + `Animate` on the same rule)
+
+Pairing `Animate(m)` with `RevealedBy(st)` on one rule upgrades the instant
+display swap into a choreographed fade — entry and exit alike, over the motion
+duration. `MotionNone`, or no `Animate` at all, keeps the instant swap of §5.1.
+No new option exists for this on purpose: the motion the author already
+declares gains meaning for the reveal, the same way `Animate()` on a base rule
+turns a `Rotate()` state change into a transition.
+
+Emitted output for `Part("p", Row(Space2), Animate(MotionBase),
+RevealedBy(Open))` on widget `w`:
+
+- Base rule (wherever the base is emitted — part, root, or device block):
+  `display: none;` (as in §5.1) plus `opacity: 0;` plus
+  `transition: all var(--duration-base,250ms) var(--ease-in-out,…) , display var(--duration-base,250ms) allow-discrete;`
+  (`all` keeps every other transition the rule already had; listed first so
+  the discrete display timing wins for `display`.)
+- Shown rule (`.w__p[data-open="true"]`, wherever §5.1 puts it):
+  `display: flex;` (as in §5.1) plus `opacity: 1;`.
+- Entry from-state, top-level (inside the same `@media` for a device reveal):
+  `@starting-style { .w__p[data-open="true"] { opacity: 0; } }`.
+
+Opacity is the only animated property on purpose: a slide would need a length
+the closed scales do not have. Browsers without `@starting-style` ignore the
+block and the reveal is the same instant swap §5.1 always emitted. Under
+`prefers-reduced-motion` the rule is already covered by the `transition: none`
+repetition, so the swap is instant there too.
 
 ---
 

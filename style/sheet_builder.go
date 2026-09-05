@@ -185,7 +185,15 @@ func (s *Sheet) On(d css.Device, p widget.Part, opts ...Option) *Sheet {
 // drawer's backdrop. If the element merely CHANGES between devices rather than
 // disappearing, declare it with Part() and refine it with On().
 func (s *Sheet) OnlyOn(d css.Device, p widget.Part, opts ...Option) *Sheet {
-	if _, exists := s.partRules[p]; !exists {
+	// Unconditional merge, never exists-checked: Part() merges the same way,
+	// so whichever of the two runs first, the base rule keeps hidden. The
+	// exists-check this replaces dropped the hide whenever Part() had
+	// already created the rule — the usual order, since base options read
+	// before device ones — and the "mobile-only" part painted on desktop.
+	if r, exists := s.partRules[p]; exists {
+		r.hidden = true
+		s.partRules[p] = r
+	} else {
 		s.partRules[p] = rule{hidden: true}
 	}
 	key := deviceKey{device: d, part: p}

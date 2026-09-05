@@ -19,6 +19,7 @@ import (
 //	@keyframes … (AutoRotate only)                emit_primitives.go
 //	@layer widgets  { … }                          emit_widgets.go
 //	@layer states   { … }                          emit_states.go
+//	@starting-style { … } (animated reveals only)  emit_states.go
 //	.n:has(…) .n__part { … }  (CueAcross/StateAcross, UNLAYERED)  emit_states.go
 //	@media (hover: hover) { @layer states { … } }  emit_hover.go
 //	@media (<device>) { … }                        emit_device.go

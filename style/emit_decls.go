@@ -113,7 +113,11 @@ func (r rule) Decls(layer widget.Layer) []string {
 		decls = append(decls, "font-weight: "+weightVar(r.weight)+";")
 	}
 	if r.hasMotion {
-		decls = append(decls, "transition: "+motionValue(r.motion)+";")
+		if r.animatedReveal() {
+			decls = append(decls, revealTransitionDecls(r.motion)...)
+		} else {
+			decls = append(decls, "transition: "+motionValue(r.motion)+";")
+		}
 	}
 
 	if r.hasRotate {
@@ -124,6 +128,9 @@ func (r rule) Decls(layer widget.Layer) []string {
 
 	if r.hasRevealed && !r.hasDrawer {
 		decls = append(decls, "display: none;")
+		if r.animatedReveal() {
+			decls = append(decls, "opacity: 0;")
+		}
 	}
 
 	if r.shown {

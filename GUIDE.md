@@ -49,7 +49,7 @@ The substitute for design judgement: you do not choose, you look up.
 | an error | `As(Danger)` |
 | to fill the remaining height | `Fill()` |
 | to scroll internally | `Scroll()` |
-| something that expands | `RevealedBy(widget.Open)` |
+| something that expands | `RevealedBy(widget.Open)` — plus `Animate(MotionBase)` on the same rule if the swap should fade in and out instead of cutting (see SPECS §5.2; instant without it) |
 | a modal dialog | `Backdrop(Viewport)` + `Veil()` |
 
 ## Principles

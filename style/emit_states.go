@@ -30,12 +30,19 @@ func (s *Sheet) emitStates(sb *fmt.Conv, parts []widget.Part) (hoverCues []cueEm
 		stateDecls[k] = sr.Decls(s.widget.WidgetKind().Layer())
 	}
 
+	// animatedKeys marks the shown selectors whose reveal fades: their
+	// @starting-style entry is emitted after the layer closes.
+	animatedKeys := make(map[stateKey]bool)
 	if s.rootRule.hasRevealed {
 		sk := stateKey{state: s.rootRule.revealedBy, part: ""}
 		if s.rootRule.hasDrawer {
 			stateDecls[sk] = append(stateDecls[sk], drawerRevealDecls(s.rootRule.drawerMotion)...)
 		} else {
 			stateDecls[sk] = append(stateDecls[sk], "display: "+displayFor(s.rootRule.flowType)+";")
+			if s.rootRule.animatedReveal() {
+				stateDecls[sk] = append(stateDecls[sk], "opacity: 1;")
+				animatedKeys[sk] = true
+			}
 		}
 	}
 	for _, p := range parts {
@@ -46,6 +53,10 @@ func (s *Sheet) emitStates(sb *fmt.Conv, parts []widget.Part) (hoverCues []cueEm
 				stateDecls[sk] = append(stateDecls[sk], drawerRevealDecls(pr.drawerMotion)...)
 			} else {
 				stateDecls[sk] = append(stateDecls[sk], "display: "+displayFor(pr.flowType)+";")
+				if pr.animatedReveal() {
+					stateDecls[sk] = append(stateDecls[sk], "opacity: 1;")
+					animatedKeys[sk] = true
+				}
 			}
 		}
 	}
@@ -55,6 +66,7 @@ func (s *Sheet) emitStates(sb *fmt.Conv, parts []widget.Part) (hoverCues []cueEm
 		decls []string
 	}
 	var sortedStates []sortedState
+	var startSels []string
 	for k, decls := range stateDecls {
 		if len(decls) > 0 {
 			sortedStates = append(sortedStates, sortedState{key: k, decls: decls})
@@ -71,6 +83,9 @@ func (s *Sheet) emitStates(sb *fmt.Conv, parts []widget.Part) (hoverCues []cueEm
 		attr := ss.key.state.Attr()
 		sel := fmt.Sprintf("%s[%s=\"%s\"]", selectorOf(s.widget.WidgetName(), ss.key.part), attr.Key(), attr.Value())
 		statesSB.WriteString(formatRule([]string{sel}, ss.decls))
+		if animatedKeys[ss.key] {
+			startSels = append(startSels, sel)
+		}
 	}
 
 	// WhenWithin: an ancestor part's written state reaching a part inside it —
@@ -233,6 +248,7 @@ func (s *Sheet) emitStates(sb *fmt.Conv, parts []widget.Part) (hoverCues []cueEm
 		sb.WriteString(states)
 		sb.WriteString("}\n\n")
 	}
+	sb.WriteString(startingStyleBlock(startSels))
 
 	s.emitAcrossRules(sb)
 

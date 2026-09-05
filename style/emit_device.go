@@ -43,6 +43,7 @@ func (s *Sheet) emitDevices(sb *fmt.Conv) {
 
 		devSB := fmt.GetConv()
 
+		var devStartSels []string
 		for _, dk := range deviceParts {
 			r := s.deviceRules[dk]
 			sel := selectorOf(s.widget.WidgetName(), dk.part)
@@ -135,11 +136,17 @@ func (s *Sheet) emitDevices(sb *fmt.Conv) {
 					if !r.hasFlow {
 						reveal = s.partRules[dk.part].flowType
 					}
-					devSB.WriteString(formatRule([]string{stateSel}, []string{"display: " + displayFor(reveal) + ";"}))
+					decls := []string{"display: " + displayFor(reveal) + ";"}
+					if r.animatedReveal() {
+						decls = append(decls, "opacity: 1;")
+						devStartSels = append(devStartSels, stateSel)
+					}
+					devSB.WriteString(formatRule([]string{stateSel}, decls))
 				}
 			}
 		}
 
+		devSB.WriteString(startingStyleBlock(devStartSels))
 		devRules := devSB.GetString(fmt.BuffOut)
 		devSB.PutConv()
 		if len(devRules) > 0 {

@@ -47,6 +47,15 @@ func displayFor(f flowType) string {
 	}
 }
 
+// animatedReveal reports whether the rule pairs RevealedBy with a real
+// motion: Animate(m) on the same rule upgrades the instant display swap into
+// a choreographed fade — entry and exit alike. MotionNone, or no Animate at
+// all, keeps the instant swap RevealedBy has always emitted. Drawer rules
+// are excluded: Drawer owns its own slide choreography already.
+func (r rule) animatedReveal() bool {
+	return r.hasRevealed && !r.hasDrawer && r.hasMotion && r.motion != MotionNone
+}
+
 func layerVar(l widget.Layer) string {
 	switch l {
 	case widget.LayerBase:

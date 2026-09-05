@@ -3,6 +3,8 @@
 package style
 
 import (
+	"sort"
+
 	"github.com/tinywasm/css"
 	"github.com/tinywasm/fmt"
 )
@@ -90,6 +92,42 @@ func drawerRevealDecls(m Motion) []string {
 		d = append(d, "transition: transform "+motionDurationVar(m)+" "+css.EaseInOut.Var()+", visibility 0s;")
 	}
 	return d
+}
+
+// revealTransitionDecls is the transition an animated reveal (RevealedBy
+// paired with Animate on the same rule) runs on its hidden base rule.
+// display flips discretely — at the start on entry, at the end on exit —
+// while opacity fades over the motion duration; durations and easing are
+// catalog tokens, the same ones Drawer and Animate resolve to. `all` keeps
+// every other transition the rule already had (an Interactive hover tint,
+// ...); it is listed first so the discrete display timing wins for display.
+// Opacity is the only animated property on purpose: a slide would need a
+// length the closed scales do not have, and AGENTS.md §2 forbids inventing
+// one — a fade softens the swap with nothing invented.
+func revealTransitionDecls(m Motion) []string {
+	d := motionDurationVar(m)
+	return []string{"transition: all " + d + " " + css.EaseInOut.Var() + ", display " + d + " allow-discrete;"}
+}
+
+// startingStyleBlock renders the entry from-state for animated reveals:
+// @starting-style sets opacity 0 on each shown selector, so the first frames
+// of an entry fade in from nothing instead of flashing the final state.
+// Browsers without @starting-style ignore the block and the reveal is the
+// same instant swap RevealedBy always emitted — the graceful fallback, not a
+// breakage. Selectors are sorted for deterministic output.
+func startingStyleBlock(sels []string) string {
+	if len(sels) == 0 {
+		return ""
+	}
+	sort.Strings(sels)
+	sb := fmt.GetConv()
+	defer sb.PutConv()
+	sb.WriteString("@starting-style {\n")
+	for _, sel := range sels {
+		sb.WriteString(formatRule([]string{sel}, []string{"opacity: 0;"}))
+	}
+	sb.WriteString("}\n")
+	return sb.GetString(fmt.BuffOut)
 }
 
 // autoRotateStepSeconds is how long one layer holds the screen before the
