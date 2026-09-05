@@ -53,6 +53,10 @@ type rule struct {
 	dockedSide  Side
 	dockedGap   Space
 
+	hasFloatMiddle  bool
+	floatMiddleSide Side
+	floatMiddleGap  Space
+
 	hasOnEdge    bool
 	onEdgeEdge   Edge
 	onEdgeSide   Side
@@ -76,8 +80,8 @@ type rule struct {
 	hasFlyout  bool
 	flyoutSide Side
 
-	hasDivider      bool
-	dividerSide     Side
+	hasDivider        bool
+	dividerSide       Side
 	hasDividerBelow   bool
 	hasDividerBetween bool
 

@@ -223,3 +223,26 @@ func Drawer(side Side, size Size, m Motion) Option {
 		r.drawerMotion = m
 	}
 }
+
+// FloatMiddle pins the element to the vertical middle of one viewport edge —
+// position: fixed, top at half the viewport, pulled back by half its own
+// height — at the widget kind's stacking layer. It is the always-reachable
+// floating control: a menu button riding the middle of the inline-end edge
+// sits under the thumb wherever the page has scrolled to, which no corner
+// pin can promise once the content is taller than the screen.
+//
+// Corner pins already exist (Docked) and stay the only answer for corners:
+// extending Docked with a middle would tangle two semantics — a corner owns
+// all four insets, a middle owns one edge plus its own height — in one
+// option. Viewport scope only, by the same reasoning: middle-centering
+// inside a scrolling parent fights the scroll instead of floating over it.
+//
+// Owns transform (translateY), like Drawer and OnEdge: do NOT combine with
+// Rotate() — Validate rejects it. gap is the Space step off the edge.
+func FloatMiddle(side Side, gap Space) Option {
+	return func(r *rule) {
+		r.hasFloatMiddle = true
+		r.floatMiddleSide = side
+		r.floatMiddleGap = gap
+	}
+}

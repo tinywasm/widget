@@ -149,6 +149,26 @@ func (r rule) placementDecls(layer widget.Layer) []string {
 		}
 	}
 
+	if r.hasFloatMiddle {
+		decls = append(decls, "position: fixed;")
+		// Half the viewport (SizeHalf, not a literal), then back by half the
+		// element's own height — the same translateY(-50%) centring OnEdge
+		// uses for its straddle. The unpinned inline side is explicitly
+		// auto, Docked's discipline: an over-constrained fixed box
+		// collapses instead of moving.
+		decls = append(decls, "top: "+sizeValue(Half)+";")
+		decls = append(decls, "transform: translateY(-50%);")
+		decls = append(decls, "inset-block-end: auto;")
+		if r.floatMiddleSide == SideStart {
+			decls = append(decls, "inset-inline-start: "+spaceVar(r.floatMiddleGap)+";", "inset-inline-end: auto;")
+		} else {
+			decls = append(decls, "inset-inline-end: "+spaceVar(r.floatMiddleGap)+";", "inset-inline-start: auto;")
+		}
+		if z := stackingFor(r, layer); z != "" {
+			decls = append(decls, z)
+		}
+	}
+
 	if r.hasEdgeStrip {
 		if r.edgeStripScope == Viewport {
 			decls = append(decls, "position: fixed;")

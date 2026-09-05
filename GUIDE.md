@@ -35,6 +35,7 @@ The substitute for design judgement: you do not choose, you look up.
 | a dropdown whose trigger sits inside another positioned part | `Within("menu", "options", Flyout(SideStart))` — declare the nesting, or `Validate()` rejects the sheet: the positioned part between the Flyout and its Anchor steals the containing block |
 | a dropdown inside a scrolling list | an accordion in flow, or move the panel out of the scroller — `Validate()` rejects a Flyout whose chain passes through a `Scroll()` region, because the scroller clips the panel |
 | a panel that slides in from an edge | `Drawer(SideEnd, TwoThirds)` + `RevealedBy(widget.Open)` |
+| a floating control pinned to the vertical middle of an edge | `FloatMiddle(SideEnd, Space4)` — corners stay `Docked`'s job |
 | panels that slide instead of jumping | `SlideDeck(MotionBase)` — the panel on screen carries `widget.Current` |
 | a container that reveals its children on hover | `CueWithin(Hover, "menu", "link-text", …)` |
 | a part that exists everywhere but a phone | `On(css.Mobile, "header", Hide())` |

@@ -343,6 +343,7 @@ func SlideDeck(m Motion) Option
 func AutoRotate() Option
 func MasterDetail(detail Size) Option
 func Drawer(side Side, size Size) Option
+func FloatMiddle(side Side, gap Space) Option
 ```
 
 | Option | Emits |
@@ -372,10 +373,11 @@ func Drawer(side Side, size Size) Option
 | `Anchor()` | `position:relative` — makes the element a positioning reference. The containing block of a `Flyout()` is the nearest **positioned** ancestor, so this only becomes the reference if nothing positioned sits between the two; `Validate()` rejects the interposition (see `Within()`) |
 | `Flyout(side)` | `position:absolute; inset-block-start:100%; inset-inline-{start\|end}:0; z-index:var(<Kind layer>)` — the `100%` resolves against the nearest positioned ancestor; a positioned part between the element and its `Anchor()` steals the containing block, which the sheet detects through the declared part tree (`Within()`); a `Scroll()` part anywhere on the declared chain clips the panel, which the sheet also rejects (`Within()`) |
 | `Drawer(side, size)` | `position:fixed; inset-block:0; inset-inline-{start|end}:0; width:var(<size>); z-index:var(<Kind layer>)` |
+| `FloatMiddle(side, gap)` | `position:fixed; top:50%; transform:translateY(-50%); inset-block-end:auto; inset-inline-{start\|end}:var(--space-N); inset-inline-{start\|end}:auto` on the other side; `z-index:var(<Kind layer>)` — pins the element to the vertical middle of one viewport edge. The `50%` comes from `Size.Half`, never a literal; the centring transform is why it cannot combine with `Rotate()`/`Drawer()` (`Validate()` rejects both) |
 | `EdgeStrip(scope, side)` | `position:{absolute\|fixed}; inset-block:0; inset-inline-{start\|end}:0`; `z-index:var(<Kind layer>)` for `Viewport`, `z-index:1` for `Parent` — spans the FULL block axis of its `Scope` plus one inline edge, and deliberately emits no `width:` — the property that differentiates it from `Drawer()`, which forces one and hard-requires a paired `RevealedBy()`. `EdgeStrip` carries no such requirement: it is permanent chrome (a calendar's prev/next overlay strip), not a toggled panel. Like `Docked`/`OnEdge`, a `Parent`-scoped `EdgeStrip` is itself a containing block for a `Flyout()` descendant |
 | `Meter(thickness)` | `height:var(<thickness>); width:var(--meter-fill,0%)` — a thin bar whose fill fraction is a per-instance runtime value, not a scale step: the stylesheet declares only the SHAPE (that the length axis feeds `width`, with a `0%` fallback); the host sets ONLY the bare `--meter-fill:N%;` value inline, never a property name or selector |
 | `Animate(m)` | `transition: all var(--duration-*) var(--ease-in-out)` — except on a rule that also carries `RevealedBy()`, where it becomes the animated reveal of §5.2 instead |
-| `Rotate(t)` | `transform: rotate(<Turn degrees>)` — emits `0deg`/`90deg`/`180deg`/`270deg` by the `Turn` step. Pair with a state rule (`When`/`WhenWithin`) so the rotation IS the state, and with `Animate()` on the base rule so the turn is a transition. Not combinable with `OnEdge()`/`Drawer()`: both already own the element's `transform`, and a second declaration would silently replace the first — `Validate()` rejects the combination |
+| `Rotate(t)` | `transform: rotate(<Turn degrees>)` — emits `0deg`/`90deg`/`180deg`/`270deg` by the `Turn` step. Pair with a state rule (`When`/`WhenWithin`) so the rotation IS the state, and with `Animate()` on the base rule so the turn is a transition. Not combinable with `OnEdge()`/`Drawer()`/`FloatMiddle()`: all already own the element's `transform`, and a second declaration would silently replace the first — `Validate()` rejects the combination |
 
 `Veil()` must emit the token **with its catalog fallback**. Every rule carrying
 `Animate` is repeated under `@media (prefers-reduced-motion: reduce)` with

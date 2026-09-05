@@ -544,6 +544,32 @@ no migration entry is needed — and neither is one for the animated reveal
 itself, which changes output only for sheets that pair the two options, a
 combination no consumer used.
 
+## 21. Why `FloatMiddle` is its own option, not a `Docked` extension
+
+**Decision.** A floating control pinned to the vertical middle of a viewport
+edge gets `FloatMiddle(side, gap)` — `position:fixed`, `top` at half the
+viewport (`Size.Half`, never a literal), pulled back by half its own height,
+off the edge by one `Space` step, at the widget kind's layer.
+
+**Why not extend `Docked`.** A corner owns all four insets; a middle owns one
+edge plus its own height. One option covering both would need a mode for
+"which semantics", and modes are choices the author must get right — the
+harness removes those, it does not parameterise them. `Docked` stays corners;
+corners stay `Docked`'s only answer.
+
+**Why not compose it downstream.** Centring needs `top:50%` plus a
+`translateY(-50%)`, and `transform` already has three owners (`Rotate`,
+`Drawer`, `OnEdge`'s straddle) with `Validate()` rejecting every second
+claim. A hand-rolled middle would either fight one of them silently or
+re-implement the guard. Viewport scope only, for the same reason
+middle-centring inside a scrolling parent fights the scroll instead of
+floating over it: the need is viewport chrome, and the option says so.
+
+**Rejected: no option, document the trick.** Two declarations an author must
+write together by hand is exactly the glue §"Lego pieces" moves into the
+piece that owns it — every floating middle control would repeat it, and each
+copy could drift.
+
 ## Related documents
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) — the structure these decisions produce.

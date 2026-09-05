@@ -19,16 +19,16 @@ func (s *Sheet) validateComposition(errs []error) []error {
 	// containing blocks, so the Anchor is redundant as well as destructive.
 	checkPosition := func(p widget.Part, r rule) {
 		n := 0
-		for _, on := range []bool{r.hasAnchor, r.hasDocked, r.hasOnEdge, r.hasFlyout, r.hasBackdrop, r.hasDrawer, r.hasEdgeStrip} {
+		for _, on := range []bool{r.hasAnchor, r.hasDocked, r.hasOnEdge, r.hasFlyout, r.hasBackdrop, r.hasDrawer, r.hasEdgeStrip, r.hasFloatMiddle} {
 			if on {
 				n++
 			}
 		}
 		if n > 1 {
-			errs = append(errs, fmt.Errf("sheet %s: part %q: Anchor/Docked/OnEdge/Flyout/Backdrop/Drawer/EdgeStrip all set position; use one", string(s.widget.WidgetName()), string(p)))
+			errs = append(errs, fmt.Errf("sheet %s: part %q: Anchor/Docked/OnEdge/Flyout/Backdrop/Drawer/EdgeStrip/FloatMiddle all set position; use one", string(s.widget.WidgetName()), string(p)))
 		}
-		if r.hasRotate && (r.hasOnEdge || r.hasDrawer) {
-			errs = append(errs, fmt.Errf("sheet %s: part %q: Rotate cannot combine with OnEdge/Drawer — both own transform", string(s.widget.WidgetName()), string(p)))
+		if r.hasRotate && (r.hasOnEdge || r.hasDrawer || r.hasFloatMiddle) {
+			errs = append(errs, fmt.Errf("sheet %s: part %q: Rotate cannot combine with OnEdge/Drawer/FloatMiddle — all own transform", string(s.widget.WidgetName()), string(p)))
 		}
 	}
 	// Both ends of a descendant rule have to exist, or it silently styles
@@ -256,7 +256,7 @@ func (s *Sheet) validateComposition(errs []error) []error {
 	// this guard exists so a future positioning option cannot ship without
 	// its level.
 	checkStacking := func(p widget.Part, r rule) {
-		if (r.hasOnEdge || r.hasDocked || r.hasFlyout || r.hasBackdrop || r.hasDrawer) &&
+		if (r.hasOnEdge || r.hasDocked || r.hasFlyout || r.hasBackdrop || r.hasDrawer || r.hasFloatMiddle) &&
 			stackingFor(r, s.widget.WidgetKind().Layer()) == "" {
 			errs = append(errs, fmt.Errf("sheet %s: part %q: out-of-flow element without a declared stacking level", string(s.widget.WidgetName()), string(p)))
 		}

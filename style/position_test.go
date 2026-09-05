@@ -293,3 +293,58 @@ func TestValidateDrawerWithoutRevealedBy(t *testing.T) {
 // surface always emits the hook, it costs nothing when no app opts in, and
 // when an app's own Theme() call sets it, the SAME rule's output carries it
 // through — the two packages actually compose, not just each in isolation.
+
+// TestFloatMiddlePinsToTheViewportMiddleEdge is the emission proof for a
+// vertically-centered floating control: fixed, top at half the viewport
+// (SizeHalf, never a literal), pulled back by half its own height, off the
+// inline edge by one Space step, at the widget kind's layer.
+func TestFloatMiddlePinsToTheViewportMiddleEdge(t *testing.T) {
+	w := testWidget{name: "w", kind: widget.Menu}
+	s := style.For(w).
+		Part("fab", style.FloatMiddle(style.SideEnd, style.Space4)).
+		Stylesheet().String()
+
+	for _, want := range []string{
+		"position: fixed;",
+		"top: 50%;",
+		"transform: translateY(-50%);",
+		"inset-inline-end: var(--space-4,1rem);",
+		"inset-inline-start: auto;",
+		"inset-block-end: auto;",
+		"z-index: var(--z-dropdown,100);",
+	} {
+		if !strings.Contains(s, want) {
+			t.Errorf("expected FloatMiddle to emit %q, got:\n%s", want, s)
+		}
+	}
+
+	m := style.For(w).
+		Part("fab", style.FloatMiddle(style.SideStart, style.Space2)).
+		Stylesheet().String()
+	for _, want := range []string{
+		"inset-inline-start: var(--space-2,0.5rem);",
+		"inset-inline-end: auto;",
+	} {
+		if !strings.Contains(m, want) {
+			t.Errorf("expected FloatMiddle(SideStart) to emit %q, got:\n%s", want, m)
+		}
+	}
+}
+
+func TestFloatMiddleRejectsTransformOwners(t *testing.T) {
+	w := testWidget{name: "w", kind: widget.Menu}
+	// Each sheet carries exactly one transform owner besides FloatMiddle;
+	// the Drawer case pairs its mandatory RevealedBy so the combo rule is
+	// the only possible error source.
+	rotate := style.For(w).Part("fab", style.FloatMiddle(style.SideEnd, style.Space4), style.Rotate(style.TurnHalf))
+	if errs := rotate.Validate(); len(errs) == 0 {
+		t.Error("expected Validate to reject FloatMiddle + Rotate (both own transform)")
+	}
+	drawer := style.For(w).Part("fab",
+		style.FloatMiddle(style.SideEnd, style.Space4),
+		style.Drawer(style.SideEnd, style.TwoThirds, style.MotionNone),
+		style.RevealedBy(widget.Open))
+	if errs := drawer.Validate(); len(errs) == 0 {
+		t.Error("expected Validate to reject FloatMiddle + Drawer (both own transform/position)")
+	}
+}

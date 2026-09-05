@@ -108,6 +108,8 @@ func stackingFor(r rule, layer widget.Layer) string {
 		return "z-index: 1;"
 	case r.hasDrawer:
 		return "z-index: " + layerVar(layer) + ";"
+	case r.hasFloatMiddle:
+		return "z-index: " + layerVar(layer) + ";"
 	case r.hasDocked && r.dockedScope == Viewport:
 		return "z-index: " + layerVar(layer) + ";"
 	case r.hasEdgeStrip && r.edgeStripScope == Viewport:
